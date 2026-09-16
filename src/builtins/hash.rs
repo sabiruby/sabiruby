@@ -190,6 +190,8 @@ pub fn init(vm: &mut Vm) {
         ("frozen?", |vm, s, _a, _b| Ok(Value::bool(s.obj().map(|o| vm.heap.get(o).frozen).unwrap_or(true)))),
         ("invert", |vm, s, _a, _b| { let h = vm.hash_new(); for (k, v) in entries(vm, s) { vm.hash_set(h, v, k)?; } Ok(h) }),
     ]);
+    // `MRB_MT_PRIVATE` in the reference's ROM table for this class (src/hash.c)
+    vm.mark_private(c.hash, &["initialize", "initialize_copy"]);
 }
 
 fn hash_eq(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {

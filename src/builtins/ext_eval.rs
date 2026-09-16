@@ -226,9 +226,8 @@ fn class_eval(vm: &mut Vm, s: Value, a: &[Value], b: Value) -> VmResult<Value> {
 
 pub fn init(vm: &mut Vm) {
     let k = vm.core.kernel;
-    vm.define_method(k, "eval", kernel_eval);
-    let ksc = vm.singleton_class(Value::Obj(k)).expect("Kernel singleton");
-    vm.define_method(ksc, "eval", kernel_eval);
+    // `mrb_define_module_function_id(..., MRB_SYM(eval), ...)` (eval.c)
+    vm.define_module_function(k, "eval", kernel_eval).expect("Kernel singleton");
     vm.define_method(vm.core.basic_object, "instance_eval", instance_eval);
     vm.define_methods(vm.core.module, &[("class_eval", class_eval), ("module_eval", class_eval)]);
     // `Binding#eval` belongs to this gem: it needs the compiler (`mrb_binding_eval`)

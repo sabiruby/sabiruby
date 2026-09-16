@@ -15,13 +15,19 @@ fn default_allocate(vm: &mut Vm, s: Value, _a: &[Value], _b: Value) -> VmResult<
 
 pub fn init(vm: &mut Vm) {
     let c = vm.core;
-    vm.define_methods(c.basic_object, &[
+    // `bob_rom_entries` of src/class.c marks these `MRB_MT_PRIVATE`. `initialize` is there
+    // too but needs no marking: `Vm::def_method_raw` makes it private wherever it is defined.
+    vm.define_private_methods(c.basic_object, &[
         // the three hooks a change to an object's singleton class fires, as no-ops
-        // (`bob_rom_entries` of src/class.c: `mrb_do_nothing` for all three). The definition
-        // being the one here is what lets `Vm::method_table_hook` skip the call entirely.
+        // (`mrb_do_nothing` for all three). The definition being the one here is what lets
+        // `Vm::method_table_hook` skip the call entirely.
         ("singleton_method_added", |_vm, _s, _a, _b| Ok(Value::Nil)),
         ("singleton_method_removed", |_vm, _s, _a, _b| Ok(Value::Nil)),
         ("singleton_method_undefined", |_vm, _s, _a, _b| Ok(Value::Nil)),
+        ("method_missing", method_missing),
+    ]);
+    vm.define_methods(c.basic_object, &[
+        // `MRB_MT_PRIVATE` in `bob_rom_entries`; marked below, where the table is complete
         ("initialize", |_vm, _s, _a, _b| Ok(Value::Nil)),
         ("==", |vm, s, a, _b| { Ok(Value::bool(a.first().map(|x| vm.same_value(*x, s)).unwrap_or(false))) }),
         ("equal?", |_vm, s, a, _b| Ok(Value::bool(a.first().map(|x| same_object(*x, s)).unwrap_or(false)))),
@@ -30,8 +36,8 @@ pub fn init(vm: &mut Vm) {
         ("__id__", |vm, s, a, _b| { argc!(vm, a, 0); Ok(object_id(s)) }),
         ("__send__", send),
         ("instance_eval", |vm, s, _a, b| { if b.is_nil() { return Err(vm.raise_arg("no block given")); } vm.call_block_with_self(b, s, &[s]) }),
-        ("method_missing", method_missing),
     ]);
+    vm.mark_private(c.basic_object, &["initialize"]);
     vm.define_methods(c.object, &[
         ("class", |vm, s, _a, _b| Ok(Value::Obj(vm.real_class_of(s)))),
         ("singleton_class", |vm, s, _a, _b| Ok(Value::Obj(vm.singleton_class(s)?))),
@@ -67,6 +73,9 @@ pub fn init(vm: &mut Vm) {
         ("extend", |vm, s, a, _b| { if let Value::Obj(o) = s { if vm.heap.get(o).frozen { return Err(vm.frozen_error(s)); } } for m in a.iter().rev() { let m = class_arg(vm, *m)?; let sc = vm.singleton_class(s)?; vm.include_module(sc, m); let hook = vm.intern("extended"); vm.funcall(Value::Obj(m), hook, &[s], Value::Nil)?; } Ok(s) }),
         ("singleton_methods", |vm, s, _a, _b| { let c = vm.class_of(s); let mut list = vec![]; if vm.heap.class(c).is_singleton { for (k, m) in &vm.heap.class(c).methods { if !matches!(m, Method::Undef) { list.push(Value::Sym(*k)); } } } Ok(vm.ary_new(list)) }),
     ]);
+    // `MRB_MT_PRIVATE` in `krn_rom_entries` (src/kernel.c): these natives sit on Object
+    // here and `ext_metaprog.rs` moves them to Kernel with their visibility
+    vm.mark_private(c.object, &["respond_to_missing?"]);
 
     // Module
     vm.define_methods(c.module, &[
@@ -76,10 +85,6 @@ pub fn init(vm: &mut Vm) {
         ("===", |vm, s, a, _b| { argc!(vm, a, 1); Ok(Value::bool(vm.obj_is_kind_of(a[0], s.obj().unwrap()))) }),
         ("==", |_vm, s, a, _b| Ok(Value::bool(a.first().map(|x| *x == s).unwrap_or(false)))),
         ("include", |vm, s, a, _b| { let cls = s.obj().unwrap(); if vm.heap.get(cls).frozen { return Err(vm.frozen_error(s)); } for mv in a.iter().rev() { let m = class_arg(vm, *mv)?; if !vm.heap.class(m).is_module { let d = vm.inspect_str(*mv)?; return Err(vm.raise_type(&format!("wrong argument type {d} (expected Module)"))); } vm.include_module(cls, m); let hook = vm.intern("included"); vm.funcall(Value::Obj(m), hook, &[s], Value::Nil)?; } Ok(s) }),
-        ("included", |_vm, _s, _a, _b| Ok(Value::Nil)),
-        ("extended", |_vm, _s, _a, _b| Ok(Value::Nil)),
-        ("prepended", |_vm, _s, _a, _b| Ok(Value::Nil)),
-        ("remove_const", |vm, s, a, _b| { argc!(vm, a, 1); let n = sym_arg(vm, a[0])?; check_const_name(vm, n)?; let m = s.obj().unwrap(); if vm.heap.get(m).frozen { return Err(vm.frozen_error(s)); } match vm.heap.class_mut(m).consts.remove(&n) { Some(v) => Ok(v.get()), None => { let nn = vm.sym_name(n); Err(vm.raise(vm.core.name_error, &format!("constant {nn} not defined"))) } } }),
         ("const_missing", |vm, s, a, _b| { argc!(vm, a, 1); let n = sym_arg(vm, a[0])?; let nn = vm.sym_name(n); let o = s.obj().unwrap(); let msg = if o == vm.core.object { format!("uninitialized constant {nn}") } else { let cn = vm.class_name(o); format!("uninitialized constant {cn}::{nn}") }; Err(vm.name_error(n, &msg)) }),
         ("initialize_copy", |vm, s, a, _b| { argc!(vm, a, 1); let (dst, src) = (s.obj().unwrap(), class_arg(vm, a[0])?); let (methods, consts, cvars, sup, is_module) = { let c = vm.heap.class(src); (c.methods.clone(), c.consts.clone(), c.cvars.clone(), c.superclass, c.is_module) }; let d = vm.heap.class_mut(dst); d.methods = methods; d.consts = consts; d.cvars = cvars; d.superclass = sup; d.is_module = is_module; d.name = None; Ok(s) }),
         ("include?", |vm, s, a, _b| { argc!(vm, a, 1); let m = class_arg(vm, a[0])?; let mut c = vm.heap.class(s.obj().unwrap()).superclass; while let Some(x) = c { if vm.heap.class(x).iclass_of == Some(m) { return Ok(Value::True); } c = vm.heap.class(x).superclass; } Ok(Value::False) }),
@@ -88,21 +93,6 @@ pub fn init(vm: &mut Vm) {
         ("attr_writer", |vm, s, a, _b| { attr(vm, s, a, false, true) }),
         ("attr_accessor", |vm, s, a, _b| { attr(vm, s, a, true, true) }),
         ("attr", |vm, s, a, _b| { attr(vm, s, a, true, false) }),
-        ("public", |vm, s, a, _b| set_vis(vm, s, a, Vis::Public)),
-        ("private", |vm, s, a, _b| set_vis(vm, s, a, Vis::Private)),
-        ("protected", |vm, s, a, _b| set_vis(vm, s, a, Vis::Protected)),
-        ("module_function", |vm, s, a, _b| {
-            let m = s.obj().unwrap();
-            if a.is_empty() { vm.set_scope_vis(Vis::Private, true); return Ok(Value::Nil); }
-            let names = flat_syms(vm, a)?;
-            for n in &names {
-                match vm.find_method(m, *n) {
-                    Some((mth, _)) => { let sc = vm.singleton_class(s)?; vm.def_method(sc, *n, mth, Vis::Public)?; vm.set_visibility(m, *n, Vis::Private)?; }
-                    None => { let nn = vm.sym_name(*n); let cn = vm.class_name(m); return Err(vm.raise(vm.core.name_error, &format!("undefined method '{nn}' for class '{cn}'"))); }
-                }
-            }
-            Ok(if names.len() == 1 { Value::Sym(names[0]) } else { let v: Vec<Value> = names.iter().map(|n| Value::Sym(*n)).collect(); vm.ary_new(v) })
-        }),
         ("private_class_method", |vm, s, a, _b| { let sc = vm.singleton_class(s)?; for n in flat_syms(vm, a)? { vm.set_visibility(sc, n, Vis::Private)?; } Ok(Value::Nil) }),
         ("public_class_method", |vm, s, a, _b| { let sc = vm.singleton_class(s)?; for n in flat_syms(vm, a)? { vm.set_visibility(sc, n, Vis::Public)?; } Ok(Value::Nil) }),
         ("alias_method", |vm, s, a, _b| { argc!(vm, a, 2); let m = s.obj().unwrap(); let (new, old) = (sym_arg(vm, a[0])?, sym_arg(vm, a[1])?); vm.alias_method(m, new, old)?; Ok(s) }),
@@ -145,11 +135,35 @@ pub fn init(vm: &mut Vm) {
         ("class_variable_set", |vm, s, a, _b| { argc!(vm, a, 2); let n = sym_arg(vm, a[0])?; vm.heap.class_mut(s.obj().unwrap()).cvars.insert(n, Slot::from(a[1])); Ok(a[1]) }),
         ("module_eval", |vm, s, _a, b| { if b.is_nil() { return Err(vm.raise_arg("no block given")); } vm.call_block_with_self(b, s, &[s]) }),
         ("class_eval", |vm, s, _a, b| { if b.is_nil() { return Err(vm.raise_arg("no block given")); } vm.call_block_with_self(b, s, &[s]) }),
+    ]);
+    // The `MRB_MT_PRIVATE` half of `mod_rom_entries` (src/class.c). `method_removed` is *not*
+    // among them here although the core table marks it private: mruby-metaprog defines it a
+    // second time (`metaprog_mod_rom_entries`, `mrb_f_nil`) without the flag, and that second
+    // definition is the one the reference ends up with. It is in `ext_metaprog.rs`, public,
+    // next to the `remove_method` that fires it.
+    vm.define_private_methods(c.module, &[
+        ("included", |_vm, _s, _a, _b| Ok(Value::Nil)),
+        ("extended", |_vm, _s, _a, _b| Ok(Value::Nil)),
+        ("prepended", |_vm, _s, _a, _b| Ok(Value::Nil)),
         ("method_added", |_vm, _s, _a, _b| Ok(Value::Nil)),
-        // the other two no-op hooks of `mod_rom_entries` (src/class.c); `method_removed` is in
-        // `ext_metaprog.rs`, next to the `remove_method` that fires it
         ("method_undefined", |_vm, _s, _a, _b| Ok(Value::Nil)),
         ("const_added", |_vm, _s, _a, _b| Ok(Value::Nil)),
+        ("public", |vm, s, a, _b| set_vis(vm, s, a, Vis::Public)),
+        ("private", |vm, s, a, _b| set_vis(vm, s, a, Vis::Private)),
+        ("protected", |vm, s, a, _b| set_vis(vm, s, a, Vis::Protected)),
+        ("remove_const", |vm, s, a, _b| { argc!(vm, a, 1); let n = sym_arg(vm, a[0])?; check_const_name(vm, n)?; let m = s.obj().unwrap(); if vm.heap.get(m).frozen { return Err(vm.frozen_error(s)); } match vm.heap.class_mut(m).consts.remove(&n) { Some(v) => Ok(v.get()), None => { let nn = vm.sym_name(n); Err(vm.raise(vm.core.name_error, &format!("constant {nn} not defined"))) } } }),
+        ("module_function", |vm, s, a, _b| {
+            let m = s.obj().unwrap();
+            if a.is_empty() { vm.set_scope_vis(Vis::Private, true); return Ok(Value::Nil); }
+            let names = flat_syms(vm, a)?;
+            for n in &names {
+                match vm.find_method(m, *n) {
+                    Some((mth, _)) => { let sc = vm.singleton_class(s)?; vm.def_method(sc, *n, mth, Vis::Public)?; vm.set_visibility(m, *n, Vis::Private)?; }
+                    None => { let nn = vm.sym_name(*n); let cn = vm.class_name(m); return Err(vm.raise(vm.core.name_error, &format!("undefined method '{nn}' for class '{cn}'"))); }
+                }
+            }
+            Ok(if names.len() == 1 { Value::Sym(names[0]) } else { let v: Vec<Value> = names.iter().map(|n| Value::Sym(*n)).collect(); vm.ary_new(v) })
+        }),
     ]);
     // Class
     vm.define_methods(c.class, &[
@@ -175,8 +189,11 @@ pub fn init(vm: &mut Vm) {
         }),
         ("allocate", default_allocate),
         ("superclass", |vm, s, _a, _b| { let mut c = vm.heap.class(s.obj().unwrap()).superclass; while let Some(x) = c { let cd = vm.heap.class(x); if cd.iclass_of.is_none() && !cd.is_singleton { return Ok(Value::Obj(x)); } c = cd.superclass; } Ok(Value::Nil) }),
-        ("inherited", |_vm, _s, _a, _b| Ok(Value::Nil)),
         ("class_variable_get", |vm, s, a, _b| { argc!(vm, a, 1); let n = sym_arg(vm, a[0])?; Ok(vm.heap.class(s.obj().unwrap()).cvars.get(&n).map(|s| s.get()).unwrap_or(Value::Nil)) }),
+    ]);
+    // `cls_rom_entries` (src/class.c) marks `inherited` `MRB_MT_PRIVATE`
+    vm.define_private_methods(c.class, &[
+        ("inherited", |_vm, _s, _a, _b| Ok(Value::Nil)),
     ]);
     // Module.new / Class.new (with optional superclass) on their singleton classes
     let sc = vm.singleton_class(Value::Obj(c.class)).unwrap();

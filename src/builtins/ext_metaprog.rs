@@ -260,6 +260,11 @@ pub fn init(vm: &mut Vm) {
     }
     let class = vm.core.class;
     for n in ["class_variable_get", "class_variable_set", "constants", "class_variables"] { let s = vm.intern(n); vm.heap.class_mut(class).methods.remove(&s); }
+    // Both are module functions in the reference: `metaprog_krn_rom_entries` marks the
+    // instance copies `MRB_MT_PRIVATE` and `metaprog_krn_module_function_entries` puts the
+    // public ones on Kernel's singleton class. `global_variables` is written in `kernel.rs`
+    // here, so this comes after the sweep above, when both sit on Kernel.
+    for n in ["global_variables", "local_variables"] { let _ = vm.make_module_function(k, n); }
     let _ = Slot::NIL;
     let _ = ObjKind::Object;
 }

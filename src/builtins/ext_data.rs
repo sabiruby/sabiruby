@@ -218,6 +218,7 @@ pub fn init(vm: &mut Vm) {
         ("to_s", to_s),
         ("inspect", to_s),
     ]);
-    let ic = vm.intern("initialize_copy");
-    let _ = vm.set_visibility(d, ic, crate::object::Vis::Private);
+    // `initialize_copy` is `mrb_define_private_method_id` (data.c); `initialize` is written in
+    // Ruby (mruby-data mrblib/data.rb), where `mrb_define_method_raw` makes it private
+    vm.mark_private(d, &["initialize", "initialize_copy"]);
 }

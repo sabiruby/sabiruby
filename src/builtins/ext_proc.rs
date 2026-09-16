@@ -104,7 +104,6 @@ pub fn init(vm: &mut Vm) {
     fn kernel_proc(vm: &mut Vm, _s: Value, _a: &[Value], b: Value) -> VmResult<Value> {
         match b { Value::Obj(o) if matches!(vm.heap.get(o).kind, ObjKind::Proc(_)) => Ok(b), _ => Err(vm.raise_arg("no block given")) }
     }
-    vm.define_method(k, "proc", kernel_proc);
-    let ksc = vm.singleton_class(Value::Obj(k)).expect("Kernel singleton");
-    vm.define_method(ksc, "proc", kernel_proc);
+    // `mrb_define_module_function_id(..., MRB_SYM(proc), ...)` (mruby-proc-ext proc.c)
+    vm.define_module_function(k, "proc", kernel_proc).expect("Kernel singleton");
 }

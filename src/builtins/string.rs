@@ -645,6 +645,8 @@ pub fn init(vm: &mut Vm) {
         ("__upto_endless", |vm, _s, _a, _b| Err(vm.raise(vm.core.not_implemented_error, "endless string range"))),
         ("upto", |vm, s, a, b| { argc!(vm, a, 1, 2); let last = vm.expect_str(a[0], "argument")?; let excl = a.len() == 2 && a[1].truthy(); let mut cur = bytes(vm, s); let mut n = 0; loop { if cur.len() > last.len() { break; } if cur == last { if !excl { let v = vm.str_new(&cur); vm.call_block(b, &[v])?; } break; } let v = vm.str_new(&cur); vm.call_block(b, &[v])?; cur = str_succ(&cur); n += 1; if n > 1_000_000 { break; } } Ok(s) }),
     ]);
+    // `MRB_MT_PRIVATE` in the reference's ROM table for this class (src/string.c)
+    vm.mark_private(c.string, &["initialize", "initialize_copy"]);
 }
 
 /// The String methods that must be registered after mrblib, because mrblib defines the same

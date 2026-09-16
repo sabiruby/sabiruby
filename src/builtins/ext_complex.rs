@@ -336,8 +336,7 @@ pub fn init(vm: &mut Vm) {
     ]);
     vm.define_method(vm.core.nil_class, "to_c", |vm, _s, _a, _b| new_complex(vm, Value::Int(0), Value::Int(0)));
     let k = vm.core.kernel;
-    vm.define_method(k, "Complex", complex_rect);
-    let ksc = vm.singleton_class(Value::Obj(k)).expect("Kernel singleton");
-    vm.define_method(ksc, "Complex", complex_rect);
+    // `mrb_define_module_function_id(..., MRB_SYM(Complex), ...)` (complex.c)
+    vm.define_module_function(k, "Complex", complex_rect).expect("Kernel singleton");
     let _ = vec![0u8];
 }

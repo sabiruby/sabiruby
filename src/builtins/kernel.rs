@@ -10,7 +10,6 @@ use crate::vm::Vm;
 
 pub fn init(vm: &mut Vm) {
     let k = vm.core.kernel;
-    let ic = vm.intern("initialize_copy");
     vm.define_methods(k, &[
         // `mrb_obj_init_copy`: called on every dup/clone; Module has its own
         ("initialize_copy", |vm, s, a, _b| { if a.len() != 1 { return Err(vm.argnum_error(a.len(), "1")); } if s == a[0] { return Ok(s); } if vm.real_class_of(s) != vm.real_class_of(a[0]) || core::mem::discriminant(&s) != core::mem::discriminant(&a[0]) { return Err(vm.raise_type("initialize_copy should take same class object")); } Ok(s) }),
@@ -49,6 +48,13 @@ pub fn init(vm: &mut Vm) {
             }
             Ok(Value::False)
         }),
+        ("__printstr__", |vm, _s, a, _b| { for v in a { let b = vm.as_string(*v)?; vm.write_out(&b); } Ok(Value::Nil) }),
+        ("!~", |vm, s, a, _b| { argc!(vm, a, 1); let m = vm.intern("=~"); let r = vm.funcall(s, m, &[a[0]], Value::Nil)?; Ok(Value::bool(!r.truthy())) }),
+    ]);
+    // `MRB_MT_PRIVATE` in `krn_rom_entries` (src/kernel.c) for the entry written above
+    vm.mark_private(k, &["initialize_copy"]);
+    // the other MRB_MT_PRIVATE entries of the same table
+    vm.define_private_methods(k, &[
         // `defined?` is compiled to these (kernel.c); they answer the description string or nil
         ("__defined_ivar?", |vm, s, a, _b| { argc!(vm, a, 1); let n = super::object::sym_arg(vm, a[0])?; let ok = match s { Value::Obj(o) => vm.heap.get(o).ivars.iter().any(|(k, _)| *k == n), _ => false }; Ok(defined_str(vm, ok, "instance-variable")) }),
         ("__defined_gvar?", |vm, _s, a, _b| { argc!(vm, a, 1); let n = super::object::sym_arg(vm, a[0])?; let ok = vm.globals.contains_key(&n) || Some(n) == vm.s.backref; Ok(defined_str(vm, ok, "global-variable")) }),
@@ -58,18 +64,11 @@ pub fn init(vm: &mut Vm) {
         ("__defined_method?", |vm, s, a, _b| { argc!(vm, a, 1); let n = super::object::sym_arg(vm, a[0])?; let ok = vm.respond_to(s, n); Ok(defined_str(vm, ok, "method")) }),
         ("__defined_yield?", |vm, s, a, b| { let r = block_given(vm, s, a, b)?; Ok(defined_str(vm, r.truthy(), "yield")) }),
         ("__defined_super?", |vm, _s, _a, _b| { let ci = *vm.ci.last().unwrap(); let ok = match ci.mid { Some(m) => match vm.heap.class(ci.target_class).superclass { Some(sup) => vm.find_method(sup, m).is_some(), None => false }, None => false }; Ok(defined_str(vm, ok, "super")) }),
-        ("__printstr__", |vm, _s, a, _b| { for v in a { let b = vm.as_string(*v)?; vm.write_out(&b); } Ok(Value::Nil) }),
-        ("!~", |vm, s, a, _b| { argc!(vm, a, 1); let m = vm.intern("=~"); let r = vm.funcall(s, m, &[a[0]], Value::Nil)?; Ok(Value::bool(!r.truthy())) }),
     ]);
-    vm.set_visibility(k, ic, crate::object::Vis::Private).expect("initialize_copy private");
-    // module functions: callable as Kernel.raise, private as instance methods (kernel.c MRB_MT_PRIVATE)
-    let ksc = vm.singleton_class(Value::Obj(k)).unwrap();
+    // module functions: callable as Kernel.raise, private as instance methods
+    // (`mrb_define_module_function`, kernel.c)
     for name in ["raise", "block_given?", "iterator?", "p", "print", "printf", "putc", "puts", "lambda", "proc", "__printstr__"] {
-        let n = vm.intern(name);
-        if let Some((m, _)) = vm.find_method(k, n) {
-            vm.def_method_raw(ksc, n, m);
-            let _ = vm.set_visibility(k, n, crate::object::Vis::Private);
-        }
+        let _ = vm.make_module_function(k, name);
     }
 }
 
