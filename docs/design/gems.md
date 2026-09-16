@@ -688,6 +688,37 @@ How a gem of the reference tree becomes part of SabiRuby, and what each ported o
       native count bounds how late; making it 1 makes the lateness one call and costs a third on
       native-heavy code. Charging heavy natives by the work they do, or a heap limit, would be the
       next step if that matters.
+  * **A turn of the host loop ends when nothing is runnable — not when a task answers nil**
+    (2026-09-17, `docs/worklog/2026-09-17-task-end-nil.md`). `task_run_once` answers three
+    different things through one value: the result of a task that finished, `true` where one ran
+    or the clock jumped to a sleeper, and `nil` where nothing was ready. A task whose block is
+    worth nil therefore answers exactly what an empty scheduler answers, and `task_run_limits`,
+    which used to stop on a nil, gave up its whole turn each time one ended. Ten tasks finishing
+    in the same frame — rubevy's garden replacing ten creatures at once, each reflex task's
+    `Queue#pop` raising into an empty `rescue` — cost ten frames in which *nothing else ran*,
+    which at 30 fps is a third of a second of frozen VM per burst, and several seconds where the
+    frame rate had already dropped. The loop now asks the scheduler instead
+    (`ext_task::task_step`, which answers `Ran` / `Idled` / `Stuck`) and stops only on `Stuck`:
+    nothing ready and nothing that can be made ready, which under a host-owned clock is still the
+    same moment as before — moving the clock is the host's to do. `Vm::task_run_once` keeps its
+    value and its meaning; its rustdoc now says that a nil is not the end of the work, and the
+    loop to write against it is `while vm.task_pending()`.
+  * **The dormant queue is weak** (2026-09-17, same worklog). A finished task goes to the dormant
+    queue and nothing but `Task#close` ever took it out again, while all four queues were GC
+    roots: every task a program had ever run stayed live with its result, its name and its queue,
+    for the life of the VM. That is what the reference does too — `mrb_task_mark_all` walks all
+    four queues, and `task_create_common` additionally `mrb_gc_register`s every task object, so
+    there a finished task is pinned twice over and only `mrb_close_task` frees it. On a
+    microcontroller running a fixed set of tasks that is invisible; a game that restarts a script
+    every few seconds leaks one Task per restart. So this is a deliberate departure: the dormant
+    queue is held **weakly**. It is left out of the root set, and after the mark phase — before
+    the sweep — a collection drops from it every task nothing else reached (`Vm::gc_collect`).
+    Nothing observable changes, because a task dropped this way is one no Ruby code and no
+    registered host handle can still name: `Task.list`, `Task.get`, `Task.stat`, `Task#status`
+    and `Task#value` answer for every task a program can reach, which is what the reference's own
+    tests check (1000 tasks spawned and finished: 612 live objects before and 612 after a
+    collection, against 2612 before; `tests/task.rs`). A host that means to read a task back
+    after it finished registers it, as `Vm::task_spawn`'s documentation already said.
 
 ## How far mruby-task may drift (decided 2026-09-13)
 
