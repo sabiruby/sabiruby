@@ -132,3 +132,10 @@ reads the dormant queue's contents or a finished task's liveness.
 
 **What the port does**: the second shape — see [`../design/gems.md`](../design/gems.md), "The
 dormant queue is weak". The three mrbtest baselines are unchanged by it.
+
+**Worked out** (2026-09-17): measured on the reference, patched and drafted in
+[`upstream-issue-task-dormant.md`](upstream-issue-task-dormant.md) — 2000 finished tasks cost
++2120 kB of RSS there, and a program that spawns from one block dies at 65 500 with "too many
+irep references". The first shape above is a use-after-free on its own in C and needs two more
+pieces; the patch that works is [`patches/mruby-task-dormant-weak.patch`](patches/mruby-task-dormant-weak.patch).
+**Still not reported**: the drafts are a record (author's decision, 2026-09-17).

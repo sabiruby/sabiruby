@@ -23,10 +23,10 @@
 
 | # | 内容 | 状態 |
 |---|---|---|
-| 1 | 本家で再現・計測（Docker `kishima/mruby:4.1.0-rc` は mruby-task 入り）。`Task.stat[:dormant][:count]` が `GC.start` で減らないこと、`GC.stat` の生存数、RSS（10 万タスクで何 MB か）。`join` しても減らないことも | 未着手 |
-| 2 | 既報の確認: `gh issue list -R mruby/mruby --search "task dormant leak"`、PR、picoruby 側（`picoruby/mruby-task` があればそこも）。同じ報告があれば乗る | 未着手 |
-| 3 | patch を `ref/mruby` の作業ブランチで書く（2 案。下記）。`rake test` を mruby-task 込みの gembox で（Docker）。gem の test に「終了して参照の無いタスクは GC で消える」を 1 本足す | 未着手 |
-| 4 | issue 本文（英語）と PR 説明の下書きを `docs/verification/upstream-issue-task-dormant.md` に。SabiRuby 側の実測（1000 本で 2000 オブジェクト、箱庭の凍結）を証拠として添える | 未着手 |
+| 1 | 本家で再現・計測（Docker `kishima/mruby:4.1.0-rc` は mruby-task 入り）。`Task.stat[:dormant][:count]` が `GC.start` で減らないこと、`GC.stat` の生存数、RSS（10 万タスクで何 MB か）。`join` しても減らないことも | **済み** `d59a93c`。image の `mruby` は mruby-task 抜きだったのでコンテナ内でビルドした。2000 本で dormant 2000・live +6444・RSS +2120 kB、10000 本で +10608 kB、`join` も `value` も回収しない（`close` だけ）。10 万本は `too many irep references` で 65500 本目に死ぬ |
+| 2 | 既報の確認: `gh issue list -R mruby/mruby --search "task dormant leak"`、PR、picoruby 側（`picoruby/mruby-task` があればそこも）。同じ報告があれば乗る | **済み** `d59a93c`。同じ報告は無い。効いたのは PR #6947（`Task#close` を足した当人が「PicoRuby で漏れていた」「参照を保持したい用途があるので自動解放できない」と書いている）と PR #6983（`mrb_task_free` が close 経由前提であることの根拠）。picoruby org に `mruby-task` repo は無い |
+| 3 | patch を `ref/mruby` の作業ブランチで書く（2 案。下記）。`rake test` を mruby-task 込みの gembox で（Docker）。gem の test に「終了して参照の無いタスクは GC で消える」を 1 本足す | **済み** `d59a93c`。`ref/mruby` のブランチ `task-dormant-weak`（コミット `3749292`）＝ [`../verification/patches/mruby-task-dormant-weak.patch`](../verification/patches/mruby-task-dormant-weak.patch)。A は**そのままでは use-after-free**（下記）なので 2 つ足した形で通した。テストは 2 本（指示の 1 本＋番人）。`rake test` 2700 / KO 0、`MRB_GC_STRESS` 929 / KO 0 |
+| 4 | issue 本文（英語）と PR 説明の下書きを `docs/verification/upstream-issue-task-dormant.md` に。SabiRuby 側の実測（1000 本で 2000 オブジェクト、箱庭の凍結）を証拠として添える | **済み** `d59a93c`。冒頭に「記録のみ・未提出」を明記。経過は [`../worklog/2026-09-17-upstream-record.md`](../worklog/2026-09-17-upstream-record.md) |
 | 5 | 本家へ送る | **やらない**（著者判断 2026-09-17: 記録だけ） |
 
 ## patch の 2 案
@@ -41,6 +41,26 @@ dormant になる点（`terminate_task_internal` と `execute_task` の末尾）
 本家が「仕様」と答えた場合の落とし所。
 
 **推奨は A**（漏れの原因を消す。観測可能な差は無い）。issue では A を提案し、B を代替として添える。
+
+## 実際に書いた patch（2026-09-17、手順 3 の結果）
+
+**A はこの 2 行だけでは足りなかった。** mruby のデータ型には mark フックが無い（`mrb_data_type` は
+`struct_name` と `dfree` だけ）ので、`mrb_task` の `result`・`name`・スタックは
+`mrb_task_mark_all` のキュー走査からしか到達できない。dormant を走査から外すと、**参照の残っている
+終了タスクの中身まで回収される**（`t = Task.new { "result-#{1+1}" }; Task.run; GC.start; t.value` が
+`"646"` を返す＝再利用済みのスロット）。実際に測って確かめた。
+
+通した形は A ＋ 2 つ:
+
+1. dormant に移る**直前**に（まだマークされるキューにいるうちに）`result` と `name` を
+   wrapper オブジェクトの ivar に移す。構造体のフィールドは C が読むために残す。
+2. 同じ場所でスタックから逃げた env を detach する（PR #6983 と同じ理由。VM が今立っている
+   context のタスクだけは除き、`execute_task` の末尾で改めて行う）。`dfree` はキューからの unlink と
+   detach を自分で行う（`mrb_close_task` がやっていた仕事で、GC が解放するタスクには誰もやっていない）。
+   ヒープ解体中はしない（`mrb->task.finalizing`）。
+
+B は**書いていない**。A が安全な形で通り、かつ B は join も value も呼ばないコード（この計画書の
+再現がまさにそれ）の漏れを直さないため。issue には代替として文章でだけ添えてある。
 
 ## 守ること
 
