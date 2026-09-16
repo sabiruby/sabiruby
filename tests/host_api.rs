@@ -79,7 +79,9 @@ fn a_native_finds_the_task_it_was_called_from() {
     }
     // outside a task there is no running one, so the same native answers nil
     assert_eq!(run(&mut vm, "p whose_task\n"), "nil\n");
-    while !vm.task_run_once().expect("run_once").is_nil() {}
+    // `task_pending`, not a nil answer: a task that ends with a nil result answers nil here
+    // just as an empty scheduler does (`Vm::task_run_once`)
+    while vm.task_pending() { vm.task_run_once().expect("run_once"); }
     assert_eq!(String::from_utf8_lossy(&vm.take_output()), "11\n22\n");
     assert_eq!(vm.task_running(), None);
 }
@@ -93,7 +95,9 @@ fn a_task_that_raised_is_told_apart_from_one_that_answered() {
     let b = vm.task_spawn(bad, 128, Some("b")).expect("spawn");
     vm.gc_register(a);
     vm.gc_register(b);
-    while !vm.task_run_once().expect("run_once").is_nil() {}
+    // `task_pending`, not a nil answer: a task that ends with a nil result answers nil here
+    // just as an empty scheduler does (`Vm::task_run_once`)
+    while vm.task_pending() { vm.task_run_once().expect("run_once"); }
     assert!(vm.task_finished(a) && vm.task_finished(b));
     assert_eq!(vm.task_value(a), Value::Int(2));
     assert!(!vm.is_exception(vm.task_value(a)));

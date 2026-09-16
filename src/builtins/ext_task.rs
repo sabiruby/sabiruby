@@ -554,23 +554,44 @@ fn task_run(vm: &mut Vm, _s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
     Ok(Value::Nil)
 }
 
-/// One ready task, then back to the caller (`mrb_task_run_once`). This is the shape a host loop
-/// wants — a frame of a game, a turn of an event loop — where `Task.run` would block until every
-/// task is done. It has no Ruby name in the reference either; embedders reach it through
-/// [`Vm::task_run_once`].
-pub(crate) fn task_run_once(vm: &mut Vm) -> VmResult<Value> {
+/// What one turn of the scheduler did ([`task_step`]). The value a finished task answered is
+/// not in here on purpose: it says nothing about whether the scheduler can go on, and reading
+/// it as if it did is what made a task ending with nil end the host's whole run
+/// (`docs/worklog/2026-09-17-task-end-nil.md`).
+pub(crate) enum Step {
+    /// this task got the CPU (it may have finished, parked or been preempted)
+    Ran(ObjId),
+    /// nothing was ready, but the clock moved on to the next deadline and woke a sleeper
+    Idled,
+    /// nothing ran and nothing could be made ready: a host loop stops here
+    Stuck,
+}
+
+/// One turn of the scheduler for a host loop (`mrb_task_run_once`'s body). This is the shape a
+/// host loop wants — a frame of a game, a turn of an event loop — where `Task.run` would block
+/// until every task is done.
+pub(crate) fn task_step(vm: &mut Vm) -> VmResult<Step> {
     if let Some(f) = vm.task.hook { f(vm); }
     if vm.task.queues[Q_READY].is_empty() {
         // where the host owns the clock, a turn that found nothing ready is simply over: moving
         // the clock is the host's to do (`Vm::task_advance_ticks`)
-        if !vm.task.clock_from_instructions { return Ok(Value::Nil); }
-        if !vm.task.queues[Q_WAITING].is_empty() && idle(vm) { return Ok(Value::True); }
-        return Ok(Value::Nil);
+        if !vm.task.clock_from_instructions { return Ok(Step::Stuck); }
+        if !vm.task.queues[Q_WAITING].is_empty() && idle(vm) { return Ok(Step::Idled); }
+        return Ok(Step::Stuck);
     }
-    match scheduler_step(vm) {
-        Some(t) if td(vm, t).status == DORMANT => Ok(td(vm, t).result.get()),
-        _ => Ok(Value::True),
-    }
+    // `None` where the head of the ready queue is the task the caller is standing in: nothing
+    // ran and nothing will until it gives the CPU back, so this is stuck too
+    Ok(match scheduler_step(vm) { Some(t) => Step::Ran(t), None => Step::Stuck })
+}
+
+/// One ready task, then back to the caller (`mrb_task_run_once`). It has no Ruby name in the
+/// reference either; embedders reach it through [`Vm::task_run_once`].
+pub(crate) fn task_run_once(vm: &mut Vm) -> VmResult<Value> {
+    Ok(match task_step(vm)? {
+        Step::Ran(t) if td(vm, t).status == DORMANT => td(vm, t).result.get(),
+        Step::Ran(_) | Step::Idled => Value::True,
+        Step::Stuck => Value::Nil,
+    })
 }
 
 // ------------------------------------------------------------------ Task class methods
