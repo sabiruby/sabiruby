@@ -191,3 +191,55 @@ SabiRuby は可視性で弾いていた（`2026-09-16-leftovers-perf.md` の「�
 `send`／`public_send`／`Object#method`／`methods`／`private_methods`／
 `instance_methods` 系は本家と同じだった（変更なし）。文言も一致する:
 `private method 'top_m' called for Object`、`protected method 'prot' called for Prot`。
+
+## 5. 測ったもの
+
+可視性の判定は `OP_SEND`/`OP_SEND0`/`OP_SENDB` の中で**メソッドが見つかったときだけ**走る
+`method_vis` で、これ自体は前からあった（`op_send_vis`）。今回増えたのは
+「`vis` テーブルに入っている名前の数」だけで、`HashMap` の引きは 1 本。
+`respond_to?` はむしろ `method_vis` を 1 回やめたので減っている。
+だから速さは動かないはずで、そのとおりだった。
+
+交互 A/B（`tools/bench_ab.sh --runs 7 --core 2`、A = main `1c747bf`、B = `1b0de6e`。
+どちらも `cargo build --release` をスクラッチの別 `CARGO_TARGET_DIR` で作り、パスで渡した。
+走らせる前に `pgrep -f "cargo|rustc|bench_ab"` が自分以外を出さないことを確かめた）:
+
+| benchmark | A best | A median | B best | B median | best の差 | median の差 |
+|---|---:|---:|---:|---:|---:|---:|
+| call_args | 857.087 | 882.117 | 861.671 | 887.507 | +0.5% | +0.6% |
+| vmo_calls | 2828.473 | 2839.767 | 2819.669 | 2839.172 | −0.3% | −0.0% |
+| bm_fib | 5071.983 | 5147.253 | 5093.113 | 5142.374 | +0.4% | −0.1% |
+| app_robot | 1140.405 | 1153.988 | 1131.101 | 1142.201 | −0.8% | −1.0% |
+
+符号が揃っていないので、どれも雑音の底。`call_args` は best と median が 3% 離れているが、
+A と B で同じだけ離れている（857/882 と 862/888）ので、交互に取った比のほうが意味を持つ。
+
+## 6. 確認
+
+* `cargo test --workspace` 全通過（31 のテストバイナリ）。`tests/custom` は 17 → 21 本
+  （`visibility_builtins`・`visibility_builtins_regexp`・`visibility_toplevel_def`・
+  `visibility_respond_to`。期待値はどれも本家 `mruby` の出力を `tools/custom.sh` が作ったもの）。
+* `tools/check_no_std.sh` 通過。VM の crate の `unsafe` は 0（`grep -rn '\bunsafe\b' src/` が 0 行）。
+* `tools/mrbtest.sh` の 3 ビルドとも `tests/mrbtest/baseline*.txt` と一致、数値も変化なし:
+  既定 2507 中 2344、バイト 2452 中 2267、regexp 無し 2011 中 1979。**基準の更新は要らなかった**
+  （本家の可視性に関する assertion が新しく通ったわけではない。`respond_to?` の件は
+  `test/t/` に assertion が無く、`tests/custom/` でしか見えない）。
+* `cargo doc --no-deps` の rustdoc 警告 0。残る 1 件の warning は cargo の
+  「bin と lib が同じ名前」（rust-lang/cargo#6313）で、前からあるもの。
+* `tools/coverage.sh` を回して `docs/verification/coverage.md` を作り直した。
+  「両方にあるが可視性が違う」**50 → 0**、「モジュール関数の片割れ」3 → 1、「本家だけ」346 → 344。
+
+## 7. 残っているもの・見つけたが直していない差
+
+* `` Kernel.` `` を足していない（上の「捨てた案」）。coverage の「モジュール関数の片割れ」に
+  1 件だけ残るのはこれ。`docs/design/gems.md` の Deviations kept に書いた。
+* **main の `define_method` が無い**。本家は `mrb->top_self` の特異クラスに
+  `top_define_method` を置いていて、トップレベルの `define_method(:x){}` は Object の
+  private メソッドになる。SabiRuby は `undefined method 'define_method' for Object`。
+  可視性ではなく「本家にあって無いもの」なので触っていない（項目 9 の側）。
+* `Module#private_method_defined?`・`#public_method_defined?`・`#protected_method_defined?` は
+  SabiRuby の追加で、本家には無い（テストを書くときに気づいた。
+  `*_instance_methods(false)` で書き直した）。
+* `Module#initialize_copy` と `Proc#initialize` は SabiRuby だけが持つもので、public のまま。
+  50 件に入っていないので触っていない。本家の規則（`mrb_define_method_raw`）に素直に従うなら
+  private になるはずの名前ではある。
