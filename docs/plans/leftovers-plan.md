@@ -16,7 +16,7 @@
 | 7 | rubevy の `Rubevy.ask` の `Arg` に Hash/Array を運べない（`Arg::Value`。今は数値と文字列と Entity だけ） | ECS の橋 A | **済み**（2026-09-16、rubevy `0142f93`）。`Request` の drop で解放（`Vm` が無いので次の `tick_scripts` 先頭で `gc_unregister`）。記録は rubevy `docs/worklog/2026-09-16-arg-value.md` |
 | 8 | SabiRuby の公開 API で足りなかったもの: Hash のキー列挙、`Task::Queue` の長さと非ブロッキング pop（rubevy が `funcall` で代用している） | ECS の橋 B | **済み**（2026-09-16、`6af8276`）。rubevy 側の置き換えも済み（rubevy `83cd763`） |
 | 9 | coverage が見つけた「本家にあって本当に無い」もの: `Hash#default_proc=`、`Numeric#fdiv`、`Module#const_added`/`#method_undefined`、`BasicObject#singleton_method_added`/`_removed`/`_undefined` | coverage | **済み**（2026-09-16、`ef4611f`）。`coverage.md` の「本家だけ」22 → 15 |
-| 10 | 可視性の食い違い 50 件（本家が private、SabiRuby が public。`Module#private`/`module_function`/`included`/`method_added` の類）と、トップレベルの `def` が private にならない件 | coverage | **著者判断待ち**（直すか「意図した差分」にするか）。項目 9 のフック 5 件が加わって 45 → 50 |
+| 10 | 可視性の食い違い 50 件（本家が private、SabiRuby が public。`Module#private`/`module_function`/`included`/`method_added` の類）と、トップレベルの `def` が private にならない件 | coverage | **済み**（2026-09-17、`835ac67`・`43bd12f`）。著者の判断は「本家のとおりに直す」。coverage の「可視性が違う」50 → 0 |
 
 ## 各項目
 
@@ -169,3 +169,52 @@ VM の crate の `unsafe` 0、`cargo doc` の rustdoc 警告 0。
    −2.0% の回では −2.9% に出た。
 6. **`tools/bench.sh` は `SABIRUBY_BIN` が無いと作業ツリーをビルドして測る。** 未コミットの項目 6 を
    置いたまま基準を取り直しかけて、途中で気づいて捨てた。以後は測るコミットのバイナリを先に作って名指ししている。
+
+
+## 実装で分かったこと（2026-09-17、項目 10）
+
+作業の記録は [`../worklog/2026-09-17-visibility.md`](../worklog/2026-09-17-visibility.md)。
+確認: `cargo test --workspace` 全通過（`tests/custom` は 17 → 21 本）、`tools/check_no_std.sh` 通過、
+`tools/mrbtest.sh` の 3 ビルドとも `tests/mrbtest/baseline*.txt` と一致
+（既定 2507 中 2344、バイト 2452 中 2267、regexp 無し 2011 中 1979。いずれも変化なし）、
+VM の crate の `unsafe` 0、`cargo doc` の rustdoc 警告 0。
+`coverage.md` の「両方にあるが可視性が違う」は **50 → 0**、
+「モジュール関数の片割れ」は 3 → 1、「本家だけ」は 346 → 344。
+
+1. **「`initialize` はいつも private」は組み込みの表には届かない。** 本家の規則は
+   `mrb_define_method_raw`（`src/class.c:1071`）にあるが、組み込みのメソッド表は
+   `MRB_MT_INIT_ROM`（`mrb_mt_init_rom`）が const な項目配列をそのまま層として繋ぐので
+   **その関数を通らない**。だから各 ROM テーブルは自分で `| MRB_MT_PRIVATE` と書いており、
+   書き忘れた `mruby-struct` と `mruby-random` の `initialize` は本家で public のまま。
+   規則を `Vm::def_method_raw` に移したら coverage が 50 → 2 になって、残った 2 件がそれだった。
+   規則は `Vm::def_method`（`def`・`alias_method`・`define_method` が通る道）に残し、
+   組み込み側は本家の表と同じく private にする項目を挙げる形にした。
+2. **`Module#method_removed` は本家でも public。** core の `mod_rom_entries` は
+   `MRB_MT_PRIVATE` で定義しているが、`mruby-metaprog` がフラグ無しで定義し直す
+   （`metaprog.c:726`）。後の層が勝つ。coverage の 50 件に入っていなかった理由。
+3. **トップレベルの `def` の規則は「self が main か」ではない。** 計画書の想像とは違い、
+   `OP_DEF` は `MRB_METHOD_VDEFAULT_FL` を立てるだけで、**文脈の土台のフレームだけが
+   private で始まる**（`src/vm.c:136`、`c->ci->vis = 1`）。`cipush` が作るフレームは全部 public
+   （`src/vm.c:868`）。だから `eval("def x; end")` の `x` は **public**（`mrb_top_run` が
+   入れ子では `cipush` する）。SabiRuby では `run_irep`/`start` が土台に当たるので
+   「`ci` が空なら private」の 1 行。ブロックは env が `ci.vis` を写すのでついてくる。
+4. **`Module#define_method` は場の可視性を見ない。** `mrb_mod_define_method_m` は
+   `MRB_METHOD_PUBLIC_FL` を書いて渡す（`src/class.c:4197`）ので、`private` の下でも
+   `module_function` の下でも public。SabiRuby は `current_def_vis` を見ていて、
+   トップレベルが private になった途端に `tests/custom/method_cache.rb` が落ちて分かった。
+   トップレベルの `define_method` だけが private なのは、本家が main の特異クラスに
+   `top_define_method` を別に置いているから。**SabiRuby には main の `define_method` が無い**
+   （項目 9 の側の話なので足していない）。
+5. **本家の `respond_to?` は可視性を見ない。** `obj_respond_to`（`src/kernel.c:624`）は
+   `include_all` を `respond_to_missing?` に渡すためだけに受け取り、メソッドが見つかったときは
+   使わない。だから本家では `Object.new.respond_to?(:puts)` も `respond_to?(:initialize)` も true
+   （doc コメントは CRuby 風に書いてあるが、コードは見ていない）。SabiRuby は弾いていたので、
+   本家に合わせて弾くのをやめた。`2026-09-16-leftovers-perf.md` が「見つけたが直していない差」に
+   挙げていた件がこれで閉じた。
+6. **`send`・`public_send`・`Object#method`・`methods`/`private_methods`・`instance_methods` 系は
+   もともと本家と同じ**で、変更は要らなかった。NoMethodError の文言も一致する
+   （`private method 'top_m' called for Object`、`protected method 'prot' called for Prot`）。
+7. **残した差**: `` Kernel.` ``（モジュール関数の片割れ）を足していない。足すと
+   本家の `test/t/syntax.rb` の `External command execution.` が落ちる
+   （`self` が Kernel のとき特異メソッドが先に当たり、SabiRuby の本体は
+   `NotImplementedError`）。`docs/design/gems.md` の Deviations kept に 1 項。

@@ -192,6 +192,15 @@ read the ratio and not the milliseconds. All of it is in
 * **A Ruby `method_missing`, and `[]`/`[]=` reached through the index opcodes, are no longer a
   native boundary** (`6314b84`, `ad54ed4`). Code that relied on a `Fiber.yield` inside one
   raising will no longer see the exception; it yields.
+* **Built-in method visibility now matches the reference** (`835ac67`, `43bd12f`): the 50
+  built-ins mruby defines private (`Module#private`/`module_function`/`included`/`method_added`,
+  the `singleton_method_*`/`const_added` hooks, every `initialize`/`initialize_copy` except
+  `Struct#` and `Random#`, which the reference itself leaves public, …) are private here too,
+  and a top-level `def` is private, as the reference's base frame makes it. `respond_to?`
+  no longer looks at visibility — the reference never did — so `Object.new.respond_to?(:puts)`
+  is `true`; `public_send` and `Object#method` raise on a private method with the reference's
+  wording. `Module#define_method` always defines public. `coverage.md` lists 0 visibility
+  differences; the one kept is `` Kernel.` `` (`docs/design/gems.md`).
 * **`sabiruby-compiler`'s optional dependency on the VM is `0.5.0`** (this release), so a program
   cannot mix `sabiruby-compiler` 0.2.2 with `sabiruby` 0.4.
 

@@ -237,6 +237,8 @@ pub fn init(vm: &mut Vm) {
         ("frozen?", |vm, s, _a, _b| Ok(Value::bool(s.obj().map(|o| vm.heap.get(o).frozen).unwrap_or(true)))),
         ("dup", |vm, s, _a, _b| { let v: Vec<Slot> = slots(vm, s).to_vec(); let c = vm.real_class_of(s); Ok(Value::Obj(vm.heap.alloc(c, ObjKind::Array(v.into())))) }),
     ]);
+    // `MRB_MT_PRIVATE` in the reference's ROM table for this class (src/array.c)
+    vm.mark_private(c.array, &["initialize", "initialize_copy"]);
 }
 
 fn ary_join(vm: &mut Vm, s: Value, sep: &[u8]) -> VmResult<Value> {

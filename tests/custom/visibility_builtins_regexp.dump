@@ -1,0 +1,73 @@
+irep 0x5f75c9e405b0 nregs=8 nlocals=3 pools=4 syms=10 reps=1 ilen=116
+local variable names:
+  R1:r
+  R2:e
+catch type: rescue   begin: 0047 end: 0053 target: 0056
+file: /w/visibility_builtins_regexp.rb
+    3 000 TDEF		R3	:show	I[0]
+    6 004 GETCONST	R4	Regexp
+    6 007 LOADSYM	R5	:initialize
+    6 010 SSEND		R3	:show	n=2
+    7 014 GETCONST	R4	Regexp
+    7 017 LOADSYM	R5	:initialize_copy
+    7 020 SSEND		R3	:show	n=2
+    8 024 GETCONST	R4	Regexp
+    8 027 LOADSYM	R5	:__check_initialized
+    8 030 SSEND		R3	:show	n=2
+    9 034 GETCONST	R3	Regexp
+    9 037 STRING	R4	L[0]	; a
+    9 040 SEND		R3	:new	n=1
+    9 044 MOVE		R1	R3	; R1:r
+   11 047 MOVE		R3	R1	; R1:r
+   11 050 SEND0		R3	:__check_initialized
+   11 053 JMP		094
+   11 056 EXCEPT	R3	
+   12 058 GETCONST	R4	NoMethodError
+   12 061 RESCUE	R3	R4
+   12 064 JMPIF		R4	071
+   12 068 JMP		092
+   12 071 MOVE		R2	R3	; R2:e
+   13 074 STRING	R4	L[1]	; explicit receiver: 
+   13 077 MOVE		R5	R2	; R2:e
+   13 080 SEND0		R5	:message
+   13 083 STRCAT	R4	(R5)
+   13 085 SSEND		R3	:puts	n=1
+   13 089 JMP		094
+   13 092 RAISEIF	R3	
+   15 094 STRING	R4	L[2]	; match still works: 
+   15 097 MOVE		R5	R1	; R1:r
+   15 100 STRING	R6	L[3]	; bab
+   15 103 SEND		R5	:=~	n=1
+   15 107 STRCAT	R4	(R5)
+   15 109 SSEND		R3	:puts	n=1
+   15 113 RETURN	R3	
+   15 115 STOP
+
+irep 0x5f75c9e44f70 nregs=9 nlocals=4 pools=5 syms=3 reps=0 ilen=64
+local variable names:
+  R1:mod
+  R2:name
+file: /w/visibility_builtins_regexp.rb
+    3 000 ENTER		2:0:0:0:0:0:0:0 (0x80000)
+    4 004 STRING	R5	L[0]
+    4 007 MOVE		R6	R1	; R1:mod
+    4 010 STRCAT	R5	(R6)
+    4 012 STRING	R6	L[1]	; #
+    4 015 STRCAT	R5	(R6)
+    4 017 MOVE		R6	R2	; R2:name
+    4 020 STRCAT	R5	(R6)
+    4 022 STRING	R6	L[2]	; : 
+    4 025 STRCAT	R5	(R6)
+    4 027 MOVE		R6	R1	; R1:mod
+    4 030 LOADFALSE	R7	(false)
+    4 032 SEND		R6	:private_instance_methods	n=1
+    4 036 MOVE		R7	R2	; R2:name
+    4 039 SEND		R6	:include?	n=1
+    4 043 JMPNOT	R6	053
+    4 047 STRING	R6	L[3]	; private
+    4 050 JMP		056
+    4 053 STRING	R6	L[4]	; public
+    4 056 STRCAT	R5	(R6)
+    4 058 SSEND		R4	:puts	n=1
+    4 062 RETURN	R4	
+

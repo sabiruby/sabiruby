@@ -29,6 +29,10 @@ pub fn init(vm: &mut Vm) {
         ("to_s", fiber_to_s),
         ("inspect", fiber_to_s),
     ]);
+    // `mrb_define_method_id(..., MRB_SYM(initialize), fiber_init, ...)` (mruby-fiber
+    // fiber.c): no flag of its own, but `mrb_define_method_raw` makes every `initialize`
+    // private, and that path is the one a C definition outside a ROM table takes
+    vm.mark_private(fiber, &["initialize"]);
     let sc = vm.singleton_class(Value::Obj(fiber)).expect("Fiber singleton");
     vm.define_methods(sc, &[
         ("yield", |vm, _s, a, _b| vm.fiber_yield(a)),

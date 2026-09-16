@@ -1,0 +1,338 @@
+irep 0x57b9d72e0970 nregs=8 nlocals=3 pools=19 syms=33 reps=10 ilen=597
+local variable names:
+  R1:e
+  R2:o
+catch type: rescue   begin: 0078 end: 0087 target: 0090
+catch type: rescue   begin: 0150 end: 0163 target: 0166
+file: /w/visibility_toplevel_def.rb
+    6 000 TDEF		R3	:top_m	I[0]
+    8 004 STRING	R4	L[0]	; listed private: 
+    8 007 GETCONST	R5	Object
+    8 010 LOADFALSE	R6	(false)
+    8 012 SEND		R5	:private_instance_methods	n=1
+    8 016 LOADSYM	R6	:top_m
+    8 019 SEND		R5	:include?	n=1
+    8 023 STRCAT	R4	(R5)
+    8 025 SSEND		R3	:puts	n=1
+    9 029 STRING	R4	L[1]	; listed public: 
+    9 032 GETCONST	R5	Object
+    9 035 LOADFALSE	R6	(false)
+    9 037 SEND		R5	:public_instance_methods	n=1
+    9 041 LOADSYM	R6	:top_m
+    9 044 SEND		R5	:include?	n=1
+    9 048 STRCAT	R4	(R5)
+    9 050 SSEND		R3	:puts	n=1
+   12 054 STRING	R4	L[2]	; implicit: 
+   12 057 SSEND0	R5	:top_m
+   12 060 STRCAT	R4	(R5)
+   12 062 SSEND		R3	:puts	n=1
+   14 066 STRING	R4	L[3]	; self: 
+   14 069 SSEND0	R5	:top_m
+   14 072 STRCAT	R4	(R5)
+   14 074 SSEND		R3	:puts	n=1
+   17 078 GETCONST	R3	Object
+   17 081 SEND0		R3	:new
+   17 084 SEND0		R3	:top_m
+   17 087 JMP		128
+   17 090 EXCEPT	R3	
+   18 092 GETCONST	R4	NoMethodError
+   18 095 RESCUE	R3	R4
+   18 098 JMPIF		R4	105
+   18 102 JMP		126
+   18 105 MOVE		R1	R3	; R1:e
+   19 108 STRING	R4	L[4]	; receiver: 
+   19 111 MOVE		R5	R1	; R1:e
+   19 114 SEND0		R5	:message
+   19 117 STRCAT	R4	(R5)
+   19 119 SSEND		R3	:puts	n=1
+   19 123 JMP		128
+   19 126 RAISEIF	R3	
+   22 128 STRING	R4	L[5]	; send: 
+   22 131 GETCONST	R5	Object
+   22 134 SEND0		R5	:new
+   22 137 LOADSYM	R6	:top_m
+   22 140 SEND		R5	:send	n=1
+   22 144 STRCAT	R4	(R5)
+   22 146 SSEND		R3	:puts	n=1
+   24 150 GETCONST	R3	Object
+   24 153 SEND0		R3	:new
+   24 156 LOADSYM	R4	:top_m
+   24 159 SEND		R3	:public_send	n=1
+   24 163 JMP		204
+   24 166 EXCEPT	R3	
+   25 168 GETCONST	R4	NoMethodError
+   25 171 RESCUE	R3	R4
+   25 174 JMPIF		R4	181
+   25 178 JMP		202
+   25 181 MOVE		R1	R3	; R1:e
+   26 184 STRING	R4	L[6]	; public_send: 
+   26 187 MOVE		R5	R1	; R1:e
+   26 190 SEND0		R5	:message
+   26 193 STRCAT	R4	(R5)
+   26 195 SSEND		R3	:puts	n=1
+   26 199 JMP		204
+   26 202 RAISEIF	R3	
+   30 204 LOADI_1	R3	(1)
+   30 206 ARRAY		R3	1
+   30 209 BLOCK		R4	I[1]
+   30 212 SENDB		R3	:each	n=0
+   31 216 STRING	R4	L[7]	; in a block: 
+   31 219 GETCONST	R5	Object
+   31 222 LOADFALSE	R6	(false)
+   31 224 SEND		R5	:private_instance_methods	n=1
+   31 228 LOADSYM	R6	:in_block
+   31 231 SEND		R5	:include?	n=1
+   31 235 STRCAT	R4	(R5)
+   31 237 SSEND		R3	:puts	n=1
+   34 241 GETCONST	R3	Fiber
+   34 244 BLOCK		R4	I[2]
+   34 247 SENDB		R3	:new	n=0
+   34 251 SEND0		R3	:resume
+   35 254 STRING	R4	L[8]	; in a fiber: 
+   35 257 GETCONST	R5	Object
+   35 260 LOADFALSE	R6	(false)
+   35 262 SEND		R5	:private_instance_methods	n=1
+   35 266 LOADSYM	R6	:in_fiber
+   35 269 SEND		R5	:include?	n=1
+   35 273 STRCAT	R4	(R5)
+   35 275 SSEND		R3	:puts	n=1
+   38 279 TDEF		R3	:outer	I[3]
+   39 283 SSEND0	R3	:outer
+   40 286 STRING	R4	L[9]	; inside a def: 
+   40 289 GETCONST	R5	Object
+   40 292 LOADFALSE	R6	(false)
+   40 294 SEND		R5	:private_instance_methods	n=1
+   40 298 LOADSYM	R6	:inner
+   40 301 SEND		R5	:include?	n=1
+   40 305 STRCAT	R4	(R5)
+   40 307 SSEND		R3	:puts	n=1
+   43 311 LOADNIL	R3	(nil)
+   43 313 LOADNIL	R4	(nil)
+   43 315 CLASS		R3	:Klass
+   43 318 EXEC		R3	I[4]
+   44 321 STRING	R4	L[10]	; in a class: 
+   44 324 GETCONST	R5	Klass
+   44 327 LOADFALSE	R6	(false)
+   44 329 SEND		R5	:private_instance_methods	n=1
+   44 333 LOADSYM	R6	:in_class
+   44 336 SEND		R5	:include?	n=1
+   44 340 STRCAT	R4	(R5)
+   44 342 SSEND		R3	:puts	n=1
+   45 346 GETCONST	R3	Object
+   45 349 BLOCK		R4	I[5]
+   45 352 SENDB		R3	:class_eval	n=0
+   46 356 STRING	R4	L[11]	; in class_eval: 
+   46 359 GETCONST	R5	Object
+   46 362 LOADFALSE	R6	(false)
+   46 364 SEND		R5	:private_instance_methods	n=1
+   46 368 LOADSYM	R6	:in_class_eval
+   46 371 SEND		R5	:include?	n=1
+   46 375 STRCAT	R4	(R5)
+   46 377 SSEND		R3	:puts	n=1
+   47 381 GETCONST	R3	Object
+   47 384 SEND0		R3	:new
+   47 387 MOVE		R2	R3	; R2:o
+   48 390 MOVE		R3	R2	; R2:o
+   48 393 BLOCK		R4	I[6]
+   48 396 SENDB		R3	:instance_eval	n=0
+   49 400 STRING	R4	L[12]	; on a singleton: 
+   49 403 MOVE		R5	R2	; R2:o
+   49 406 SEND0		R5	:singleton_class
+   49 409 LOADFALSE	R6	(false)
+   49 411 SEND		R5	:private_instance_methods	n=1
+   49 415 LOADSYM	R6	:on_singleton
+   49 418 SEND		R5	:include?	n=1
+   49 422 STRCAT	R4	(R5)
+   49 424 SSEND		R3	:puts	n=1
+   53 428 LOADNIL	R3	(nil)
+   53 430 LOADNIL	R4	(nil)
+   53 432 CLASS		R3	:Vis
+   53 435 EXEC		R3	I[7]
+   58 438 STRING	R4	L[13]	; define_method under private: 
+   58 441 GETCONST	R5	Vis
+   58 444 LOADFALSE	R6	(false)
+   58 446 SEND		R5	:private_instance_methods	n=1
+   58 450 LOADSYM	R6	:by_define_method
+   58 453 SEND		R5	:include?	n=1
+   58 457 STRCAT	R4	(R5)
+   58 459 SSEND		R3	:puts	n=1
+   59 463 STRING	R4	L[14]	; def under private: 
+   59 466 GETCONST	R5	Vis
+   59 469 LOADFALSE	R6	(false)
+   59 471 SEND		R5	:private_instance_methods	n=1
+   59 475 LOADSYM	R6	:by_def
+   59 478 SEND		R5	:include?	n=1
+   59 482 STRCAT	R4	(R5)
+   59 484 SSEND		R3	:puts	n=1
+   62 488 LOADNIL	R3	(nil)
+   62 490 LOADNIL	R4	(nil)
+   62 492 CLASS		R3	:Vis2
+   62 495 EXEC		R3	I[8]
+   70 498 STRING	R4	L[15]	; Vis2 private: 
+   70 501 GETCONST	R5	Vis2
+   70 504 LOADFALSE	R6	(false)
+   70 506 SEND		R5	:private_instance_methods	n=1
+   70 510 SEND0		R5	:sort
+   70 513 SEND0		R5	:inspect
+   70 516 STRCAT	R4	(R5)
+   70 518 SSEND		R3	:puts	n=1
+   71 522 STRING	R4	L[16]	; Vis2 public: 
+   71 525 GETCONST	R5	Vis2
+   71 528 LOADFALSE	R6	(false)
+   71 530 SEND		R5	:public_instance_methods	n=1
+   71 534 SEND0		R5	:sort
+   71 537 SEND0		R5	:inspect
+   71 540 STRCAT	R4	(R5)
+   71 542 SSEND		R3	:puts	n=1
+   74 546 LOADNIL	R3	(nil)
+   74 548 MODULE	R3	:MF
+   74 551 EXEC		R3	I[9]
+   78 554 STRING	R4	L[17]	; MF#mf1 private: 
+   78 557 GETCONST	R5	MF
+   78 560 LOADFALSE	R6	(false)
+   78 562 SEND		R5	:private_instance_methods	n=1
+   78 566 LOADSYM	R6	:mf1
+   78 569 SEND		R5	:include?	n=1
+   78 573 STRCAT	R4	(R5)
+   78 575 SSEND		R3	:puts	n=1
+   79 579 STRING	R4	L[18]	; MF.mf1: 
+   79 582 GETCONST	R5	MF
+   79 585 SEND0		R5	:mf1
+   79 588 STRCAT	R4	(R5)
+   79 590 SSEND		R3	:puts	n=1
+   79 594 RETURN	R3	
+   79 596 STOP
+
+irep 0x57b9d72ea8c0 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+file: /w/visibility_toplevel_def.rb
+    6 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+    6 004 STRING	R2	L[0]	; top_m
+    6 007 RETURN	R2	
+
+irep 0x57b9d72ea5a0 nregs=3 nlocals=2 pools=0 syms=1 reps=1 ilen=10
+file: /w/visibility_toplevel_def.rb
+   30 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   30 004 TDEF		R2	:in_block	I[0]
+   30 008 RETURN	R2	
+
+irep 0x57b9d72eb7e0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+file: /w/visibility_toplevel_def.rb
+   30 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   30 004 RETNIL
+
+irep 0x57b9d72ec480 nregs=3 nlocals=2 pools=0 syms=1 reps=1 ilen=10
+file: /w/visibility_toplevel_def.rb
+   34 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   34 004 TDEF		R2	:in_fiber	I[0]
+   34 008 RETURN	R2	
+
+irep 0x57b9d72ecfb0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+file: /w/visibility_toplevel_def.rb
+   34 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   34 004 RETNIL
+
+irep 0x57b9d72ee170 nregs=3 nlocals=2 pools=0 syms=1 reps=1 ilen=10
+file: /w/visibility_toplevel_def.rb
+   38 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   38 004 TDEF		R2	:inner	I[0]
+   38 008 RETURN	R2	
+
+irep 0x57b9d72ee480 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+file: /w/visibility_toplevel_def.rb
+   38 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   38 004 RETNIL
+
+irep 0x57b9d72ef670 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+file: /w/visibility_toplevel_def.rb
+   43 000 TDEF		R1	:in_class	I[0]
+   43 004 RETURN	R1	
+
+irep 0x57b9d72edf20 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+file: /w/visibility_toplevel_def.rb
+   43 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   43 004 RETNIL
+
+irep 0x57b9d72ee0a0 nregs=3 nlocals=2 pools=0 syms=1 reps=1 ilen=10
+file: /w/visibility_toplevel_def.rb
+   45 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   45 004 TDEF		R2	:in_class_eval	I[0]
+   45 008 RETURN	R2	
+
+irep 0x57b9d72f06a0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+file: /w/visibility_toplevel_def.rb
+   45 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   45 004 RETNIL
+
+irep 0x57b9d72f0270 nregs=3 nlocals=2 pools=0 syms=1 reps=1 ilen=10
+file: /w/visibility_toplevel_def.rb
+   48 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   48 004 TDEF		R2	:on_singleton	I[0]
+   48 008 RETURN	R2	
+
+irep 0x57b9d72f0370 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+file: /w/visibility_toplevel_def.rb
+   48 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   48 004 RETNIL
+
+irep 0x57b9d72ef2d0 nregs=4 nlocals=1 pools=0 syms=4 reps=2 ilen=19
+file: /w/visibility_toplevel_def.rb
+   54 000 SSEND0	R1	:private
+   55 003 LOADSYM	R2	:by_define_method
+   55 006 BLOCK		R3	I[0]
+   55 009 SSENDB	R1	:define_method	n=1
+   56 013 TDEF		R1	:by_def	I[1]
+   56 017 RETURN	R1	
+
+irep 0x57b9d72f12b0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
+file: /w/visibility_toplevel_def.rb
+   55 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   55 004 LOADI_1	R2	(1)
+   55 006 RETURN	R2	
+
+irep 0x57b9d72f13d0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
+file: /w/visibility_toplevel_def.rb
+   56 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   56 004 LOADI_2	R2	(2)
+   56 006 RETURN	R2	
+
+irep 0x57b9d72f1fa0 nregs=4 nlocals=1 pools=0 syms=5 reps=3 ilen=27
+file: /w/visibility_toplevel_def.rb
+   63 000 TDEF		R1	:a	I[0]
+   64 004 SSEND0	R1	:private
+   65 007 TDEF		R1	:b	I[1]
+   66 011 SSEND0	R1	:public
+   67 014 TDEF		R1	:c	I[2]
+   68 018 LOADSYM	R2	:c
+   68 021 SSEND		R1	:private	n=1
+   68 025 RETURN	R1	
+
+irep 0x57b9d72f1ff0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
+file: /w/visibility_toplevel_def.rb
+   63 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   63 004 LOADI_1	R2	(1)
+   63 006 RETURN	R2	
+
+irep 0x57b9d72edcb0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
+file: /w/visibility_toplevel_def.rb
+   65 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   65 004 LOADI_2	R2	(2)
+   65 006 RETURN	R2	
+
+irep 0x57b9d72f33e0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
+file: /w/visibility_toplevel_def.rb
+   67 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   67 004 LOADI_3	R2	(3)
+   67 006 RETURN	R2	
+
+irep 0x57b9d72f2390 nregs=3 nlocals=1 pools=0 syms=2 reps=1 ilen=9
+file: /w/visibility_toplevel_def.rb
+   75 000 SSEND0	R1	:module_function
+   76 003 TDEF		R1	:mf1	I[0]
+   76 007 RETURN	R1	
+
+irep 0x57b9d72f0e30 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+file: /w/visibility_toplevel_def.rb
+   76 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   76 004 STRING	R2	L[0]	; mf1
+   76 007 RETURN	R2	
+

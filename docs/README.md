@@ -113,6 +113,13 @@ loops were the noise, and why `lto` and `panic = "abort"` were left unmeasured.
 version, what a breaking change looks like when it appears only in a signature diff, and which
 of the publish dry-runs can pass before anything is on crates.io.
 
+[2026-09-17-visibility](worklog/2026-09-17-visibility.md) is `leftovers-plan.md`'s item 10: the
+three places mruby sets `MRB_METHOD_PRIVATE_FL`, why its "`initialize` is always private" rule
+does not reach the built-in tables (and so `Struct#initialize` is public there), the one frame in
+a context that starts out private and what that makes of a top-level `def`, and the two things
+that turned up because of it — `Module#define_method` writes its own visibility, and
+`respond_to?` never looks at visibility at all.
+
 [stage6c-method-missing](worklog/2026-09-15-stage6c-method-missing.md) is the VM's half of stage
 6c: reading `prepare_missing` in the reference, why packing the arguments into one Array and
 shifting them along one register are the same thing to `OP_ENTER`, and what a `method_missing`

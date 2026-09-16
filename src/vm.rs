@@ -336,6 +336,10 @@ impl Core {
 #[derive(Clone, Copy)]
 pub struct Syms {
     pub initialize: Sym,
+    /// The three names `mrb_define_method_raw` makes private whatever the caller asked for
+    /// (src/class.c), kept here so that check costs no interning.
+    pub initialize_copy: Sym,
+    pub respond_to_missing: Sym,
     pub to_s: Sym,
     pub inspect: Sym,
     pub call: Sym,
@@ -613,6 +617,8 @@ impl Vm {
         }
         let s = Syms {
             initialize: syms.intern_str("initialize"),
+            initialize_copy: syms.intern_str("initialize_copy"),
+            respond_to_missing: syms.intern_str("respond_to_missing?"),
             to_s: syms.intern_str("to_s"),
             inspect: syms.intern_str("inspect"),
             call: syms.intern_str("call"),
@@ -692,6 +698,17 @@ impl Vm {
     pub fn load_mrblib(&mut self) -> VmResult<()> {
         let vm = self;
         vm.load_and_run(crate::MRBLIB_MRB)?;
+        // `Kernel#\`` comes from the core `mrblib/kernel.rb` as a public method; mruby-io's
+        // `mrblib/kernel.rb` then writes it again as `module_function def \``, and the
+        // reference build this is measured against has that gem, so its instance copy is
+        // private. Only that half is taken here. The public `Kernel.\`` the other half would
+        // add shadows the instance method whenever `self` *is* Kernel — which is what mruby's
+        // own `test/t/syntax.rb` ("External command execution.") does, and it passes there
+        // only because mruby-io's body runs the command instead of raising. The body here is
+        // the one mrblib gives (NotImplementedError: there is no shell in a no_std VM), so
+        // the singleton copy would cost that assertion and buy nothing.
+        let krn = vm.core.kernel;
+        vm.mark_private(krn, &["`"]);
         // gems with a Ruby part, in the order of the reference gembox
         // (`mrbgems/default.gembox`: the *-ext gems before mruby-enumerator,
         // whose `Enumerable#zip` therefore wins over mruby-enum-ext's)
@@ -1450,6 +1467,21 @@ impl Vm {
     pub fn def_target(&self, class: ObjId) -> ObjId {
         self.heap.class(class).origin.unwrap_or(class)
     }
+    /// The three names that are private however they are *defined* (`mrb_define_method_raw`,
+    /// src/class.c: the test comes before the one for the caller's own visibility, so it wins
+    /// over `MRB_METHOD_PUBLIC_FL` and over the "singleton methods are always public" rule —
+    /// `def obj.initialize` is private in the reference too).
+    ///
+    /// It does **not** reach the built-in method tables: mruby installs those as ROM layers
+    /// (`mrb_mt_init_rom`, src/class.c), which write their entries into the table directly and
+    /// never pass through `mrb_define_method_raw`. That is why every ROM table that wants a
+    /// private `initialize` spells `MRB_MT_PRIVATE` out itself — and why `Struct#initialize`
+    /// and `Random#initialize`, whose entries do not, are *public* in the reference. The
+    /// natives here are those tables, so they say which of their entries are private
+    /// ([`Vm::define_private_methods`]) instead of being caught by this rule.
+    fn always_private(&self, mid: Sym) -> bool {
+        mid == self.s.initialize || mid == self.s.initialize_copy || mid == self.s.respond_to_missing
+    }
     /// Installs a method without hooks (used by initialization and internal copies).
     pub fn def_method_raw(&mut self, class: ObjId, mid: Sym, m: Method) {
         let t = self.def_target(class);
@@ -1462,8 +1494,7 @@ impl Vm {
         let t = self.def_target(class);
         self.heap.class_mut(t).methods.insert(mid, m);
         // initialize & co. are always private (class.c)
-        let always_private = [self.s.initialize, self.intern("initialize_copy"), self.intern("respond_to_missing?")];
-        let vis = if always_private.contains(&mid) { Vis::Private } else { vis };
+        let vis = if self.always_private(mid) { Vis::Private } else { vis };
         if vis == Vis::Public { self.heap.class_mut(t).vis.remove(&mid); } else { self.heap.class_mut(t).vis.insert(mid, vis); }
         self.method_added(class, mid)
     }
@@ -1627,6 +1658,55 @@ impl Vm {
         for (n, f) in list {
             self.define_method(class, n, *f);
         }
+    }
+    /// `mrb_define_private_method`: a native method that is private from the moment it is
+    /// defined. The reference writes it as the `MRB_MT_PRIVATE` bit of a ROM table entry
+    /// (`include/mruby/class.h`); the hooks (`Module#included`, `#method_added`, …), the
+    /// `defined?` helpers and `Module#private` itself all carry it.
+    pub fn define_private_method(&mut self, class: ObjId, name: &str, f: crate::object::NativeFn) {
+        let n = self.intern(name);
+        self.def_method_raw(class, n, Method::Native(f));
+        let t = self.def_target(class);
+        self.heap.class_mut(t).vis.insert(n, Vis::Private);
+    }
+    /// Marks methods the class already has private: the `MRB_MT_PRIVATE` bit of an entry in a
+    /// table written elsewhere. Use it where the body is already in a [`Vm::define_methods`]
+    /// list; [`Vm::define_private_method`] where the entry can be written private outright.
+    /// A name the class does not have is passed over (a build feature may have left it out).
+    pub fn mark_private(&mut self, class: ObjId, names: &[&str]) {
+        for n in names {
+            let n = self.intern(n);
+            if self.find_method(class, n).is_some() { let _ = self.set_visibility(class, n, Vis::Private); }
+        }
+    }
+    /// [`Vm::define_private_method`] for a list, as [`Vm::define_methods`] is for public ones.
+    pub fn define_private_methods(&mut self, class: ObjId, list: &[(&str, crate::object::NativeFn)]) {
+        for (n, f) in list {
+            self.define_private_method(class, n, *f);
+        }
+    }
+    /// `Module#module_function` with arguments (`mrb_mod_module_function`, src/class.c) for a
+    /// method the module already has: the method is copied onto the module's singleton class as
+    /// a public one and the instance copy turns private. Answers false where there is no such
+    /// method, which is what the caller — an `init` mirroring a gem — wants when the method
+    /// belongs to a build feature that is off.
+    pub fn make_module_function(&mut self, module: ObjId, name: &str) -> VmResult<bool> {
+        let n = self.intern(name);
+        let m = match self.find_method(module, n) { Some((m, _)) => m, None => return Ok(false) };
+        let sc = self.singleton_class(Value::Obj(module))?;
+        self.def_method_raw(sc, n, m);
+        self.set_visibility(module, n, Vis::Private)?;
+        Ok(true)
+    }
+    /// `mrb_define_module_function`: the same native as a **public** method on the module's
+    /// singleton class and a **private** instance method of the module (src/class.c
+    /// `mrb_define_module_function_id` is exactly those two calls). `Kernel.sprintf` and
+    /// `sprintf` are one such pair.
+    pub fn define_module_function(&mut self, module: ObjId, name: &str, f: crate::object::NativeFn) -> VmResult<()> {
+        let sc = self.singleton_class(Value::Obj(module))?;
+        self.define_method(sc, name, f);
+        self.define_private_method(module, name, f);
+        Ok(())
     }
     /// Inserts an include class for `module` right above `class` in the chain.
     pub fn include_module(&mut self, class: ObjId, module: ObjId) {
@@ -1905,6 +1985,18 @@ impl Vm {
         self.run_irep(irep)
     }
 
+    /// The default visibility a top-level `def` gets. mruby keeps it on the frame, and the
+    /// **base** frame of a context — `c->cibase[0]`, made by `stack_init` (src/vm.c:136,
+    /// `c->ci->vis = 1`) — is the one frame that starts out *private*; every frame `cipush`
+    /// makes starts public (src/vm.c:868). `mrb_top_run` runs a program on that base frame
+    /// when the context is idle and pushes an ordinary (public) frame when it is not, so a
+    /// `def` written at the top of a program is private while the same `def` reached through
+    /// a nested run — `eval("def a5; end")` — is public. Both were checked against the
+    /// reference. A block written at the top level inherits it: the frame's env copies its
+    /// visibility (`MRB_ENV_COPY_FLAGS_FROM_CI`), which `EnvData` here does too.
+    fn top_vis(&self) -> Vis {
+        if self.ci.is_empty() { Vis::Private } else { Vis::Public }
+    }
     /// Runs a top-level irep with `self` = main.
     pub fn run_irep(&mut self, irep: IrepId) -> VmResult<Value> {
         let proc_ = self.heap.alloc(self.core.proc_, ObjKind::Proc(ProcData {
@@ -1915,7 +2007,7 @@ impl Vm {
         self.stack.resize(base + nregs, Slot::NIL);
         self.stack[base] = Slot::from(Value::Obj(self.top_self));
         let depth = self.ci.len();
-        self.ci.push(CallInfo { base, pc: 0, irep, proc_, n: 0, kw: false, mid: None, target_class: self.core.object, env: None, cci: Cci::Skip, vis: Vis::Public, modfunc: false, vis_break: false });
+        self.ci.push(CallInfo { base, pc: 0, irep, proc_, n: 0, kw: false, mid: None, target_class: self.core.object, env: None, cci: Cci::Skip, vis: self.top_vis(), modfunc: false, vis_break: false });
         let r = self.run_loop(depth);
         self.stack.truncate(base);
         r
@@ -1930,7 +2022,7 @@ impl Vm {
         let nregs = self.ireps[irep].nregs.max(4);
         self.stack.resize(base + nregs, Slot::NIL);
         self.stack[base] = Slot::from(Value::Obj(self.top_self));
-        self.ci.push(CallInfo { base, pc: 0, irep, proc_, n: 0, kw: false, mid: None, target_class: self.core.object, env: None, cci: Cci::Skip, vis: Vis::Public, modfunc: false, vis_break: false });
+        self.ci.push(CallInfo { base, pc: 0, irep, proc_, n: 0, kw: false, mid: None, target_class: self.core.object, env: None, cci: Cci::Skip, vis: self.top_vis(), modfunc: false, vis_break: false });
     }
 
     /// Executes at most `budget` instructions of a program started with

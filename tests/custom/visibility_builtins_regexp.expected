@@ -1,0 +1,5 @@
+Regexp#initialize: private
+Regexp#initialize_copy: private
+Regexp#__check_initialized: private
+explicit receiver: private method '__check_initialized' called for Regexp
+match still works: 1

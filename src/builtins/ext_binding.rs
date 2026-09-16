@@ -199,9 +199,8 @@ pub fn init(vm: &mut Vm) {
     // `MRB_UNDEF_ALLOCATOR`: neither `Binding.new` nor `Binding.allocate` makes one
     vm.heap.class_mut(bc).instance_kind = Some(crate::object::InstanceKind::NoAlloc);
     let k = vm.core.kernel;
-    vm.define_method(k, "binding", kernel_binding);
-    let ksc = vm.singleton_class(Value::Obj(k)).expect("Kernel singleton");
-    vm.define_method(ksc, "binding", kernel_binding);
+    // `mrb_define_module_function_id(..., MRB_SYM(binding), ...)` (binding.c)
+    vm.define_module_function(k, "binding", kernel_binding).expect("Kernel singleton");
     vm.define_method(vm.core.proc_, "binding", proc_binding);
     vm.define_methods(bc, &[
         ("initialize_copy", |vm, s, a, _b| {
@@ -299,4 +298,6 @@ pub fn init(vm: &mut Vm) {
             }
         }),
     ]);
+    // `mrb_define_private_method_id(..., MRB_SYM(initialize_copy), ...)` (binding.c)
+    vm.mark_private(bc, &["initialize_copy"]);
 }

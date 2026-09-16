@@ -835,7 +835,6 @@ pub fn init(vm: &mut Vm) {
             let f = iflags(vm, orig);
             re_initialize(vm, s, src, f)
         }),
-        ("__check_initialized", |vm, s, _a, _b| { check_initialized(vm, s)?; Ok(s) }),
         ("match", |vm, s, a, b| {
             argc!(vm, a, 1, 2);
             let str = a[0];
@@ -921,6 +920,13 @@ pub fn init(vm: &mut Vm) {
             let h = vm.value_hash(sv) as u32 ^ iflags(vm, s).wrapping_mul(0x9e37_79b9);
             Ok(Value::Int(h as i64))
         }),
+    ]);
+    // `mrb_define_method` puts both through `mrb_define_method_raw`, which makes every
+    // `initialize` and `initialize_copy` private (regexp.c)
+    vm.mark_private(regexp, &["initialize", "initialize_copy"]);
+    // `mrb_define_private_method(mrb, re, "__check_initialized", ...)` (regexp.c)
+    vm.define_private_methods(regexp, &[
+        ("__check_initialized", |vm, s, _a, _b| { check_initialized(vm, s)?; Ok(s) }),
     ]);
     let rsc = vm.singleton_class(Value::Obj(regexp)).expect("Regexp singleton");
     vm.define_methods(rsc, &[

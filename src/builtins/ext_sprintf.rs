@@ -514,7 +514,8 @@ fn sprintf(vm: &mut Vm, _s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
 
 pub fn init(vm: &mut Vm) {
     let k = vm.core.kernel;
-    vm.define_methods(k, &[("sprintf", sprintf), ("format", sprintf)]);
-    let ksc = vm.singleton_class(Value::Obj(k)).expect("Kernel singleton");
-    vm.define_methods(ksc, &[("sprintf", sprintf), ("format", sprintf)]);
+    // both are module functions in the reference (sprintf.c)
+    for name in ["sprintf", "format"] {
+        vm.define_module_function(k, name, sprintf).expect("Kernel singleton");
+    }
 }

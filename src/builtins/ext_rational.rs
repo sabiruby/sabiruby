@@ -292,8 +292,7 @@ pub fn init(vm: &mut Vm) {
     vm.define_method(vm.core.nil_class, "to_r", |vm, _s, _a, _b| new_i(vm, 0, 1));
     vm.define_method(vm.core.float, "to_r", |vm, s, _a, _b| { let f = match s { Value::Float(f) => f, _ => 0.0 }; new_from_f64(vm, f) });
     let k = vm.core.kernel;
-    vm.define_method(k, "Rational", kernel_rational);
-    let ksc = vm.singleton_class(Value::Obj(k)).expect("Kernel singleton");
-    vm.define_method(ksc, "Rational", kernel_rational);
+    // `mrb_define_module_function_id(..., MRB_SYM(Rational), ...)` (rational.c)
+    vm.define_module_function(k, "Rational", kernel_rational).expect("Kernel singleton");
     let _ = vec![0u8];
 }

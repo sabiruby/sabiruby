@@ -55,6 +55,8 @@ pub fn init(vm: &mut Vm) {
         ("full_message", |vm, s, _a, _b| { let insp = vm.inspect_str(s)?; Ok(vm.str_from(insp)) }),
         ("==", |vm, s, a, _b| { argc!(vm, a, 1); if s == a[0] { return Ok(Value::True); } if vm.real_class_of(s) != vm.real_class_of(a[0]) { return Ok(Value::False); } let (x, y) = (exc_to_s(vm, s, &[], Value::Nil)?, exc_to_s(vm, a[0], &[], Value::Nil)?); vm.equal(x, y).map(Value::bool) }),
     ]);
+    // `MRB_MT_PRIVATE` in `exc_rom_entries` (src/error.c)
+    vm.mark_private(c.exception, &["initialize"]);
     // Exception.exception(msg) == Exception.new(msg)
     let sc = vm.singleton_class(Value::Obj(c.exception)).unwrap();
     vm.define_method(sc, "exception", |vm, s, a, b| vm.class_new_instance(s.obj().unwrap(), a, b));

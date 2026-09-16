@@ -77,6 +77,13 @@ How a gem of the reference tree becomes part of SabiRuby, and what each ported o
   `RUBY_ENGINE == "mruby/edge"`; the price it pays is the branch above.
 * The differences a character-indexed String brings with it are their own list, in
   [`utf8.md`](utf8.md) ("Deviations kept").
+* `` Kernel#` `` is private, as it is in the reference (mruby-io writes it `module_function def
+  \``), but the public `` Kernel.` `` that is the other half of that pair is not defined. A
+  `self` that *is* Kernel would find it before any instance method written over it, which is
+  what mruby's own `test/t/syntax.rb` ("External command execution.") does; it passes there
+  because mruby-io's body runs the command, and the body here is the `NotImplementedError` the
+  core `mrblib/kernel.rb` gives (there is no shell in a no_std VM). Visibility otherwise matches
+  method for method (`verification/coverage.md`, "On both sides, with a different visibility").
 * **mruby-regexp**: the engine is `regex-automata`, not the reference's NFA, so what a finite
   automaton has none of is refused at compile time with `RegexpError` naming the construct. The
   reference's own test files (14 of them, 501 assertions) use them, and those assertions are

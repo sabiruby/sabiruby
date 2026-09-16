@@ -68,6 +68,6 @@ pub fn init(vm: &mut Vm) {
         ("dup", |vm, s, _a, _b| { let (b, e, x) = parts(vm, s); Ok(vm.range_new(b, e, x)) }),
         ("hash", |vm, s, _a, _b| { let (b, e, x) = parts(vm, s); Ok(Value::Int(vm.value_hash(b).wrapping_mul(31).wrapping_add(vm.value_hash(e)).wrapping_add(x as i64))) }),
     ]);
-    let ic = vm.intern("initialize_copy");
-    vm.set_visibility(c.range, ic, crate::object::Vis::Private).expect("Range#initialize_copy private");
+    // `MRB_MT_PRIVATE` in `range_rom_entries` (src/range.c) for both
+    vm.mark_private(c.range, &["initialize", "initialize_copy"]);
 }
