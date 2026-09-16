@@ -122,9 +122,13 @@ browser playground runs. `wasm32-unknown-unknown` (no libc) is not supported.
 
 ## Publishing
 
-In dependency order: `sabiruby` 0.4.0, `sabiruby-compiler` 0.2.1, `sabiruby-cli` 0.4.1.
-`cargo publish --workspace` publishes them in that order (the compiler's dependency on the VM
-is optional, behind the `host` feature, so the VM goes first). What 0.3.0 adds over 0.2.0 is
+In dependency order: `sabiruby-macros` 0.1.0, `sabiruby` 0.5.0, `sabiruby-compiler` 0.2.2,
+`sabiruby-serde` 0.1.0, `sabiruby-cli` 0.5.0. The macros come *first* from 0.5.0 on: the VM's
+feature `macros` makes `sabiruby-macros` an optional dependency of the VM, so the VM can no
+longer be the first crate published. `cargo publish --workspace` works the order out itself
+(the compiler's dependency on the VM is optional, behind the `host` feature, so the VM still
+goes before the compiler). What each release adds is [`CHANGELOG.md`](../../CHANGELOG.md);
+what 0.3.0 adds over 0.2.0 is
 the gems: the numeric tower, Struct, Set, Time, pack, eval and `binding`, UTF-8 strings,
 `require`/`load`, Regexp and the task scheduler (`docs/design/gems.md`); the compiler's 0.2.0 adds
 the `host` feature, which is what `eval` asks for a compile. 0.4.0 adds what a host needs to
@@ -132,6 +136,12 @@ drive the scheduler itself: `task_next_wakeup_ticks`, `task_pending`, and `task_
 `task_queue_push` / `task_queue_len` / `task_queue_try_pop` (how a host answers a script that is
 parked on a question, and how it drains a queue the script pushes to), plus `Vm::hash_keys` and
 `VERSION` and `REVISION` so an embedder can say which VM it runs.
+
+`sabiruby-compiler` 0.2.2 is a republish rather than a change: nothing of the vendored compiler
+or the shim moved between 0.2.1 and it (`git log 0.2.1.. -- compiler/` is two commits, the
+repository URL of the organization move and one documentation link), but its optional
+dependency on the VM has to name 0.5.0 — a `sabiruby-cli` that pulled the VM at 0.5 and the
+compiler at 0.2.1 would have two different `sabiruby` crates in one program.
 
 A dev-dependency that names a version would be resolved from crates.io when the packaged crate
 is verified, so the one on `sabiruby-compiler` here carries a path and no version: a version
