@@ -39,6 +39,8 @@ What changed in each release, with the commit behind every claim, is
 | [bench.md](verification/bench.md) | benchmarks by category against the reference, the baseline and every stage since |
 | [size.md](verification/size.md) | code size on thumbv7em and x86_64, and what the feature `regexp` takes off it |
 | [upstream-pr-candidates.md](verification/upstream-pr-candidates.md) | what the port found in mruby-task that belongs upstream |
+| [upstream-issue-task-dormant.md](verification/upstream-issue-task-dormant.md) | item 4 of that list worked out — the issue text, the PR description, what is already reported upstream, and what the gem's README does and does not promise. **A record: nothing was submitted** (author's decision, 2026-09-17) |
+| [patches/](verification/patches/) | the patches those drafts propose, as `git format-patch` files. `mruby-task-dormant-weak.patch` holds the dormant queue weakly (mruby 4.1.0-rc) |
 
 ## plans/ — what was decided, in order
 
@@ -53,7 +55,7 @@ What changed in each release, with the commit behind every claim, is
 | [playground-plan.md](plans/playground-plan.md) | done (2026-09-12); the playground repository carries the visualizer plan |
 | [leftovers-plan.md](plans/leftovers-plan.md) | all ten done (10 on 2026-09-17) — the small items each stage left behind |
 | [perf3-plan.md](plans/perf3-plan.md) | 3a and 3b done, 3c/3d/3e dropped with their measurements (2026-09-16): the third round of speed — String, the instruction loop, calls, the 8-byte `Slot` experiment, what is left of `so_lists` |
-| [upstream-task-plan.md](plans/upstream-task-plan.md) | (Japanese) taking `upstream-pr-candidates.md` item 4 — a finished task is kept for the life of the VM — to mruby/mruby as an issue and a patch: how bad it is, the steps, the two patch shapes |
+| [upstream-task-plan.md](plans/upstream-task-plan.md) | (Japanese) steps 1–4 done (2026-09-17), step 5 deliberately not: `upstream-pr-candidates.md` item 4 — a finished task is kept for the life of the VM — measured on the reference, patched and written up **as a record, not submitted** |
 | [from-mrubyedge-plan.md](plans/from-mrubyedge-plan.md) | items 1 and 3 done (2026-09-16); what mruby/edge does that is worth having — serde, RBS at the boundary, a coverage list, gems as features, `RUBY_ENGINE` |
 | [host-bridge-plan.md](plans/host-bridge-plan.md) | done through stage 6a (2026-09-15); 6b is rubevy's and 6c is both. Carries the findings of each stage |
 
@@ -120,6 +122,13 @@ does not reach the built-in tables (and so `Struct#initialize` is public there),
 a context that starts out private and what that makes of a top-level `def`, and the two things
 that turned up because of it — `Module#define_method` writes its own visibility, and
 `respond_to?` never looks at visibility at all.
+
+[2026-09-17-upstream-record](worklog/2026-09-17-upstream-record.md) is the same defect taken back to
+the reference, as a record rather than a submission: what the leak costs there in dormant tasks,
+live objects and RSS, the 65 500-spawn ceiling where it stops being a leak and becomes a
+`RuntimeError`, what the gem's README promises instead, why the obvious patch is a use-after-free
+in C (an mruby data type has no mark hook) and what has to go with it, and the merged PR that
+added `Task#close` because of this very leak.
 
 [2026-09-17-task-end-nil](worklog/2026-09-17-task-end-nil.md) is the two defects rubevy's garden
 demo found in mruby-task's scheduler: why a task that ends with a nil result used to cost a whole

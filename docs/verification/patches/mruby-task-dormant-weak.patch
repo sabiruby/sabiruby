@@ -1,0 +1,291 @@
+From 3749292467eaff1cd9d0da38076314e6f27f6593 Mon Sep 17 00:00:00 2001
+From: kishima <kishima7@gmail.com>
+Date: Wed, 16 Sep 2026 19:33:03 +0900
+Subject: [PATCH] mruby-task: hold the dormant queue weakly, so a finished task
+ can be collected
+
+A task that finishes goes to the dormant queue and nothing takes it out
+again: mrb_close_task() is the only path to mrb_task_free() and it is
+reachable only from Ruby's Task#close. Meanwhile the task is pinned twice
+over -- mrb_task_mark_all() walks all four queues, q_dormant_ included, and
+task_create_common() calls mrb_gc_register() on the object on top of that.
+A program that starts tasks over and over therefore keeps every task it has
+ever run, with its result, its name and its stack, for the life of the VM:
+
+    200.times { 10.times { Task.new { nil } }; Task.run; GC.start }
+    p Task.stat[:dormant][:count]   # => 2000
+
+10_000 tasks cost 10.6 MB of RSS and 32_044 live objects that no collection
+can reach, and past 65_500 spawns of the same block the program dies with
+"too many irep references" -- every finished task still holds its proc.
+
+Hold the dormant queue weakly instead. A finished task is kept by whatever
+still names it: a Ruby variable, a C handle that registered it, a joiner.
+
+* mrb_task_mark_all() skips MRB_TASK_QUEUE_DORMANT.
+* task_retire(), called at each transition into the dormant queue and
+  before it, while the task is still in a queue the walk reaches:
+  - moves the result and the name into the wrapper object as instance
+    variables. An mruby data type has no mark hook, so these two values
+    were reachable only through the queue walk; without this step a
+    finished task the program still holds answers a reused chunk from
+    Task#value after the next collection.
+  - detaches the envs that escaped the task's stack, since nothing marks
+    that stack any more (the same hazard PR #6983 fixed for the close
+    path). Not for the task the VM is standing in; execute_task()'s tail
+    calls this again once the context is restored.
+  - drops the mrb_gc_register() pin.
+* task_dfree() unlinks the task from its queue and detaches its envs before
+  freeing it -- mrb_close_task() did both itself, a task the collector frees
+  has had neither done for it. Not while the heap is being torn down
+  (mrb->task.finalizing), for the reason gc.c's fiber arm has its `end` flag.
+
+Task#close keeps its meaning: it still frees the task at once, and
+Task#status on a closed task still raises. Task.list, Task.get, Task.stat,
+Task#status and Task#value answer for every task a program can still reach.
+
+test/gc_task.rb gets the two assertions that tell the difference: a finished
+task nothing refers to is collected (this fails on master: dormant grows by
+100 per run), and a finished task the program still holds keeps its result
+across a collection (this is what the ivars above are for).
+
+Tests: 2700 total, KO 0, Crash 0 on the host build; 929 total, KO 0, Crash 0
+under MRB_GC_STRESS.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01AVbKxkGsS9czGd67c4RtEv
+---
+ include/mruby.h                    |   2 +
+ mrbgems/mruby-task/src/task.c      | 100 ++++++++++++++++++++++++++++-
+ mrbgems/mruby-task/test/gc_task.rb |  30 +++++++++
+ 3 files changed, 130 insertions(+), 2 deletions(-)
+
+diff --git a/include/mruby.h b/include/mruby.h
+index 6c5f6600c..2f4ac7739 100644
+--- a/include/mruby.h
++++ b/include/mruby.h
+@@ -336,6 +336,8 @@ typedef struct mrb_task_state {
+   uint8_t irq_nesting;              /* Depth counter for scheduler-IRQ exclusion */
+   mrb_bool loop_running;            /* Active mrb_task_run loop flag */
+   mrb_bool exception_as_result;     /* Return unhandled task exceptions as values */
++  mrb_bool finalizing;              /* VM teardown: a swept task frees its own
++                                       memory and touches nothing else */
+   void (*scheduler_hook)(struct mrb_state *mrb, void *ud); /* Pre-scheduling servicing hook */
+   void *scheduler_hook_ud;            /* Opaque argument for scheduler_hook */
+ } mrb_task_state;
+diff --git a/mrbgems/mruby-task/src/task.c b/mrbgems/mruby-task/src/task.c
+index 096bf5f5e..e010cbf55 100644
+--- a/mrbgems/mruby-task/src/task.c
++++ b/mrbgems/mruby-task/src/task.c
+@@ -55,6 +55,51 @@ task_unshare_envs(mrb_state *mrb, struct mrb_context *c)
+   mrb_env_detach_all(mrb, c, TRUE);
+ }
+ 
++/* Hand a task over to the program, now that the scheduler has no further use
++ * for it. Called at each transition into the dormant queue, and — this is the
++ * part that matters — BEFORE the transition, while the task is still in a
++ * queue mrb_task_mark_all() walks.
++ *
++ * Three things happen, in this order:
++ *
++ * 1. The result and the name move into the wrapper object as instance
++ *    variables. Until now the queue walk marked them; from the moment the
++ *    task is dormant that walk no longer reaches it, and an mruby data type
++ *    has no mark hook of its own, so without this the result of a finished
++ *    task the program still holds is swept from under it (`t.value` answers
++ *    a reused chunk). The struct fields keep their values for C to read; the
++ *    ivars are what makes them part of the object graph, alive exactly as
++ *    long as the Task object is.
++ * 2. The envs that escaped the task's stack are detached, because nothing
++ *    marks that stack any more either. Not for the task the VM is standing
++ *    in (a task that terminates itself): its stack is still in use, and
++ *    execute_task()'s tail calls this again once the context is restored.
++ * 3. The pin task_create_common() took is dropped. It is what lets the
++ *    scheduler own a task the program never named; a finished task the
++ *    program does not name is garbage, and one it does name is kept by the
++ *    naming. A C embedder that means to read a finished task back registers
++ *    it itself, as it does for every other object it holds across a
++ *    collection.
++ *
++ * Both steps 1 and 2 allocate and can run a collection, which is why this
++ * runs before the task leaves the marked queue. */
++static void
++task_retire(mrb_state *mrb, mrb_task *t)
++{
++  if (t == mrb->task.main_task) return;
++
++  if (mrb_data_p(t->self)) {
++    mrb_iv_set(mrb, t->self, MRB_IVSYM(result), t->result);
++    mrb_iv_set(mrb, t->self, MRB_IVSYM(name), t->name);
++  }
++
++  if (mrb->c != &t->c) {
++    task_unshare_envs(mrb, &t->c);
++  }
++
++  mrb_gc_unregister(mrb, t->self);
++}
++
+ /*
+  * Task data type for GC
+  */
+@@ -82,8 +127,36 @@ mrb_task_free(mrb_state *mrb, void *ptr)
+   }
+ }
+ 
++/* dfree: the sweep reached a task that nothing names any more.
++ *
++ * mrb_close_task() unlinks the task and detaches its envs before it calls
++ * mrb_task_free(); a task the collector frees has had neither done for it,
++ * so both happen here. Not while the heap is being torn down: there a
++ * detach is pointless (nothing marks the env afterwards) and unsafe (its
++ * page may already be gone) -- the same reason gc.c guards the fiber path
++ * with its `end` flag. */
++static void
++task_dfree(mrb_state *mrb, void *ptr)
++{
++  mrb_task *t = (mrb_task*)ptr;
++  if (!t) return;
++
++  mrb_task_excl_enter(mrb);
++  mrb_task_q_delete(mrb, t);
++  mrb_task_excl_exit(mrb);
++
++  if (!mrb->task.finalizing) {
++    /* FALSE: this runs inside the sweep, where resolving a scopeless
++       frame's owner would chase objects already swept -- the same
++       argument gc.c's MRB_TT_FIBER arm makes. */
++    mrb_env_detach_all(mrb, &t->c, FALSE);
++  }
++
++  mrb_task_free(mrb, t);
++}
++
+ static const struct mrb_data_type mrb_task_type = {
+-  "Task", mrb_task_free,
++  "Task", task_dfree,
+ };
+ 
+ /*
+@@ -127,7 +200,17 @@ mrb_task_mark_all(mrb_state *mrb)
+      walk — same family as the gc.iterating guard in vm.c. */
+   mrb_task_excl_enter(mrb);
+   for (qi = 0; qi < 4; qi++) {
+-    mrb_task *t = mrb->task.queues[qi];
++    mrb_task *t;
++
++    /* The dormant queue is held weakly. A task that has finished is kept by
++       whatever still names it -- a Ruby variable, a C handle that registered
++       it, a joiner -- and not by the scheduler, which has no further use for
++       it. Marking it here (with task_create_common's mrb_gc_register, which
++       goes with it) is what kept every task a program had ever run alive for
++       the life of the VM. */
++    if (qi == MRB_TASK_QUEUE_DORMANT) continue;
++
++    t = mrb->task.queues[qi];
+     while (t) {
+       struct mrb_context *c = &t->c;
+       mrb_callinfo *ci;
+@@ -271,6 +354,7 @@ task_cleanup_if_stopped(mrb_state *mrb, mrb_task *t)
+ {
+   if (t->status == MRB_TASK_STATUS_DORMANT || t->c.status == MRB_TASK_STOPPED) {
+     /* Task is terminated but still in queue - remove it */
++    task_retire(mrb, t);
+     mrb_task_excl_enter(mrb);
+     mrb_task_q_delete(mrb, t);
+     if (t->status != MRB_TASK_STATUS_DORMANT) {
+@@ -443,6 +527,7 @@ execute_task(mrb_state *mrb, mrb_task *t)
+    * — checked BEFORE the context switch so the scheduler's own context
+    * stays usable. */
+   if (t->c.ci == NULL || t->c.ci->proc == NULL) {
++    task_retire(mrb, t);
+     mrb_task_excl_enter(mrb);
+     mrb_task_q_delete(mrb, t);
+     t->status = MRB_TASK_STATUS_DORMANT;
+@@ -515,6 +600,7 @@ execute_task(mrb_state *mrb, mrb_task *t)
+   /* Handle task termination */
+   if (t->c.status == MRB_TASK_STOPPED) {
+     switching_ = FALSE;
++    task_retire(mrb, t);
+     mrb_task_excl_enter(mrb);
+     mrb_task_q_delete(mrb, t);
+     t->status = MRB_TASK_STATUS_DORMANT;
+@@ -1270,6 +1356,10 @@ mrb_task_set_name(mrb_state *mrb, mrb_value self)
+ 
+   mrb_get_args(mrb, "o", &name);
+   t->name = name;
++  /* A dormant task is no longer walked by mrb_task_mark_all(): its values
++     are kept alive by the wrapper object (see task_retire). Writing the
++     field alone would leave the new name unmarked. */
++  mrb_iv_set(mrb, self, MRB_IVSYM(name), name);
+ 
+   return name;
+ }
+@@ -1660,6 +1750,7 @@ terminate_task_internal(mrb_state *mrb, mrb_task *t)
+ 
+   mrb_bool was_running = (t->status == MRB_TASK_STATUS_RUNNING);
+ 
++  task_retire(mrb, t);
+   mrb_task_excl_enter(mrb);
+   mrb_task_q_delete(mrb, t);
+   t->status = MRB_TASK_STATUS_DORMANT;
+@@ -1891,6 +1982,7 @@ mrb_mruby_task_gem_init(mrb_state *mrb)
+   mrb->task.irq_nesting = 0;
+   mrb->task.loop_running = FALSE;
+   mrb->task.exception_as_result = FALSE;
++  mrb->task.finalizing = FALSE;
+ 
+   task_class = mrb_define_class_id(mrb, MRB_SYM(Task), mrb->object_class);
+   MRB_SET_INSTANCE_TT(task_class, MRB_TT_DATA);
+@@ -1940,6 +2032,10 @@ mrb_mruby_task_gem_init(mrb_state *mrb)
+ void
+ mrb_mruby_task_gem_final(mrb_state *mrb)
+ {
++  /* From here the heap is torn down: a task the sweep frees must not reach
++     for another object (see task_dfree). */
++  mrb->task.finalizing = TRUE;
++
+   /* Clear main task pointer - GC will handle freeing the object */
+   if (mrb->task.main_task) {
+     mrb_gc_unregister(mrb, mrb->task.main_task->self);
+diff --git a/mrbgems/mruby-task/test/gc_task.rb b/mrbgems/mruby-task/test/gc_task.rb
+index fca6293ff..060ca707b 100644
+--- a/mrbgems/mruby-task/test/gc_task.rb
++++ b/mrbgems/mruby-task/test/gc_task.rb
+@@ -137,3 +137,33 @@ assert("Task.current.name still answers \"main\" after GC") do
+   GC.start
+   assert_equal "main", t.name
+ end
++
++# A task that has finished is the scheduler's no longer: what keeps it is
++# whatever still names it. Before, the dormant queue was a GC root and
++# task_create_common() pinned every task object on top of that, so a program
++# that spawned tasks in a loop kept every one of them -- with its result, its
++# name and its stack -- for the life of the VM, and `Task.new { }` past the
++# 65535th spawn of the same block died with "too many irep references".
++assert("a finished task nothing refers to is collected") do
++  GC.start
++  before = Task.stat[:dormant][:count]
++  100.times { Task.new { nil } }
++  Task.run
++  GC.start
++  assert_equal before, Task.stat[:dormant][:count]
++end
++
++# The other side of the same coin: a finished task the program still names
++# answers as it did, GC or no GC. Its result and name are no longer marked
++# through the queue walk, so they hang off the wrapper object instead.
++assert("a finished task the program still holds keeps its result") do
++  t = Task.new { "kept-#{1 + 1}" }
++  Task.run
++  GC.start
++  churn = nil
++  200.times { |i| churn = "churn#{i}" }
++  GC.start
++  assert_equal "kept-2", t.value
++  assert_equal :DORMANT, t.status
++  assert_true Task.list.include?(t)
++end
+-- 
+2.34.1
+
