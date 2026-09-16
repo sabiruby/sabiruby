@@ -1,0 +1,29 @@
+respond_to?(:puts): true
+respond_to?(:puts, true): true
+respond_to?(:puts, false): true
+respond_to?(:inspect): true
+respond_to?(:initialize): true
+respond_to?(:initialize, true): true
+Array.respond_to?(:private): true
+Array.respond_to?(:private, true): true
+send(:format): 05
+public_send(:format): private method 'format' called for Object
+protected through a peer: prot
+protected with a receiver: protected method 'prot' called for Prot
+protected public_send: protected method 'prot' called for Prot
+protected send: prot
+method(:format): 007
+method owner: Kernel
+instance_methods: [:prot, :pub]
+public_instance_methods: [:pub]
+private_instance_methods: [:priv]
+protected_instance_methods: [:prot]
+methods includes prot: true
+methods includes priv: false
+private_methods includes priv: true
+Kernel.format: ff
+Kernel.new: NoMethodError
+ghost: true
+ghost include_all: true
+nothing: false
+respond_to_missing? is private: true

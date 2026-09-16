@@ -1,0 +1,258 @@
+irep 0x57549bedc740 nregs=50 nlocals=2 pools=6 syms=58 reps=2 ilen=592
+local variable names:
+  R1:ksc
+file: /w/visibility_builtins.rb
+    8 000 TDEF		R2	:show	I[0]
+   17 004 GETCONST	R2	Array
+   17 007 LOADSYM	R3	:initialize
+   17 010 ARRAY		R2	2
+   17 013 GETCONST	R3	Array
+   17 016 LOADSYM	R4	:initialize_copy
+   17 019 ARRAY		R3	2
+   18 022 GETCONST	R4	BasicObject
+   18 025 LOADSYM	R5	:initialize
+   18 028 ARRAY		R4	2
+   18 031 GETCONST	R5	BasicObject
+   18 034 LOADSYM	R6	:method_missing
+   18 037 ARRAY		R5	2
+   19 040 GETCONST	R6	BasicObject
+   19 043 LOADSYM	R7	:singleton_method_added
+   19 046 ARRAY		R6	2
+   19 049 GETCONST	R7	BasicObject
+   19 052 LOADSYM	R8	:singleton_method_removed
+   19 055 ARRAY		R7	2
+   20 058 GETCONST	R8	BasicObject
+   20 061 LOADSYM	R9	:singleton_method_undefined
+   20 064 ARRAY		R8	2
+   21 067 GETCONST	R9	Binding
+   21 070 LOADSYM	R10	:initialize_copy
+   21 073 ARRAY		R9	2
+   21 076 GETCONST	R10	Class
+   21 079 LOADSYM	R11	:inherited
+   21 082 ARRAY		R10	2
+   21 085 GETCONST	R11	Data
+   21 088 LOADSYM	R12	:initialize
+   21 091 ARRAY		R11	2
+   22 094 GETCONST	R12	Exception
+   22 097 LOADSYM	R13	:initialize
+   22 100 ARRAY		R12	2
+   22 103 GETCONST	R13	Fiber
+   22 106 LOADSYM	R14	:initialize
+   22 109 ARRAY		R13	2
+   23 112 GETCONST	R14	Hash
+   23 115 LOADSYM	R15	:initialize
+   23 118 ARRAY		R14	2
+   23 121 GETCONST	R15	Hash
+   23 124 LOADSYM	R16	:initialize_copy
+   23 127 ARRAY		R15	2
+   24 130 GETCONST	R16	Kernel
+   24 133 LOADSYM	R17	:Complex
+   24 136 ARRAY		R16	2
+   24 139 GETCONST	R17	Kernel
+   24 142 LOADSYM	R18	:Rational
+   24 145 ARRAY		R17	2
+   25 148 GETCONST	R18	Kernel
+   25 151 LOADSYM	R19	:__defined_const?
+   25 154 ARRAY		R18	2
+   25 157 GETCONST	R19	Kernel
+   25 160 LOADSYM	R20	:__defined_const_path?
+   25 163 ARRAY		R19	2
+   25 166 GETCONST	R20	Kernel
+   25 169 LOADSYM	R21	:__defined_cvar?
+   25 172 ARRAY		R20	2
+   26 175 GETCONST	R21	Kernel
+   26 178 LOADSYM	R22	:__defined_gvar?
+   26 181 ARRAY		R21	2
+   26 184 GETCONST	R22	Kernel
+   26 187 LOADSYM	R23	:__defined_ivar?
+   26 190 ARRAY		R22	2
+   26 193 GETCONST	R23	Kernel
+   26 196 LOADSYM	R24	:__defined_method?
+   26 199 ARRAY		R23	2
+   27 202 GETCONST	R24	Kernel
+   27 205 LOADSYM	R25	:__defined_super?
+   27 208 ARRAY		R24	2
+   27 211 GETCONST	R25	Kernel
+   27 214 LOADSYM	R26	:__defined_yield?
+   27 217 ARRAY		R25	2
+   28 220 GETCONST	R26	Kernel
+   28 223 LOADSYM	R27	:`
+   28 226 ARRAY		R26	2
+   28 229 GETCONST	R27	Kernel
+   28 232 LOADSYM	R28	:binding
+   28 235 ARRAY		R27	2
+   28 238 GETCONST	R28	Kernel
+   28 241 LOADSYM	R29	:eval
+   28 244 ARRAY		R28	2
+   28 247 GETCONST	R29	Kernel
+   28 250 LOADSYM	R30	:format
+   28 253 ARRAY		R29	2
+   29 256 GETCONST	R30	Kernel
+   29 259 LOADSYM	R31	:global_variables
+   29 262 ARRAY		R30	2
+   29 265 GETCONST	R31	Kernel
+   29 268 LOADSYM	R32	:local_variables
+   29 271 ARRAY		R31	2
+   29 274 GETCONST	R32	Kernel
+   29 277 LOADSYM	R33	:proc
+   29 280 ARRAY		R32	2
+   30 283 GETCONST	R33	Kernel
+   30 286 LOADSYM	R34	:respond_to_missing?
+   30 289 ARRAY		R33	2
+   30 292 GETCONST	R34	Kernel
+   30 295 LOADSYM	R35	:sprintf
+   30 298 ARRAY		R34	2
+   31 301 GETCONST	R35	Module
+   31 304 LOADSYM	R36	:const_added
+   31 307 ARRAY		R35	2
+   31 310 GETCONST	R36	Module
+   31 313 LOADSYM	R37	:extended
+   31 316 ARRAY		R36	2
+   31 319 GETCONST	R37	Module
+   31 322 LOADSYM	R38	:included
+   31 325 ARRAY		R37	2
+   31 328 GETCONST	R38	Module
+   31 331 LOADSYM	R39	:method_added
+   31 334 ARRAY		R38	2
+   32 337 GETCONST	R39	Module
+   32 340 LOADSYM	R40	:method_undefined
+   32 343 ARRAY		R39	2
+   32 346 GETCONST	R40	Module
+   32 349 LOADSYM	R41	:module_function
+   32 352 ARRAY		R40	2
+   32 355 GETCONST	R41	Module
+   32 358 LOADSYM	R42	:prepended
+   32 361 ARRAY		R41	2
+   33 364 GETCONST	R42	Module
+   33 367 LOADSYM	R43	:private
+   33 370 ARRAY		R42	2
+   33 373 GETCONST	R43	Module
+   33 376 LOADSYM	R44	:protected
+   33 379 ARRAY		R43	2
+   33 382 GETCONST	R44	Module
+   33 385 LOADSYM	R45	:public
+   33 388 ARRAY		R44	2
+   33 391 GETCONST	R45	Module
+   33 394 LOADSYM	R46	:remove_const
+   33 397 ARRAY		R45	2
+   34 400 GETCONST	R46	Range
+   34 403 LOADSYM	R47	:initialize
+   34 406 ARRAY		R46	2
+   35 409 GETCONST	R47	String
+   35 412 LOADSYM	R48	:initialize
+   35 415 ARRAY		R47	2
+   35 418 GETCONST	R48	String
+   35 421 LOADSYM	R49	:initialize_copy
+   35 424 ARRAY		R48	2
+   35 427 ARRAY		R2	47
+   35 430 BLOCK		R3	I[1]
+   35 433 SENDB		R2	:each	n=0
+   40 437 GETCONST	R3	Module
+   40 440 LOADSYM	R4	:method_removed
+   40 443 SSEND		R2	:show	n=2
+   41 447 GETCONST	R3	Struct
+   41 450 LOADSYM	R4	:initialize
+   41 453 SSEND		R2	:show	n=2
+   42 457 GETCONST	R3	Random
+   42 460 LOADSYM	R4	:initialize
+   42 463 SSEND		R2	:show	n=2
+   43 467 GETCONST	R3	Struct
+   43 470 LOADSYM	R4	:initialize_copy
+   43 473 SSEND		R2	:show	n=2
+   46 477 GETCONST	R2	Kernel
+   46 480 SEND0		R2	:singleton_class
+   46 483 LOADFALSE	R3	(false)
+   46 485 SEND		R2	:public_instance_methods	n=1
+   46 489 MOVE		R1	R2	; R1:ksc
+   47 492 STRING	R3	L[0]	; Kernel.sprintf: 
+   47 495 MOVE		R4	R1	; R1:ksc
+   47 498 LOADSYM	R5	:sprintf
+   47 501 SEND		R4	:include?	n=1
+   47 505 STRCAT	R3	(R4)
+   47 507 SSEND		R2	:puts	n=1
+   48 511 STRING	R3	L[1]	; Kernel.Rational: 
+   48 514 MOVE		R4	R1	; R1:ksc
+   48 517 LOADSYM	R5	:Rational
+   48 520 SEND		R4	:include?	n=1
+   48 524 STRCAT	R3	(R4)
+   48 526 SSEND		R2	:puts	n=1
+   49 530 STRING	R3	L[2]	; Kernel.global_variables: 
+   49 533 MOVE		R4	R1	; R1:ksc
+   49 536 LOADSYM	R5	:global_variables
+   49 539 SEND		R4	:include?	n=1
+   49 543 STRCAT	R3	(R4)
+   49 545 SSEND		R2	:puts	n=1
+   50 549 STRING	R3	L[3]	; sprintf works: 
+   50 552 STRING	R5	L[4]	; %d
+   50 555 LOADI_7	R6	(7)
+   50 557 SSEND		R4	:sprintf	n=2
+   50 561 STRCAT	R3	(R4)
+   50 563 SSEND		R2	:puts	n=1
+   51 567 STRING	R3	L[5]	; Kernel.sprintf works: 
+   51 570 GETCONST	R4	Kernel
+   51 573 STRING	R5	L[4]	; %d
+   51 576 LOADI8	R6	8
+   51 579 SEND		R4	:sprintf	n=2
+   51 583 STRCAT	R3	(R4)
+   51 585 SSEND		R2	:puts	n=1
+   51 589 RETURN	R2	
+   51 591 STOP
+
+irep 0x57549bed7ec0 nregs=8 nlocals=5 pools=7 syms=5 reps=0 ilen=122
+local variable names:
+  R1:mod
+  R2:name
+  R4:m
+file: /w/visibility_builtins.rb
+    8 000 ENTER		2:0:0:0:0:0:0:0 (0x80000)
+    9 004 MOVE		R5	R1	; R1:mod
+    9 007 LOADFALSE	R6	(false)
+    9 009 SEND		R5	:private_instance_methods	n=1
+    9 013 MOVE		R6	R2	; R2:name
+    9 016 SEND		R5	:include?	n=1
+    9 020 JMPNOT	R5	030
+    9 024 STRING	R5	L[0]	; private
+    9 027 JMP		085
+   10 030 MOVE		R5	R1	; R1:mod
+   10 033 LOADFALSE	R6	(false)
+   10 035 SEND		R5	:protected_instance_methods	n=1
+   10 039 MOVE		R6	R2	; R2:name
+   10 042 SEND		R5	:include?	n=1
+   10 046 JMPNOT	R5	056
+   10 050 STRING	R5	L[1]	; protected
+   10 053 JMP		085
+   11 056 MOVE		R5	R1	; R1:mod
+   11 059 LOADFALSE	R6	(false)
+   11 061 SEND		R5	:public_instance_methods	n=1
+   11 065 MOVE		R6	R2	; R2:name
+   11 068 SEND		R5	:include?	n=1
+   11 072 JMPNOT	R5	082
+   11 076 STRING	R5	L[2]	; public
+   11 079 JMP		085
+   12 082 STRING	R5	L[3]	; not defined here
+   12 085 MOVE		R4	R5	; R4:m
+   14 088 STRING	R6	L[4]
+   14 091 MOVE		R7	R1	; R1:mod
+   14 094 STRCAT	R6	(R7)
+   14 096 STRING	R7	L[5]	; #
+   14 099 STRCAT	R6	(R7)
+   14 101 MOVE		R7	R2	; R2:name
+   14 104 STRCAT	R6	(R7)
+   14 106 STRING	R7	L[6]	; : 
+   14 109 STRCAT	R6	(R7)
+   14 111 MOVE		R7	R4	; R4:m
+   14 114 STRCAT	R6	(R7)
+   14 116 SSEND		R5	:puts	n=1
+   14 120 RETURN	R5	
+
+irep 0x57549bee0ef0 nregs=8 nlocals=4 pools=0 syms=1 reps=0 ilen=16
+local variable names:
+  R1:mod
+  R2:name
+file: /w/visibility_builtins.rb
+   35 000 ENTER		2:0:0:0:0:0:0:0 (0x80000)
+   35 004 MOVE		R5	R1	; R1:mod
+   35 007 MOVE		R6	R2	; R2:name
+   35 010 SSEND		R4	:show	n=2
+   35 014 RETURN	R4	
+

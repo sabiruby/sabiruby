@@ -111,4 +111,83 @@ SabiRuby の本体は mrblib が与える `NotImplementedError`（no_std に she
 
 ## 3. トップレベルの `def`
 
-（次のコミットで記録）
+計画書は「`OP_DEF` → `mrb_vm_define_method`/`mrb_define_method_raw` の可視性が
+`mrb_class_ptr(self) == object_class && self == top_self` から選ばれる」規則を想像していたが、
+本家にそんな判定は無い。`OP_DEF` は `MRB_METHOD_VDEFAULT_FL`（「場から取れ」）を立てるだけ
+（`src/vm.c:4608`）で、`mrb_define_method_raw` が `find_visibility_scope` に聞く。
+そして**フレームの既定の可視性はただ 1 か所で private になる**:
+
+```c
+/* src/vm.c:119 stack_init */
+c->cibase[0] = ci_zero;
+c->ci = c->cibase;
+c->ci->u.target_class = mrb->object_class;
+c->ci->stack = c->stbase;
+c->ci->vis = 1;                     /* private (2-bit packed) */
+```
+
+文脈（context）の**土台のフレームだけ**が private で始まる。`cipush` が作るフレームは
+すべて public（`src/vm.c:868`、`ci->vis = MRB_METHOD_PUBLIC_FL`）。`mrb_top_run` は
+`mrb->c->ci > mrb->c->cibase` のときだけ `cipush` するので、
+
+* プログラムの最上段の `def` → 土台のフレーム → **private**、
+* 走っている最中に入れ子で回す最上段（`eval("def a5; end")`）→ 積まれたフレーム → **public**。
+
+本家で実測して両方確かめた（`probe2.rb`）。SabiRuby では `run_irep` と `start` が
+その土台に当たるので、`Vm::top_vis()` = 「`self.ci` が空なら Private、そうでなければ Public」
+の 1 行になった。ブロックの中の `def` は `EnvData` が既に `ci.vis` を写している
+（本家の `MRB_ENV_COPY_FLAGS_FROM_CI`）ので、ついてくる。トップレベルで作ったブロックを
+Fiber の中で走らせても private なのは、Fiber の文脈ではなく**ブロックを書いた場所**が効くから。
+
+本家と突き合わせた 12 通り（`tests/custom/visibility_toplevel_def.rb`）: トップの `def`、
+ブロックの中、Fiber の中、`def` の中の `def`、クラス本体、`Object.class_eval`、`instance_eval` の
+特異メソッド、`eval` のトップ、`def self.x`、`class ... def initialize`、`def obj.initialize`、
+`define_method`。
+
+### 分かったこと 3: `Module#define_method` は場の可視性を見ない
+
+`tests/custom/method_cache.rb` が落ちて気づいた。トップレベルの
+`F.send(:define_method, :v) { ... }` で入れた `v` が private になり、次の `f.v` が
+NoMethodError になる。本家の `mrb_mod_define_method_m` は
+`define_method_m(mrb, c, MRB_METHOD_PUBLIC_FL)`（`src/class.c:4197`）で、**可視性を書いて渡す**。
+`VDEFAULT` ではないので `find_visibility_scope` は呼ばれない。つまり本家では
+
+```ruby
+class Foo
+  private
+  define_method(:dm) { 1 }   # public
+  def df; 2; end             # private
+end
+```
+
+SabiRuby は `current_def_vis` を見ていたので、トップレベルが private になった途端に差が出た。
+本家に合わせて `Vis::Public` を書くようにした（`initialize` 系は `Vm::def_method` が
+なお private にする）。`module_function` の場でも同じで、`define_method` は
+インスタンス側 public・特異側なし。本家で実測（`probe4.rb`）。
+
+トップレベルの `define_method` だけは private で、これは本家が `mrb->top_self` の特異クラスに
+`top_define_method`（`define_method_m(mrb, mrb->object_class, MRB_METHOD_PRIVATE_FL)`）を
+別に定義しているから（`src/class.c:4209`、`:4766`）。**SabiRuby には main の
+`define_method` が無い**（`undefined method 'define_method' for Object`）。
+これは「本家にあって無いもの」＝項目 9 の側の話なので足していない。
+
+## 4. `respond_to?` は可視性を見ない
+
+`tests/custom/visibility_respond_to.rb` を本家で作って初めて分かった。本家の `obj_respond_to`
+（`src/kernel.c:624`）は `priv` を `mrb_get_args` で受け取るが、**メソッドが見つかったときは使わない**:
+
+```c
+mrb_method_t m = mrb_method_search_vm(mrb, &c, id);
+if (MRB_METHOD_UNDEF_P(m)) { ... respond_to_missing? ... }
+return mrb_bool_value(!MRB_METHOD_NOTIMPL_P(m));
+```
+
+引数は `respond_to_missing?` に渡すためだけにある。doc コメントは
+`respond_to?(symbol, include_private=false)` と CRuby 風に書いてあるのに、コードは見ていない。
+だから本家では `Object.new.respond_to?(:puts)` も `respond_to?(:initialize)` も **true**。
+SabiRuby は可視性で弾いていた（`2026-09-16-leftovers-perf.md` の「見つけたが直していない差」）ので、
+本家に合わせて弾くのをやめた。`MRB_METHOD_NOTIMPL_P` の false だけ残る。
+
+`send`／`public_send`／`Object#method`／`methods`／`private_methods`／
+`instance_methods` 系は本家と同じだった（変更なし）。文言も一致する:
+`private method 'top_m' called for Object`、`protected method 'prot' called for Prot`。

@@ -1,0 +1,19 @@
+listed private: true
+listed public: false
+implicit: top_m
+self: top_m
+receiver: private method 'top_m' called for Object
+send: top_m
+public_send: private method 'top_m' called for Object
+in a block: true
+in a fiber: true
+inside a def: false
+in a class: false
+in class_eval: false
+on a singleton: false
+define_method under private: false
+def under private: true
+Vis2 private: [:b, :c]
+Vis2 public: [:a]
+MF#mf1 private: true
+MF.mf1: mf1

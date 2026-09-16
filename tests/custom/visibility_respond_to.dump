@@ -1,0 +1,349 @@
+irep 0x5ff883bf8900 nregs=14 nlocals=7 pools=32 syms=35 reps=3 ilen=812
+local variable names:
+  R1:o
+  R2:e
+  R3:p1
+  R4:m
+  R5:l
+  R6:r
+catch type: rescue   begin: 0193 end: 0208 target: 0211
+catch type: rescue   begin: 0290 end: 0296 target: 0299
+catch type: rescue   begin: 0337 end: 0347 target: 0350
+catch type: rescue   begin: 0659 end: 0665 target: 0668
+file: /w/visibility_respond_to.rb
+    5 000 GETCONST	R7	Object
+    5 003 SEND0		R7	:new
+    5 006 MOVE		R1	R7	; R1:o
+    8 009 STRING	R8	L[0]	; respond_to?(:puts): 
+    8 012 MOVE		R9	R1	; R1:o
+    8 015 LOADSYM	R10	:puts
+    8 018 SEND		R9	:respond_to?	n=1
+    8 022 STRCAT	R8	(R9)
+    8 024 SSEND		R7	:puts	n=1
+    9 028 STRING	R8	L[1]	; respond_to?(:puts, true): 
+    9 031 MOVE		R9	R1	; R1:o
+    9 034 LOADSYM	R10	:puts
+    9 037 LOADTRUE	R11	(true)
+    9 039 SEND		R9	:respond_to?	n=2
+    9 043 STRCAT	R8	(R9)
+    9 045 SSEND		R7	:puts	n=1
+   10 049 STRING	R8	L[2]	; respond_to?(:puts, false): 
+   10 052 MOVE		R9	R1	; R1:o
+   10 055 LOADSYM	R10	:puts
+   10 058 LOADFALSE	R11	(false)
+   10 060 SEND		R9	:respond_to?	n=2
+   10 064 STRCAT	R8	(R9)
+   10 066 SSEND		R7	:puts	n=1
+   11 070 STRING	R8	L[3]	; respond_to?(:inspect): 
+   11 073 MOVE		R9	R1	; R1:o
+   11 076 LOADSYM	R10	:inspect
+   11 079 SEND		R9	:respond_to?	n=1
+   11 083 STRCAT	R8	(R9)
+   11 085 SSEND		R7	:puts	n=1
+   12 089 STRING	R8	L[4]	; respond_to?(:initialize): 
+   12 092 MOVE		R9	R1	; R1:o
+   12 095 LOADSYM	R10	:initialize
+   12 098 SEND		R9	:respond_to?	n=1
+   12 102 STRCAT	R8	(R9)
+   12 104 SSEND		R7	:puts	n=1
+   13 108 STRING	R8	L[5]	; respond_to?(:initialize, true): 
+   13 111 MOVE		R9	R1	; R1:o
+   13 114 LOADSYM	R10	:initialize
+   13 117 LOADTRUE	R11	(true)
+   13 119 SEND		R9	:respond_to?	n=2
+   13 123 STRCAT	R8	(R9)
+   13 125 SSEND		R7	:puts	n=1
+   14 129 STRING	R8	L[6]	; Array.respond_to?(:private): 
+   14 132 GETCONST	R9	Array
+   14 135 LOADSYM	R10	:private
+   14 138 SEND		R9	:respond_to?	n=1
+   14 142 STRCAT	R8	(R9)
+   14 144 SSEND		R7	:puts	n=1
+   15 148 STRING	R8	L[7]	; Array.respond_to?(:private, true): 
+   15 151 GETCONST	R9	Array
+   15 154 LOADSYM	R10	:private
+   15 157 LOADTRUE	R11	(true)
+   15 159 SEND		R9	:respond_to?	n=2
+   15 163 STRCAT	R8	(R9)
+   15 165 SSEND		R7	:puts	n=1
+   18 169 STRING	R8	L[8]	; send(:format): 
+   18 172 MOVE		R9	R1	; R1:o
+   18 175 LOADSYM	R10	:format
+   18 178 STRING	R11	L[9]	; %02d
+   18 181 LOADI_5	R12	(5)
+   18 183 SEND		R9	:send	n=3
+   18 187 STRCAT	R8	(R9)
+   18 189 SSEND		R7	:puts	n=1
+   20 193 MOVE		R7	R1	; R1:o
+   20 196 LOADSYM	R8	:format
+   20 199 STRING	R9	L[9]	; %02d
+   20 202 LOADI_5	R10	(5)
+   20 204 SEND		R7	:public_send	n=3
+   20 208 JMP		249
+   20 211 EXCEPT	R7	
+   21 213 GETCONST	R8	NoMethodError
+   21 216 RESCUE	R7	R8
+   21 219 JMPIF		R8	226
+   21 223 JMP		247
+   21 226 MOVE		R2	R7	; R2:e
+   22 229 STRING	R8	L[10]	; public_send(:format): 
+   22 232 MOVE		R9	R2	; R2:e
+   22 235 SEND0		R9	:message
+   22 238 STRCAT	R8	(R9)
+   22 240 SSEND		R7	:puts	n=1
+   22 244 JMP		249
+   22 247 RAISEIF	R7	
+   26 249 LOADNIL	R7	(nil)
+   26 251 LOADNIL	R8	(nil)
+   26 253 CLASS		R7	:Prot
+   26 256 EXEC		R7	I[0]
+   31 259 GETCONST	R7	Prot
+   31 262 SEND0		R7	:new
+   31 265 MOVE		R3	R7	; R3:p1
+   32 268 STRING	R8	L[11]	; protected through a peer: 
+   32 271 GETCONST	R9	Prot
+   32 274 SEND0		R9	:new
+   32 277 MOVE		R10	R3	; R3:p1
+   32 280 SEND		R9	:call_other	n=1
+   32 284 STRCAT	R8	(R9)
+   32 286 SSEND		R7	:puts	n=1
+   34 290 MOVE		R7	R3	; R3:p1
+   34 293 SEND0		R7	:prot
+   34 296 JMP		337
+   34 299 EXCEPT	R7	
+   35 301 GETCONST	R8	NoMethodError
+   35 304 RESCUE	R7	R8
+   35 307 JMPIF		R8	314
+   35 311 JMP		335
+   35 314 MOVE		R2	R7	; R2:e
+   36 317 STRING	R8	L[12]	; protected with a receiver: 
+   36 320 MOVE		R9	R2	; R2:e
+   36 323 SEND0		R9	:message
+   36 326 STRCAT	R8	(R9)
+   36 328 SSEND		R7	:puts	n=1
+   36 332 JMP		337
+   36 335 RAISEIF	R7	
+   39 337 MOVE		R7	R3	; R3:p1
+   39 340 LOADSYM	R8	:prot
+   39 343 SEND		R7	:public_send	n=1
+   39 347 JMP		388
+   39 350 EXCEPT	R7	
+   40 352 GETCONST	R8	NoMethodError
+   40 355 RESCUE	R7	R8
+   40 358 JMPIF		R8	365
+   40 362 JMP		386
+   40 365 MOVE		R2	R7	; R2:e
+   41 368 STRING	R8	L[13]	; protected public_send: 
+   41 371 MOVE		R9	R2	; R2:e
+   41 374 SEND0		R9	:message
+   41 377 STRCAT	R8	(R9)
+   41 379 SSEND		R7	:puts	n=1
+   41 383 JMP		388
+   41 386 RAISEIF	R7	
+   43 388 STRING	R8	L[14]	; protected send: 
+   43 391 MOVE		R9	R3	; R3:p1
+   43 394 LOADSYM	R10	:prot
+   43 397 SEND		R9	:send	n=1
+   43 401 STRCAT	R8	(R9)
+   43 403 SSEND		R7	:puts	n=1
+   46 407 MOVE		R7	R1	; R1:o
+   46 410 LOADSYM	R8	:format
+   46 413 SEND		R7	:method	n=1
+   46 417 MOVE		R4	R7	; R4:m
+   47 420 STRING	R8	L[15]	; method(:format): 
+   47 423 MOVE		R9	R4	; R4:m
+   47 426 STRING	R10	L[16]	; %03d
+   47 429 LOADI_7	R11	(7)
+   47 431 SEND		R9	:call	n=2
+   47 435 STRCAT	R8	(R9)
+   47 437 SSEND		R7	:puts	n=1
+   48 441 STRING	R8	L[17]	; method owner: 
+   48 444 MOVE		R9	R4	; R4:m
+   48 447 SEND0		R9	:owner
+   48 450 STRCAT	R8	(R9)
+   48 452 SSEND		R7	:puts	n=1
+   51 456 LOADNIL	R7	(nil)
+   51 458 LOADNIL	R8	(nil)
+   51 460 CLASS		R7	:Listed
+   51 463 EXEC		R7	I[1]
+   58 466 STRING	R8	L[18]	; instance_methods: 
+   58 469 GETCONST	R9	Listed
+   58 472 LOADFALSE	R10	(false)
+   58 474 SEND		R9	:instance_methods	n=1
+   58 478 SEND0		R9	:sort
+   58 481 SEND0		R9	:inspect
+   58 484 STRCAT	R8	(R9)
+   58 486 SSEND		R7	:puts	n=1
+   59 490 STRING	R8	L[19]	; public_instance_methods: 
+   59 493 GETCONST	R9	Listed
+   59 496 LOADFALSE	R10	(false)
+   59 498 SEND		R9	:public_instance_methods	n=1
+   59 502 SEND0		R9	:sort
+   59 505 SEND0		R9	:inspect
+   59 508 STRCAT	R8	(R9)
+   59 510 SSEND		R7	:puts	n=1
+   60 514 STRING	R8	L[20]	; private_instance_methods: 
+   60 517 GETCONST	R9	Listed
+   60 520 LOADFALSE	R10	(false)
+   60 522 SEND		R9	:private_instance_methods	n=1
+   60 526 SEND0		R9	:sort
+   60 529 SEND0		R9	:inspect
+   60 532 STRCAT	R8	(R9)
+   60 534 SSEND		R7	:puts	n=1
+   61 538 STRING	R8	L[21]	; protected_instance_methods: 
+   61 541 GETCONST	R9	Listed
+   61 544 LOADFALSE	R10	(false)
+   61 546 SEND		R9	:protected_instance_methods	n=1
+   61 550 SEND0		R9	:sort
+   61 553 SEND0		R9	:inspect
+   61 556 STRCAT	R8	(R9)
+   61 558 SSEND		R7	:puts	n=1
+   62 562 GETCONST	R7	Listed
+   62 565 SEND0		R7	:new
+   62 568 MOVE		R5	R7	; R5:l
+   63 571 STRING	R8	L[22]	; methods includes prot: 
+   63 574 MOVE		R9	R5	; R5:l
+   63 577 SEND0		R9	:methods
+   63 580 LOADSYM	R10	:prot
+   63 583 SEND		R9	:include?	n=1
+   63 587 STRCAT	R8	(R9)
+   63 589 SSEND		R7	:puts	n=1
+   64 593 STRING	R8	L[23]	; methods includes priv: 
+   64 596 MOVE		R9	R5	; R5:l
+   64 599 SEND0		R9	:methods
+   64 602 LOADSYM	R10	:priv
+   64 605 SEND		R9	:include?	n=1
+   64 609 STRCAT	R8	(R9)
+   64 611 SSEND		R7	:puts	n=1
+   65 615 STRING	R8	L[24]	; private_methods includes priv: 
+   65 618 MOVE		R9	R5	; R5:l
+   65 621 SEND0		R9	:private_methods
+   65 624 LOADSYM	R10	:priv
+   65 627 SEND		R9	:include?	n=1
+   65 631 STRCAT	R8	(R9)
+   65 633 SSEND		R7	:puts	n=1
+   68 637 STRING	R8	L[25]	; Kernel.format: 
+   68 640 GETCONST	R9	Kernel
+   68 643 STRING	R10	L[26]	; %x
+   68 646 LOADI8	R11	255
+   68 649 SEND		R9	:format	n=2
+   68 653 STRCAT	R8	(R9)
+   68 655 SSEND		R7	:puts	n=1
+   70 659 GETCONST	R7	Kernel
+   70 662 SEND0		R7	:new
+   70 665 JMP		706
+   70 668 EXCEPT	R7	
+   71 670 GETCONST	R8	NoMethodError
+   71 673 RESCUE	R7	R8
+   71 676 JMPIF		R8	683
+   71 680 JMP		704
+   71 683 MOVE		R2	R7	; R2:e
+   72 686 STRING	R8	L[27]	; Kernel.new: 
+   72 689 MOVE		R9	R2	; R2:e
+   72 692 SEND0		R9	:class
+   72 695 STRCAT	R8	(R9)
+   72 697 SSEND		R7	:puts	n=1
+   72 701 JMP		706
+   72 704 RAISEIF	R7	
+   76 706 LOADNIL	R7	(nil)
+   76 708 LOADNIL	R8	(nil)
+   76 710 CLASS		R7	:RTM
+   76 713 EXEC		R7	I[2]
+   81 716 GETCONST	R7	RTM
+   81 719 SEND0		R7	:new
+   81 722 MOVE		R6	R7	; R6:r
+   82 725 STRING	R8	L[28]	; ghost: 
+   82 728 MOVE		R9	R6	; R6:r
+   82 731 LOADSYM	R10	:ghost
+   82 734 SEND		R9	:respond_to?	n=1
+   82 738 STRCAT	R8	(R9)
+   82 740 SSEND		R7	:puts	n=1
+   83 744 STRING	R8	L[29]	; ghost include_all: 
+   83 747 MOVE		R9	R6	; R6:r
+   83 750 LOADSYM	R10	:ghost
+   83 753 LOADTRUE	R11	(true)
+   83 755 SEND		R9	:respond_to?	n=2
+   83 759 STRCAT	R8	(R9)
+   83 761 SSEND		R7	:puts	n=1
+   84 765 STRING	R8	L[30]	; nothing: 
+   84 768 MOVE		R9	R6	; R6:r
+   84 771 LOADSYM	R10	:nothing
+   84 774 SEND		R9	:respond_to?	n=1
+   84 778 STRCAT	R8	(R9)
+   84 780 SSEND		R7	:puts	n=1
+   85 784 STRING	R8	L[31]	; respond_to_missing? is private: 
+   85 787 GETCONST	R9	RTM
+   85 790 LOADFALSE	R10	(false)
+   85 792 SEND		R9	:private_instance_methods	n=1
+   85 796 LOADSYM	R10	:respond_to_missing?
+   85 799 SEND		R9	:include?	n=1
+   85 803 STRCAT	R8	(R9)
+   85 805 SSEND		R7	:puts	n=1
+   85 809 RETURN	R7	
+   85 811 STOP
+
+irep 0x5ff883c052a0 nregs=3 nlocals=1 pools=0 syms=3 reps=2 ilen=13
+file: /w/visibility_respond_to.rb
+   27 000 TDEF		R1	:call_other	I[0]
+   28 004 SSEND0	R1	:protected
+   29 007 TDEF		R1	:prot	I[1]
+   29 011 RETURN	R1	
+
+irep 0x5ff883c069d0 nregs=5 nlocals=3 pools=0 syms=1 reps=0 ilen=12
+local variable names:
+  R1:x
+file: /w/visibility_respond_to.rb
+   27 000 ENTER		1:0:0:0:0:0:0:0 (0x40000)
+   27 004 MOVE		R3	R1	; R1:x
+   27 007 SEND0		R3	:prot
+   27 010 RETURN	R3	
+
+irep 0x5ff883c074c0 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+file: /w/visibility_respond_to.rb
+   29 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   29 004 STRING	R2	L[0]	; prot
+   29 007 RETURN	R2	
+
+irep 0x5ff883c04f00 nregs=3 nlocals=1 pools=0 syms=5 reps=3 ilen=20
+file: /w/visibility_respond_to.rb
+   52 000 TDEF		R1	:pub	I[0]
+   53 004 SSEND0	R1	:private
+   54 007 TDEF		R1	:priv	I[1]
+   55 011 SSEND0	R1	:protected
+   56 014 TDEF		R1	:prot	I[2]
+   56 018 RETURN	R1	
+
+irep 0x5ff883c051f0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+file: /w/visibility_respond_to.rb
+   52 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   52 004 RETNIL
+
+irep 0x5ff883bf7ef0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+file: /w/visibility_respond_to.rb
+   54 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   54 004 RETNIL
+
+irep 0x5ff883c06390 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+file: /w/visibility_respond_to.rb
+   56 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   56 004 RETNIL
+
+irep 0x5ff883c0b330 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+file: /w/visibility_respond_to.rb
+   77 000 TDEF		R1	:respond_to_missing?	I[0]
+   77 004 RETURN	R1	
+
+irep 0x5ff883bf7870 nregs=8 nlocals=4 pools=0 syms=1 reps=0 ilen=25
+local variable names:
+  R1:name
+  R2:include_all
+file: /w/visibility_respond_to.rb
+   77 000 ENTER		2:0:0:0:0:0:0:0 (0x80000)
+   78 004 MOVE		R4	R1	; R1:name
+   78 007 LOADSYM	R5	:ghost
+   78 010 EQ		R4	(R5)
+   78 012 JMPIF		R4	023
+   78 016 ARGARY	R5	2:0:0:0 (0)
+   78 020 SUPER		R4	n=*
+   78 023 RETURN	R4	
+

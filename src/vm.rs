@@ -1985,6 +1985,18 @@ impl Vm {
         self.run_irep(irep)
     }
 
+    /// The default visibility a top-level `def` gets. mruby keeps it on the frame, and the
+    /// **base** frame of a context — `c->cibase[0]`, made by `stack_init` (src/vm.c:136,
+    /// `c->ci->vis = 1`) — is the one frame that starts out *private*; every frame `cipush`
+    /// makes starts public (src/vm.c:868). `mrb_top_run` runs a program on that base frame
+    /// when the context is idle and pushes an ordinary (public) frame when it is not, so a
+    /// `def` written at the top of a program is private while the same `def` reached through
+    /// a nested run — `eval("def a5; end")` — is public. Both were checked against the
+    /// reference. A block written at the top level inherits it: the frame's env copies its
+    /// visibility (`MRB_ENV_COPY_FLAGS_FROM_CI`), which `EnvData` here does too.
+    fn top_vis(&self) -> Vis {
+        if self.ci.is_empty() { Vis::Private } else { Vis::Public }
+    }
     /// Runs a top-level irep with `self` = main.
     pub fn run_irep(&mut self, irep: IrepId) -> VmResult<Value> {
         let proc_ = self.heap.alloc(self.core.proc_, ObjKind::Proc(ProcData {
@@ -1995,7 +2007,7 @@ impl Vm {
         self.stack.resize(base + nregs, Slot::NIL);
         self.stack[base] = Slot::from(Value::Obj(self.top_self));
         let depth = self.ci.len();
-        self.ci.push(CallInfo { base, pc: 0, irep, proc_, n: 0, kw: false, mid: None, target_class: self.core.object, env: None, cci: Cci::Skip, vis: Vis::Public, modfunc: false, vis_break: false });
+        self.ci.push(CallInfo { base, pc: 0, irep, proc_, n: 0, kw: false, mid: None, target_class: self.core.object, env: None, cci: Cci::Skip, vis: self.top_vis(), modfunc: false, vis_break: false });
         let r = self.run_loop(depth);
         self.stack.truncate(base);
         r
@@ -2010,7 +2022,7 @@ impl Vm {
         let nregs = self.ireps[irep].nregs.max(4);
         self.stack.resize(base + nregs, Slot::NIL);
         self.stack[base] = Slot::from(Value::Obj(self.top_self));
-        self.ci.push(CallInfo { base, pc: 0, irep, proc_, n: 0, kw: false, mid: None, target_class: self.core.object, env: None, cci: Cci::Skip, vis: Vis::Public, modfunc: false, vis_break: false });
+        self.ci.push(CallInfo { base, pc: 0, irep, proc_, n: 0, kw: false, mid: None, target_class: self.core.object, env: None, cci: Cci::Skip, vis: self.top_vis(), modfunc: false, vis_break: false });
     }
 
     /// Executes at most `budget` instructions of a program started with
