@@ -92,3 +92,43 @@ assert("join from the root raises")        { assert_raise(RuntimeError) { Task.n
 
 The port carries these as `tests/task.rs` (`a_call_that_parks_answers_its_own_value`), which is
 where the wording above comes from.
+
+## 4. A finished task is kept for the life of the VM
+
+**Severity**: an unbounded leak in any host that starts tasks over and over.
+
+**Where**: `src/task.c`. A task that finishes goes to the dormant queue
+(`terminate_task_internal` 1657, and `execute_task`'s tail) and nothing takes it out again:
+`mrb_close_task` (1693) is the only path to `mrb_task_free` (62), and it is reachable only from
+Ruby's `Task#close`. Meanwhile the task is pinned twice over. `mrb_task_mark_all` (94) walks
+**all four** queues, `q_dormant_` (`include/task.h:170`) included, marking each task's `self`,
+`result` and `name`; and `task_create_common` (926) calls `mrb_gc_register(mrb, task_obj)` on top
+of that, which only `mrb_task_free` undoes (68). So a finished task, its result and its name are
+unreachable garbage that the collector is told twice over to keep.
+
+**To see it**: a loop that finishes tasks and collects between rounds — the dormant count grows
+without bound and `GC.start` never lowers it:
+
+```ruby
+200.times { 10.times { Task.new { nil } }; Task.run; GC.start }
+p Task.stat[:dormant][:count]   # 2000, with every result and name still alive
+```
+
+The port measured the same thing from the host side: 1000 tasks spawned and finished left 2000
+live objects behind a collection (`tests/task.rs`,
+`finished_tasks_are_not_kept_for_the_life_of_the_vm`).
+
+**Why it survives**: on a microcontroller running a fixed set of tasks it is invisible, and the
+gem's own tests never spawn in a loop. A long-lived host that restarts tasks — a game reloading a
+brain, an event loop — pays one Task per restart, for the life of the VM.
+
+**Suggested patch**: hold the dormant queue weakly rather than as a root. Two shapes fit the C:
+drop `q_dormant_` from the `mrb_task_mark_all` walk and let the object's own reachability decide
+(which also means moving the `mrb_gc_unregister` that matches `task_create_common`'s register (938) to
+the point where the task becomes dormant), with the free function unlinking the entry; or keep the
+root and unlink a dormant task whose `self` nothing else names. **Nothing in the suite asserts
+either way** — no assertion in the gem's `test/task.rb`, `test/queue.rb` or `test/gc_task.rb`
+reads the dormant queue's contents or a finished task's liveness.
+
+**What the port does**: the second shape — see [`../design/gems.md`](../design/gems.md), "The
+dormant queue is weak". The three mrbtest baselines are unchanged by it.

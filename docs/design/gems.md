@@ -710,8 +710,13 @@ How a gem of the reference tree becomes part of SabiRuby, and what each ported o
     four queues, and `task_create_common` additionally `mrb_gc_register`s every task object, so
     there a finished task is pinned twice over and only `mrb_close_task` frees it. On a
     microcontroller running a fixed set of tasks that is invisible; a game that restarts a script
-    every few seconds leaks one Task per restart. So this is a deliberate departure: the dormant
-    queue is held **weakly**. It is left out of the root set, and after the mark phase — before
+    every few seconds leaks one Task per restart. **The reference is taken to be wrong here**
+    (author's decision, 2026-09-17): a leak is not a behaviour worth reproducing for fidelity's
+    sake, and no assertion of the gem's own tests reads the dormant queue's contents or a
+    finished task's liveness, so nothing written against the reference can tell. It is filed as
+    [`../verification/upstream-pr-candidates.md`](../verification/upstream-pr-candidates.md) item
+    4, which is what "How far mruby-task may drift" asks for where the reference looks wrong. So
+    this is a deliberate departure: the dormant queue is held **weakly**. It is left out of the root set, and after the mark phase — before
     the sweep — a collection drops from it every task nothing else reached (`Vm::gc_collect`).
     Nothing observable changes, because a task dropped this way is one no Ruby code and no
     registered host handle can still name: `Task.list`, `Task.get`, `Task.stat`, `Task#status`
