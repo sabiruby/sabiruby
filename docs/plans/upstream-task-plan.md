@@ -1,8 +1,9 @@
 # mruby-task の本家への報告（計画）
 
-作成 2026-09-17。`docs/verification/upstream-pr-candidates.md` の項目 4「終わったタスクが VM の寿命まで残る」を、本家（mruby/mruby、
-`mrbgems/mruby-task`、4.1.0-rc `3cf73ee`）に issue と PR として出せる形にする。著者の判断（2026-09-17）: 「本家にもバグはありえる。
-正しいと思える動作なら挙動差は許容」「PR 案を別途検討」。**送るのは著者自身のアカウント**。ここでは材料と下書きまで。
+作成 2026-09-17。`docs/verification/upstream-pr-candidates.md` の項目 4「終わったタスクが VM の寿命まで残る」について、本家（mruby/mruby、
+`mrbgems/mruby-task`、4.1.0-rc `3cf73ee`）への issue と PR の**案を記録として残す**。著者の判断（2026-09-17）: 「本家にもバグはありえる。
+正しいと思える動作なら挙動差は許容」「PR は記録だけ」。**送らない**。実行するのは表の 1〜4 のうち手元で閉じるものだけで、
+本家への提出（5）は予定に無い。将来送るときの材料が揃っている状態を到達点とする。
 
 同じファイルの項目 1〜3（ホストが 1 ステップずつ回すときの再入、ほか）も同じ手順で扱えるが、まず 4 を通す。
 
@@ -26,7 +27,7 @@
 | 2 | 既報の確認: `gh issue list -R mruby/mruby --search "task dormant leak"`、PR、picoruby 側（`picoruby/mruby-task` があればそこも）。同じ報告があれば乗る | 未着手 |
 | 3 | patch を `ref/mruby` の作業ブランチで書く（2 案。下記）。`rake test` を mruby-task 込みの gembox で（Docker）。gem の test に「終了して参照の無いタスクは GC で消える」を 1 本足す | 未着手 |
 | 4 | issue 本文（英語）と PR 説明の下書きを `docs/verification/upstream-issue-task-dormant.md` に。SabiRuby 側の実測（1000 本で 2000 オブジェクト、箱庭の凍結）を証拠として添える | 未着手 |
-| 5 | 著者がレビューして送る。返答に応じて追従（項目 1〜3 も順に） | 著者 |
+| 5 | 本家へ送る | **やらない**（著者判断 2026-09-17: 記録だけ） |
 
 ## patch の 2 案
 
@@ -44,5 +45,5 @@ dormant になる点（`terminate_task_internal` と `execute_task` の末尾）
 ## 守ること
 
 * `ref/mruby` は参照用クローン。patch は別ブランチで、`ref/mruby` の main は動かさない。
-* 本家に送る文章は著者が読んでから。ここでは下書きまで（`gh pr create` は実行しない）。
+* 本家には送らない（`gh issue create` / `gh pr create` は実行しない）。下書きは記録として `docs/verification/` に置く。
 * 過程は `docs/worklog/` に。
