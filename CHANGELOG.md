@@ -8,6 +8,34 @@ Every claim here is traceable to a commit or to a document under `docs/`, and th
 named. Measurements are the ones in [`docs/verification/bench.md`](docs/verification/bench.md);
 nothing is estimated.
 
+## Unreleased
+
+`sabiruby` — two fixes to mruby-task's scheduler found by rubevy's garden demo, where replacing
+ten scripts at once froze the VM for seconds
+([`docs/worklog/2026-09-17-task-end-nil.md`](docs/worklog/2026-09-17-task-end-nil.md),
+[`docs/design/gems.md`](docs/design/gems.md)).
+
+* **A turn of `Vm::task_run_limits` no longer ends because a task ended with nil.** *Behaviour
+  change.* `Vm::task_run_once` answers the result of a task that finished, and a task whose
+  block is worth nil answers the same nil that an empty scheduler does; the budgeted loop read
+  that as "nothing is runnable" and returned, spending one host frame per ending task while
+  every other task stood still. It now asks the scheduler whether anything is runnable and
+  stops only when nothing is (`ext_task::task_step`). A host that gave a budget now gets its
+  budget spent where there is work for it: ten tasks ending together in one 200,000-instruction
+  frame used to leave a ready worker task 0 instructions, and now leave it 199,997
+  (`tests/task.rs`). `Vm::task_run_once` itself is unchanged, and its rustdoc now says what a
+  nil answer does and does not mean. A host loop written as `while !vm.task_run_once()?.is_nil()`
+  has the same bug; `while vm.task_pending()` is the loop to write.
+* **Finished tasks are collected.** The scheduler's dormant queue is no longer a GC root; a
+  collection drops from it, after marking and before the sweep, every finished task nothing else
+  refers to. Before, only `Task#close` ever removed one, so a host that restarts scripts kept a
+  Task object (with its result, name and queue) per restart for the life of the VM — 1000 spawned
+  and finished tasks left 2000 live objects behind a `GC.start`, and now leave none
+  (`tests/task.rs`). This is a deliberate departure from the reference, which pins every task
+  twice (`mrb_task_mark_all` marks all four queues and `task_create_common` registers the
+  object); nothing observable changes, since only a task that no Ruby code and no registered host
+  handle can name is dropped. The three mrbtest baselines are unchanged.
+
 ## 0.5.0 — 2026-09-17
 
 `sabiruby` 0.4.0 → **0.5.0**, `sabiruby-cli` 0.4.1 → **0.5.0**, `sabiruby-compiler` 0.2.1 →

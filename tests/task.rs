@@ -636,3 +636,66 @@ fn a_task_sleeps_from_inside_a_ruby_aref() {
         "[[:before, 0], :b, [:after, 0], [:done, 0]]\n"
     );
 }
+
+#[test]
+fn a_burst_of_tasks_ending_with_nil_does_not_end_the_frame() {
+    // A task whose block is worth nil (rubevy: a reflex task whose `Queue#pop` raised and whose
+    // `rescue` clause is empty) ends with a nil result. `Vm::task_run_once` answers that result,
+    // and a frame loop must not read it as "nothing was ready": ten of them ending at once would
+    // then cost ten frames, during which nothing else in the VM runs
+    // (`docs/worklog/2026-09-17-task-end-nil.md`).
+    let mut vm = sabiruby::Vm::with_mrblib().expect("vm");
+    vm.task_external_clock(true);
+    let mut enders = Vec::new();
+    for i in 0..10 {
+        enders.push(spawn_src(&mut vm, "nil", &format!("ender{i}")));
+    }
+    // behind them in the ready queue, at the same priority: FIFO, so it only gets the CPU once
+    // every ender has had its turn
+    let worker = spawn_src(&mut vm, "$n = 0\nloop { $n += 1; Task.pass }", "worker");
+    let limits = sabiruby::RunLimits { instructions: Some(200_000), ..Default::default() };
+    let spent = vm.task_run_limits(limits).expect("frame");
+    let ran = enders.iter().filter(|t| vm.task_finished(**t)).count();
+    assert!(
+        vm.task_instructions(worker) > 0,
+        "the tasks that ended with nil ate the whole frame: {ran} of 10 of them finished, the \
+         worker ran {} instructions, and the frame spent {spent} of its 200000",
+        vm.task_instructions(worker)
+    );
+    for (i, t) in enders.iter().enumerate() {
+        assert!(vm.task_finished(*t), "ender{i} did not finish in the frame");
+        assert!(vm.task_value(*t).is_nil(), "ender{i} answered something other than nil");
+    }
+}
+
+#[test]
+fn finished_tasks_are_not_kept_for_the_life_of_the_vm() {
+    // `stop_task` moves a finished task to the dormant queue, and the queues are GC roots, so
+    // nothing but `Task#close` ever dropped one: a host that restarts scripts every few seconds
+    // accumulates a Task object (with its result and its name) per restart, forever. A finished
+    // task nothing refers to any more is garbage like any other object.
+    let mut vm = sabiruby::Vm::with_mrblib().expect("vm");
+    vm.task_external_clock(true);
+    let bin = sabiruby_compiler::compile(b"nil\n", &sabiruby_compiler::Options {
+        filename: "short".into(), debug_info: true, ..Default::default()
+    }).expect("compile");
+    let irep = vm.load(&bin).expect("load");
+    vm.gc_collect();
+    let before = vm.heap.live_count();
+    for _ in 0..1000 {
+        // not `gc_register`ed: the host does not keep these, the scheduler does
+        vm.task_spawn(irep, 128, None).expect("spawn");
+    }
+    let mut frames = 0;
+    while vm.task_pending() {
+        vm.task_run_limits(sabiruby::RunLimits { instructions: Some(1_000_000), ..Default::default() }).expect("frame");
+        frames += 1;
+        assert!(frames < 2000, "the scheduler never finished the tasks");
+    }
+    vm.gc_collect();
+    let after = vm.heap.live_count();
+    assert!(
+        after < before + 200,
+        "1000 finished tasks are still live after a collection: {before} objects before, {after} after"
+    );
+}

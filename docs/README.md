@@ -120,6 +120,13 @@ a context that starts out private and what that makes of a top-level `def`, and 
 that turned up because of it — `Module#define_method` writes its own visibility, and
 `respond_to?` never looks at visibility at all.
 
+[2026-09-17-task-end-nil](worklog/2026-09-17-task-end-nil.md) is the two defects rubevy's garden
+demo found in mruby-task's scheduler: why a task that ends with a nil result used to cost a whole
+turn of the host loop (and why ten scripts restarted at once therefore froze every other script
+for sixty frames), why the reference's own dormant queue keeps every finished task for the life
+of the VM and what the smallest departure from it is, and the case for reading `task_run_once`'s
+nil as nothing more than a value.
+
 [stage6c-method-missing](worklog/2026-09-15-stage6c-method-missing.md) is the VM's half of stage
 6c: reading `prepare_missing` in the reference, why packing the arguments into one Array and
 shifting them along one register are the same thing to `OP_ENTER`, and what a `method_missing`

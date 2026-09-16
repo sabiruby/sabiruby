@@ -751,8 +751,18 @@ impl Vm {
 
     /// Runs one ready task of mruby-task's scheduler and comes back (`mrb_task_run_once`), which
     /// is what a host loop wants where `Task.run` would block until every task is done: one call
-    /// per frame or per turn of an event loop. Answers the task's result where it finished, true
-    /// where one ran, and nil where nothing was ready.
+    /// per frame or per turn of an event loop.
+    ///
+    /// Answers the task's result where it finished, true where one ran or the clock was moved on
+    /// to a sleeper's deadline, and nil where nothing ran and nothing could be made ready.
+    ///
+    /// **A nil answer is not the same as "nothing ran".** A task whose block is worth nil
+    /// finishes with a nil result and answers nil here, exactly as a turn that found the
+    /// scheduler empty does; the two cannot be told apart from this value alone. A loop that
+    /// drives the scheduler until it is out of work should ask [`Vm::task_pending`], as
+    /// [`Vm::task_run_limits`] does, and not read a nil as the end of its turn — a burst of
+    /// tasks ending with nil would otherwise cost one turn of the host loop each
+    /// (`docs/worklog/2026-09-17-task-end-nil.md`).
     pub fn task_run_once(&mut self) -> VmResult<Value> {
         crate::builtins::ext_task::task_run_once(self)
     }
@@ -797,7 +807,12 @@ impl Vm {
             // a hard limit also ends the run: a task that rescues Task::Overrun comes back ready
             // and would otherwise be handed the CPU again and again
             if self.task.run_hard_instructions.is_some_and(|hard| self.instructions >= hard) { return Ok(spent); }
-            if self.task_run_once()?.is_nil() { return Ok(self.instructions - start); }
+            // Not the value `task_run_once` answers: a task that ends with a nil result answers
+            // nil just as an empty scheduler does, and reading that as "nothing is runnable"
+            // cost one turn of the host loop per ending task (`docs/design/gems.md`).
+            if matches!(crate::builtins::ext_task::task_step(self)?, crate::builtins::ext_task::Step::Stuck) {
+                return Ok(self.instructions - start);
+            }
         }
     }
 
@@ -2690,6 +2705,17 @@ impl Vm {
                 break;
             }
         }
+        // The scheduler's dormant queue is weak (`Vm::gc_mark_roots`): a task that finished and
+        // that nothing else names is garbage, and dropping it here, with the marking done and
+        // before the sweep, is what keeps a host that restarts scripts from paying a Task object
+        // (with its result, its name and its queue) per restart for the life of the VM. One that
+        // something still holds — a local, a `gc_register`ed handle, another task joining it —
+        // was marked and stays, so `Task.list`, `Task#status` and `Task#value` answer for every
+        // task a program can still reach, as the reference's do.
+        {
+            let heap = &self.heap;
+            self.task.queues[0].retain(|o| heap.is_marked(*o));
+        }
         // A context nothing reached (its Fiber object is garbage) can never run
         // again. The environments of its frames that are still reachable (a
         // block captured there) take their values off the stack first (mruby
@@ -2768,8 +2794,10 @@ impl Vm {
         for (x, y) in &self.eq_guard { h.mark_id(*x, work); h.mark_id(*y, work); }
         for id in &self.gc_registered { h.mark_id(*id, work); }
         // the scheduler's queues own their tasks: one the program dropped is still going to run
-        // (`mrb_task_mark_all`)
-        for q in &self.task.queues {
+        // (`mrb_task_mark_all`). The dormant queue is the exception — a finished task is going
+        // to run no more, so it is held weakly and dropped from the queue once the collection
+        // finds nothing else naming it (`Vm::gc_collect`, `docs/design/gems.md`).
+        for q in &self.task.queues[1..] {
             for id in q { h.mark_id(*id, work); }
         }
         for t in [self.task.running, self.task.main].into_iter().flatten() { h.mark_id(t, work); }
