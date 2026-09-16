@@ -228,6 +228,7 @@ dependencies = [
  "libm",
  "regex-automata",
  "sabiruby-compiler",
+ "sabiruby-macros",
 ]
 
 [[package]]

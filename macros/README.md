@@ -3,9 +3,14 @@
 Derive and attribute macros for [SabiRuby](https://crates.io/crates/sabiruby): a Rust struct
 and its `impl` block as a Ruby class, without writing the registration by hand.
 
+Add it through the VM crate's feature `macros` (one dependency, one `use`):
+
+```toml
+sabiruby = { version = "0.5", features = ["macros"] }
+```
+
 ```rust
-use sabiruby::Vm;
-use sabiruby_macros::{RubyClass, ruby_methods};
+use sabiruby::{RubyClass, ruby_methods, Vm};
 
 #[derive(RubyClass)]
 struct Player { hp: i64 }
@@ -24,6 +29,22 @@ The value stays in Rust — it lives in a `HostStore` the VM carries and Ruby ho
 it, which the collector gives back when nothing refers to it any more. Arguments and answers
 go through `FromRuby` and `IntoRuby`, so a type neither covers is a compile error.
 
-This crate does not depend on `sabiruby`; a host writes both. What is generated, and what it
-does not cover, is `docs/design/macros.md` of the
+`use sabiruby::{RubyClass, ruby_methods};` brings two things called `RubyClass`: this crate's
+derive macro and the trait it implements, which live in different namespaces (as
+`serde::Serialize` does). Depending on this crate directly works too, and expands to exactly the
+same code:
+
+```toml
+sabiruby = "0.5"
+sabiruby-macros = "0.1"
+```
+
+```rust
+use sabiruby::host_store::RubyClass;            // the trait
+use sabiruby_macros::{RubyClass, ruby_methods}; // the macros
+```
+
+This crate does not depend on `sabiruby`: what it generates names `::sabiruby::…` absolutely, so
+it compiles the same whichever way it was reached. What is generated, and what it does not
+cover, is `docs/design/macros.md` of the
 [repository](https://github.com/sabiruby/sabiruby).

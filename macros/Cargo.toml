@@ -24,5 +24,10 @@ proc-macro2 = "1"
 [dev-dependencies]
 # The tests register a class in a real VM and run Ruby against it. The macros themselves do
 # not depend on the VM: what they generate names `::sabiruby::…`, and the host writes both.
-sabiruby = { path = ".." }
+# The feature `macros` is on so that `tests/reexport.rs` can reach these same macros back
+# through the VM crate, the way a host outside this repository does. That is a dev-dependency
+# cycle (sabiruby -> sabiruby-macros -> dev -> sabiruby), which cargo allows because dev
+# dependencies are only needed to build this crate's tests; the dependency is path-only, so
+# publishing strips it and nothing cyclic reaches crates.io.
+sabiruby = { path = "..", features = ["macros"] }
 sabiruby-compiler = { path = "../compiler", features = ["host"] }

@@ -55,6 +55,18 @@
 //! friends stay bytes. Dropping it gives the byte-string build the reference ships. Both are
 //! checked against a reference image of their own (the repository's `docs/design/utf8.md`).
 //!
+//! `regexp` (also default) is mruby-regexp: `Regexp`, `MatchData`, the String and Symbol
+//! methods whose pattern form the gem answers, and `regex-automata` under them. Without it the
+//! crate does not depend on `regex-automata` at all and the constant `Regexp` does not exist,
+//! which is the reference built without the gem.
+//!
+//! `macros` (not default) re-exports `#[derive(RubyClass)]` and `#[ruby_methods]` from
+//! `sabiruby-macros` at this crate's root, so that
+//! `sabiruby = { version = "0.5", features = ["macros"] }` and
+//! `use sabiruby::{RubyClass, ruby_methods};` are all a host writes. The macros are a proc
+//! macro — a compiler plugin built for the host — so the feature is off by default and the
+//! `no_std` library builds for a target without one.
+//!
 //! # Stability
 //!
 //! 0.x: the API follows the VM's internals and will change between minor versions. Items
@@ -101,6 +113,36 @@ pub use error::VmError;
 pub use host::{EvalOptions, Host};
 pub use value::Value;
 pub use vm::{RunLimits, Step, Timeslice, Vm};
+
+/// `#[derive(RubyClass)]` — a Rust struct as a Ruby class — with the feature `macros`,
+/// re-exported from [`sabiruby-macros`](https://crates.io/crates/sabiruby-macros).
+///
+/// This is the *macro*; [`RubyClass`](trait@RubyClass) just above is the trait it implements,
+/// which is what a `borrow` needs in scope. A macro and a type live in different namespaces, so
+/// one `use` brings both, the way `use serde::Serialize;` does.
+///
+/// ```
+/// use sabiruby::{RubyClass, ruby_methods};
+///
+/// #[derive(RubyClass)]
+/// struct Player { hp: i64 }
+///
+/// #[ruby_methods]
+/// impl Player {
+///     fn new(hp: i64) -> Self { Player { hp } }        // Player.new(100)
+///     fn damage(&mut self, n: i64) { self.hp -= n; }   // player.damage(10)
+///     fn hp(&self) -> i64 { self.hp }                  // player.hp
+/// }
+/// // Player::register(&mut vm)?;   the class, the store, the methods
+/// ```
+#[cfg(feature = "macros")]
+pub use sabiruby_macros::RubyClass;
+
+/// `#[ruby_methods]` — an inherent `impl` block as the class's methods, and the `register` that
+/// installs them — with the feature `macros`, re-exported from `sabiruby-macros`. The example is
+/// on [`RubyClass`](macro@RubyClass).
+#[cfg(feature = "macros")]
+pub use sabiruby_macros::ruby_methods;
 
 /// mruby's core library written in Ruby (`mrblib/*.rb` of 4.1.0-rc), compiled
 /// with the reference `mrbc`. Loaded by [`Vm::with_mrblib`].
