@@ -12,7 +12,7 @@ repository = "https://github.com/sabiruby/sabiruby"
 readme = "README.md"
 # What crates.io gets: the library, the CLI, the design notes and the licences. The test
 # suite (fixtures, mruby's test/t copies and their .mrb), benchmarks and tools stay in git.
-include = ["/src/**/*", "/build.rs", "/docs/**/*.md", "/README.md", "/LICENSE", "/LICENSE-mruby"]
+include = ["/src/**/*", "/build.rs", "/docs/**/*.md", "/README.md", "/CHANGELOG.md", "/LICENSE", "/LICENSE-mruby"]
 
 [workspace]
 # sabiruby (this package): the VM library, pure Rust, no_std
@@ -25,6 +25,10 @@ members = ["compiler", "cli", "macros", "serde"]
 [lib]
 name = "sabiruby"
 path = "src/lib.rs"
+
+# docs.rs builds with every feature on, so the `macros` re-exports and the regexp classes show up
+[package.metadata.docs.rs]
+all-features = true
 
 [features]
 default = ["std", "utf8", "regexp"]
