@@ -8,7 +8,7 @@ Every claim here is traceable to a commit or to a document under `docs/`, and th
 named. Measurements are the ones in [`docs/verification/bench.md`](docs/verification/bench.md);
 nothing is estimated.
 
-## 0.5.0 — unreleased
+## 0.5.0 — 2026-09-17
 
 `sabiruby` 0.4.0 → **0.5.0**, `sabiruby-cli` 0.4.1 → **0.5.0**, `sabiruby-compiler` 0.2.1 →
 **0.2.2**. `sabiruby-macros` **0.1.0** and `sabiruby-serde` **0.1.0** are published for the first
