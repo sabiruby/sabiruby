@@ -8,7 +8,7 @@ Every claim here is traceable to a commit or to a document under `docs/`, and th
 named. Measurements are the ones in [`docs/verification/bench.md`](docs/verification/bench.md);
 nothing is estimated.
 
-## Unreleased
+## 0.5.1 — 2026-09-17
 
 `sabiruby` — two fixes to mruby-task's scheduler found by rubevy's garden demo, where replacing
 ten scripts at once froze the VM for seconds
