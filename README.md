@@ -6,14 +6,15 @@ compatibility with mruby 4.1. mruby 4.1.0 itself is not released yet: the refere
 here is checked against is the release candidate **4.1.0-rc** (tag `4.1.0-rc`, commit
 `3cf73ee`), and verification is against that binary rather than against a spec.
 
-The VM runs bytecode only and is pure Rust (`no_std`). Four crates live in this repository:
+The VM runs bytecode only and is pure Rust (`no_std`). Five crates live in this repository:
 
 | crate | what | |
 |---|---|---|
 | [`sabiruby`](https://crates.io/crates/sabiruby) | the VM library | pure Rust, `no_std` + `alloc`, wasm |
 | [`sabiruby-compiler`](https://crates.io/crates/sabiruby-compiler) | the reference compiler (mruby 4.1.0-rc's `mruby-compiler`: Prism as its parser, mruby's code generator) built as C; output byte-identical to `mrbc` | needs a C compiler |
 | [`sabiruby-cli`](https://crates.io/crates/sabiruby-cli) | the `sabiruby` command: `sabiruby foo.rb`, `-e`, `compile`, `dump`, with the switches of the reference `mruby` | depends on both |
-| `sabiruby-macros` | `#[derive(RubyClass)]` and `#[ruby_methods]`: a Rust struct and its `impl` block as a Ruby class ([`docs/design/macros.md`](docs/design/macros.md)) | depends on neither; not published |
+| [`sabiruby-macros`](https://crates.io/crates/sabiruby-macros) | `#[derive(RubyClass)]` and `#[ruby_methods]`: a Rust struct and its `impl` block as a Ruby class ([`docs/design/macros.md`](docs/design/macros.md)) | depends on neither; reached through `sabiruby`'s feature `macros` |
+| [`sabiruby-serde`](https://crates.io/crates/sabiruby-serde) | serde and a `JSON` class on top of the VM ([`docs/design/serde.md`](docs/design/serde.md)) | the VM itself never depends on serde |
 
 The Bevy integration lives in a separate crate, [`rubevy`](https://github.com/sabiruby/rubevy).
 Try it in the browser: **[SabiRuby Playground](https://sabiruby.github.io/sabiruby-playground/)**
@@ -24,7 +25,9 @@ layout (`R0` of the callee is `R[a]` of the caller), `OP_ENTER`, environments,
 the `RBreak`-based unwinding through `ensure`, `OP_CALL` as the body of
 `Proc#call`, and so on are ported from the book's description of `src/vm.c`.
 
-## Status (2026-09-13, 0.4.0)
+What changed in each release is [`CHANGELOG.md`](CHANGELOG.md).
+
+## Status (2026-09-17, 0.5.0)
 
 * RITE 04.00 reader (IREP / LVAR; DBG skipped), all 119 opcodes decoded, `EXT1..3` handled.
 * Interpreter with methods, blocks/closures (attached/detached environments), `super`
@@ -187,6 +190,41 @@ Remaining gems and their order: [`docs/design/gems.md`](https://github.com/sabir
 The library: `cargo add sabiruby` (`default-features = false` for `no_std`). The command:
 `cargo install sabiruby-cli` (installs `sabiruby`; building it compiles the C sources of the
 reference compiler, about 2 s in a debug build and 7 s in a release build, on one core).
+
+How to depend on it:
+
+```toml
+[dependencies]
+# the VM. Pick one line:
+sabiruby = "0.5"                                          # std + utf8 + regexp (the defaults)
+# sabiruby = { version = "0.5", default-features = false } # no_std + alloc, byte strings, no Regexp
+# sabiruby = { version = "0.5", features = ["macros"] }    # + #[derive(RubyClass)] / #[ruby_methods]
+
+# optional companions
+sabiruby-compiler = { version = "0.2", features = ["host"] }  # compile Ruby source in the same program
+sabiruby-serde = "0.1"                                        # serde, and a JSON class
+```
+
+The feature `macros` re-exports the two macros of `sabiruby-macros` at the crate root, so that
+one dependency and one `use` are all a host writes (the arrangement serde and serde_derive
+have). It is off by default: a proc macro is built for the host machine, and the VM must keep
+building for targets that have no such toolchain in the picture.
+
+```rust
+use sabiruby::{RubyClass, ruby_methods, Vm};
+
+#[derive(RubyClass)]
+struct Player { hp: i64 }
+
+#[ruby_methods]
+impl Player {
+    fn new(hp: i64) -> Self { Player { hp } }        // Player.new(100)
+    fn damage(&mut self, n: i64) { self.hp -= n; }   // player.damage(10)
+    fn hp(&self) -> i64 { self.hp }                  // player.hp
+}
+// Player::register(&mut vm)?;   the class, the store, the methods
+```
+
 In this repository:
 
 The switches are the reference `mruby` command's (`sabiruby -h` lists them); `compile` is `mrbc`:
@@ -242,6 +280,7 @@ loop {
 | `compiler/` | crate `sabiruby-compiler`: the vendored reference compiler, C shim, golden tests |
 | `cli/` | crate `sabiruby-cli`: the `sabiruby` command |
 | `macros/` | crate `sabiruby-macros`: the derive and attribute macros, and their tests |
+| `serde/` | crate `sabiruby-serde`: serde conversions and the `JSON` class |
 | `tools/vendor_compiler.sh` | refreshes `compiler/vendor/` from the reference tree |
 | `tools/mrbtest.sh`, `tools/check_no_std.sh` | test-suite report, no_std rule |
 

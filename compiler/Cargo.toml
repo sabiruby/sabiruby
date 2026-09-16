@@ -1,6 +1,6 @@
 [package]
 name = "sabiruby-compiler"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 rust-version = "1.85"
 description = "The reference mruby 4.1.0-rc compiler (mruby-compiler with its Prism parser, built as C) as a Rust library: Ruby source to RITE bytecode, byte-identical to mrbc"
@@ -22,7 +22,7 @@ host = ["dep:sabiruby"]
 ast = []
 
 [dependencies]
-sabiruby = { version = "0.4.0", path = "..", optional = true, default-features = false }
+sabiruby = { version = "0.5.0", path = "..", optional = true, default-features = false }
 
 [build-dependencies]
 cc = "1"

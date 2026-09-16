@@ -27,9 +27,13 @@
 //! `FromRuby` and `IntoRuby`, so a type neither
 //! covers is a compile error rather than a surprise at run time.
 //!
-//! This crate does not depend on `sabiruby`: what it generates names `::sabiruby::…`, and a
-//! host that uses the macros writes both crates in its own `Cargo.toml`. What is generated,
-//! and what it does not cover, is `docs/design/macros.md` of the repository.
+//! This crate does not depend on `sabiruby`: what it generates names `::sabiruby::…`,
+//! absolutely, so it expands the same however it was reached. A host normally reaches it
+//! through the VM crate's feature `macros` — `sabiruby = { version = "0.5", features =
+//! ["macros"] }` and `use sabiruby::{RubyClass, ruby_methods};`, which is one dependency and
+//! one `use` (serde's arrangement with serde_derive) — or names both crates, as the example
+//! above does. What is generated, and what it does not cover, is `docs/design/macros.md` of
+//! the repository.
 
 mod expand;
 

@@ -1,6 +1,6 @@
 [package]
 name = "sabiruby"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2024"
 # edition 2024 and core::ptr::fn_addr_eq need 1.85
 rust-version = "1.85"
@@ -41,8 +41,18 @@ utf8 = ["regex-automata?/unicode"]
 # does not depend on `regex-automata` at all and the constant `Regexp` does not exist,
 # which is the reference built without the gem (`docs/design/gems.md`, "Gems as features").
 regexp = ["dep:regex-automata"]
+# `macros`: re-exports `#[derive(RubyClass)]` and `#[ruby_methods]` from `sabiruby-macros` at
+# this crate's root, so that a host writes one dependency and one `use` (the pattern serde and
+# serde_derive have). Off by default: the macros are a proc macro, which is a compiler plugin
+# built for the host, and the VM itself must stay buildable without one (`docs/design/macros.md`).
+# The macros can still be depended on directly; what they generate names `::sabiruby::…` either
+# way, so the generated code is the same through the re-export and through `sabiruby-macros`.
+macros = ["dep:sabiruby-macros"]
 
 [dependencies]
+# Only with the feature `macros`. A proc-macro crate is compiled for the host and runs at
+# compile time, so it is not part of the `no_std` library that is built for the target.
+sabiruby-macros = { version = "0.1.0", path = "macros", optional = true }
 hashbrown = { version = "0.15", default-features = false, features = ["default-hasher", "inline-more"] }
 libm = { version = "0.2", default-features = false }
 # mruby-regexp's engine (`docs/plans/gems-plan.md` 3.6): the pattern matcher is Rust's rather than a

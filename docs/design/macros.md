@@ -22,9 +22,53 @@ impl Player {
 Player::register(&mut vm)?;
 ```
 
-The crate does **not** depend on `sabiruby`: what it generates names `::sabiruby::…` and a host
-writes both crates in its `Cargo.toml`. That keeps the VM buildable without a proc-macro
-toolchain (it is `no_std`, and a proc macro is a compiler plugin that runs on the host).
+The crate does **not** depend on `sabiruby`: what it generates names `::sabiruby::…`, absolutely,
+so the expansion compiles wherever a crate called `sabiruby` is in the dependency graph. That
+keeps the VM buildable without a proc-macro toolchain (it is `no_std`, and a proc macro is a
+compiler plugin that runs on the host).
+
+## How a host depends on it
+
+Two ways, and the generated code is the same either way, because it names `::sabiruby::…` and
+never assumes the macros arrived from any particular crate.
+
+The short one, since 0.5.0 — the feature `macros` on the VM crate, which is serde's and
+serde_derive's arrangement:
+
+```toml
+sabiruby = { version = "0.5", features = ["macros"] }
+```
+
+```rust
+use sabiruby::{RubyClass, ruby_methods};
+```
+
+That single `use` brings two items called `RubyClass`: the **derive macro**, re-exported from
+`sabiruby-macros`, and the **trait** it implements, which is the one a `borrow` or an
+`into_handle` needs in scope. They do not collide because a macro and a type live in different
+namespaces — the same reason `use serde::Serialize;` gives you the trait and the derive at once.
+
+The long one, still supported, naming both crates:
+
+```toml
+sabiruby = "0.5"
+sabiruby-macros = "0.1"
+```
+
+```rust
+use sabiruby::host_store::RubyClass;          // the trait
+use sabiruby_macros::{RubyClass, ruby_methods}; // the macros
+```
+
+The feature is **off by default**. A proc macro is compiled for the host machine, and the VM's
+reason for existing is that it builds for targets that have no host toolchain in the picture at
+all; a host that does not use the macros should not pay a `syn` build for them. With the feature
+off, `sabiruby-macros` is not in the dependency graph (`dep:` syntax, so there is no implicit
+feature either). `tools/check_no_std.sh` is unaffected in all three of its combinations: a proc
+macro is a compile-time artefact and nothing of it reaches the target.
+
+`macros/tests/reexport.rs` is the test of the short way and `macros/tests/player.rs` of the long
+one; between them they say that the two spellings expand to the same thing.
 
 ## Host Object, not a wrapper
 
@@ -131,5 +175,6 @@ are two shapes of generated body:
 | `macros/src/expand.rs` | both macros, as ordinary code (a proc-macro crate exports only macros) |
 | `macros/src/lib.rs` | the proc-macro entry points |
 | `macros/tests/expand.rs` | what is generated, fixed as readable text |
-| `macros/tests/player.rs` | what it does, driven from Ruby |
+| `macros/tests/player.rs` | what it does, driven from Ruby, through a direct `sabiruby-macros` dependency |
+| `macros/tests/reexport.rs` | the same macros reached through `sabiruby`'s feature `macros` |
 | `tests/host_store.rs` | the slab and the stores, without the macros |
