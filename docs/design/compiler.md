@@ -133,9 +133,10 @@ the gems: the numeric tower, Struct, Set, Time, pack, eval and `binding`, UTF-8 
 `require`/`load`, Regexp and the task scheduler (`docs/design/gems.md`); the compiler's 0.2.0 adds
 the `host` feature, which is what `eval` asks for a compile. 0.4.0 adds what a host needs to
 drive the scheduler itself: `task_next_wakeup_ticks`, `task_pending`, and `task_queue_new` /
-`task_queue_push` / `task_queue_len` / `task_queue_try_pop` (how a host answers a script that is
-parked on a question, and how it drains a queue the script pushes to), plus `Vm::hash_keys` and
-`VERSION` and `REVISION` so an embedder can say which VM it runs.
+`task_queue_push` (how a host answers a script that is parked on a question), plus `VERSION` and
+`REVISION` so an embedder can say which VM it runs. (`task_queue_len`, `task_queue_try_pop` and
+`Vm::hash_keys` were listed here as 0.4.0's and are not: `git log -S` puts all three in
+`6af8276`, after it. They are 0.5.0's — [`CHANGELOG.md`](../../CHANGELOG.md).)
 
 `sabiruby-compiler` 0.2.2 is a republish rather than a change: nothing of the vendored compiler
 or the shim moved between 0.2.1 and it (`git log 0.2.1.. -- compiler/` is two commits, the
