@@ -25,17 +25,17 @@ The reference is the `mruby` of the image `kishima/mruby:4.1.0-rc`
 
 | | classes and modules | methods |
 |---|---:|---:|
-| SabiRuby has | 70 | 1355 |
+| SabiRuby has | 70 | 1357 |
 | the reference has | 224 | 1545 |
-| both | 64 | 1199 |
+| both | 64 | 1201 |
 | only SabiRuby | 6 | 156 |
-| only the reference | 160 | 346 |
+| only the reference | 160 | 344 |
 
 A difference in that table is not the same as a method that does not answer. Of the
-346 the reference has and SabiRuby has not:
+344 the reference has and SabiRuby has not:
 
 * **312** belong to the POSIX gems, which are not planned (`design/gems.md`, "Remaining gems").
-* **3** are the other half of a module-function pair: the same name on the same
+* **1** are the other half of a module-function pair: the same name on the same
   module, singleton on one side and instance on the other.
 * **20** answer here from another ancestor — the same method, a different owner.
 * **11** do not answer at all. That is the first list at the end of this file.
@@ -90,7 +90,7 @@ The classes of the not-planned POSIX gems are collapsed into one row per gem, at
 | `Hash` | core | 82 | 76 |
 | `IndexError` | core | 0 | 0 |
 | `Integer` | core | 57 | 58 |
-| `Kernel` | core | 134 | 128 |
+| `Kernel` | core | 136 | 128 |
 | `KeyError` | core | 0 | 0 |
 | `LoadError` | sabiruby (require/load) | 0 | – |
 | `LocalJumpError` | core | 0 | 0 |
@@ -186,12 +186,10 @@ calling them works; only `Method#owner` and `instance_methods(false)` differ.
 
 ### The other half of a module-function pair
 
-3 more are a module function the reference exposes as a singleton method and
+1 more are a module function the reference exposes as a singleton method and
 SabiRuby as a public instance method, or the other way round. Both are callable.
 
 * `` Kernel.` `` → `` Kernel#` ``
-* `Kernel.global_variables` → `Kernel#global_variables`
-* `Kernel.local_variables` → `Kernel#local_variables`
 
 ## In SabiRuby, not in the reference
 
@@ -368,57 +366,8 @@ same module, instance on this side and singleton on the reference's.
 
 ## On both sides, with a different visibility
 
-50 methods both VMs define on the same class but under a different visibility.
+0 methods both VMs define on the same class but under a different visibility.
 Protected counts as public here, so every line is a private method on one side and a
 public one on the other.
 
-* `Array#initialize`: public here, private in the reference
-* `Array#initialize_copy`: public here, private in the reference
-* `BasicObject#initialize`: public here, private in the reference
-* `BasicObject#method_missing`: public here, private in the reference
-* `BasicObject#singleton_method_added`: public here, private in the reference
-* `BasicObject#singleton_method_removed`: public here, private in the reference
-* `BasicObject#singleton_method_undefined`: public here, private in the reference
-* `Binding#initialize_copy`: public here, private in the reference
-* `Class#inherited`: public here, private in the reference
-* `Data#initialize`: public here, private in the reference
-* `Exception#initialize`: public here, private in the reference
-* `Fiber#initialize`: public here, private in the reference
-* `Hash#initialize`: public here, private in the reference
-* `Hash#initialize_copy`: public here, private in the reference
-* `Kernel#Complex`: public here, private in the reference
-* `Kernel#Rational`: public here, private in the reference
-* `Kernel#__defined_const?`: public here, private in the reference
-* `Kernel#__defined_const_path?`: public here, private in the reference
-* `Kernel#__defined_cvar?`: public here, private in the reference
-* `Kernel#__defined_gvar?`: public here, private in the reference
-* `Kernel#__defined_ivar?`: public here, private in the reference
-* `Kernel#__defined_method?`: public here, private in the reference
-* `Kernel#__defined_super?`: public here, private in the reference
-* `Kernel#__defined_yield?`: public here, private in the reference
-* `` Kernel#` ``: public here, private in the reference
-* `Kernel#binding`: public here, private in the reference
-* `Kernel#eval`: public here, private in the reference
-* `Kernel#format`: public here, private in the reference
-* `Kernel#global_variables`: public here, private in the reference
-* `Kernel#local_variables`: public here, private in the reference
-* `Kernel#proc`: public here, private in the reference
-* `Kernel#respond_to_missing?`: public here, private in the reference
-* `Kernel#sprintf`: public here, private in the reference
-* `Module#const_added`: public here, private in the reference
-* `Module#extended`: public here, private in the reference
-* `Module#included`: public here, private in the reference
-* `Module#method_added`: public here, private in the reference
-* `Module#method_undefined`: public here, private in the reference
-* `Module#module_function`: public here, private in the reference
-* `Module#prepended`: public here, private in the reference
-* `Module#private`: public here, private in the reference
-* `Module#protected`: public here, private in the reference
-* `Module#public`: public here, private in the reference
-* `Module#remove_const`: public here, private in the reference
-* `Range#initialize`: public here, private in the reference
-* `Regexp#__check_initialized`: public here, private in the reference
-* `Regexp#initialize`: public here, private in the reference
-* `Regexp#initialize_copy`: public here, private in the reference
-* `String#initialize`: public here, private in the reference
-* `String#initialize_copy`: public here, private in the reference
+(none)
