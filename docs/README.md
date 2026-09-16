@@ -6,6 +6,9 @@ Laid out as every repository of the organization is
 was decided to do and in what order, `worklog/` what happened when. Design and verification are
 in English; plans and the worklog are in Japanese.
 
+What changed in each release, with the commit behind every claim, is
+[`../CHANGELOG.md`](../CHANGELOG.md) at the root of the repository.
+
 ## design/ — how it is built
 
 | file | what it covers |
@@ -15,14 +18,14 @@ in English; plans and the worklog are in Japanese.
 | [fibers.md](design/fibers.md) | fibers without a second host stack; the native-boundary rule; fibers inside tasks |
 | [gc.md](design/gc.md) | stop-the-world mark & sweep, roots, the contract for natives, the scheduler-driven mode, the free hook for `Data` |
 | [gems.md](design/gems.md) | every ported gem, what deviates and why, mruby-task in depth (host entry points, time limits, how far the fork may drift), gems as Cargo features |
-| [macros.md](design/macros.md) | `sabiruby-macros`: a Rust struct and its `impl` block as a Ruby class — what the two macros generate, the Host Object method, what it does not cover |
+| [macros.md](design/macros.md) | `sabiruby-macros`: a Rust struct and its `impl` block as a Ruby class — what the two macros generate, the Host Object method, how a host depends on it (the feature `macros`), what it does not cover |
 | [inspect.md](design/inspect.md) | snapshots, traces and line numbers: what a debugger or a HUD can read |
 | [performance.md](design/performance.md) | the value representation, the `Slot` window, known structural costs (short) |
 | [optimizations.md](design/optimizations.md) | (Japanese) the speed-ups of 2026-09-15 one by one — symptom, cause, change, effect, what was dropped — how to measure on this machine, what is still slow |
 | [utf8.md](design/utf8.md) | strings as characters (feature `utf8`) and as bytes |
 | [playground.md](design/playground.md) | the browser playground: the wasm module's C ABI, the debugger, real-time `sleep` |
 | [serde.md](design/serde.md) | `sabiruby-serde`: the data model between serde and `Value`, the error mapping, `Serde<T>` in a `define_fn` signature, and why `JSON` lives there |
-| [rbs.md](design/rbs.md) | (Japanese) RBS at the host boundary: the three uses considered, the parsers there are (mruby/edge's, `ruby-rbs`, a hand-written one), the Rust type → RBS type table, and why the direction to take is *generating* RBS from `#[ruby_methods]` |
+| [rbs.md](design/rbs.md) | (Japanese) RBS at the host boundary: the three uses considered, the parsers there are (mruby/edge's, `ruby-rbs`, a hand-written one), the Rust type → RBS type table, why the direction to take is *generating* RBS from `#[ruby_methods]`, and the author's 2026-09-17 decision — no parser in the VM, ship `sig/` |
 
 ## verification/ — how it is checked and measured
 
@@ -103,6 +106,12 @@ had been dead code all along, and the assertion that only passes with the featur
 one unit makes the binary 17% smaller and the release build twice as slow in wall clock while
 using a third less CPU, the baseline that was thrown away because this session's own polling
 loops were the noise, and why `lto` and `panic = "abort"` were left unmeasured.
+
+[2026-09-17-release-0.5](worklog/2026-09-17-release-0.5.md) is the 0.5.0 preparation: why the
+`macros` feature needs no change to what the macros generate, why `sabiruby-compiler` goes to
+0.2.2 for its dependency alone and not for its content, why a dev-dependency must not carry a
+version, what a breaking change looks like when it appears only in a signature diff, and which
+of the publish dry-runs can pass before anything is on crates.io.
 
 [stage6c-method-missing](worklog/2026-09-15-stage6c-method-missing.md) is the VM's half of stage
 6c: reading `prepare_missing` in the reference, why packing the arguments into one Array and

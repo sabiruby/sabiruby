@@ -716,6 +716,20 @@ A gem can be left out of the build. The rule, as of 2026-09-16, is that **a gem 
 of its own when it drags a crate in behind it** — not merely because it is optional in the
 reference's gembox. Exactly one does: mruby-regexp, whose engine is `regex-automata`.
 
+The crate's features, for reference (`Cargo.toml`, and
+[`CHANGELOG.md`](../../CHANGELOG.md) for when each arrived):
+
+| feature | default | what it is |
+|---|---|---|
+| `std` | yes | `std::error::Error` for `VmError`, and nothing else. The library is `no_std` + `alloc` without it |
+| `utf8` | yes | a String is a sequence of characters, as `MRB_UTF8_STRING` makes it ([`utf8.md`](utf8.md)) |
+| `regexp` | yes | mruby-regexp and `regex-automata`, this section |
+| `macros` | **no** | re-exports `#[derive(RubyClass)]` and `#[ruby_methods]` from `sabiruby-macros` at the crate root ([`macros.md`](macros.md), "How a host depends on it") |
+
+`macros` is the one that is not a gem: it adds no Ruby-visible class or method, only a way of
+writing the host's own. It is off by default because a proc macro is compiled for the host
+machine, and nothing of it reaches the target — `tools/check_no_std.sh` passes with it on.
+
 `regexp` (on by default, `Cargo.toml`). With `default-features = false, features = ["utf8"]`
 the crate has no `regex-automata`/`regex-syntax` dependency at all (`cargo tree` shows four
 crates instead of six) and the VM is under half the size (`docs/verification/size.md`). What
