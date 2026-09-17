@@ -41,9 +41,10 @@ licences in [`vendor/VENDOR.md`](vendor/VENDOR.md):
   `Kind::{ParserWarning, ParserError, GeneratorWarning, GeneratorError}`
 * `highlight(src: &[u8]) -> Vec<u8>`: one category byte per source byte, for an editor's
   colours — 0 default, 1 keyword, 2 string, 3 comment, 4 number, 5 symbol, 6 constant,
-  7 variable, 8 method name. Prism's lexer decides, so interpolation, regular expressions,
-  `%w[]` and heredocs are told apart the way the parser tells them apart, a source with syntax
-  errors still gets a map, and a run of one category never cuts a UTF-8 character in half.
+  7 variable, 8 method name. Prism decides, first with its lexer (so interpolation, regular
+  expressions, `%w[]` and heredocs are told apart the way the parser tells them apart) and
+  then with its syntax tree (method names, whole symbols). A source with syntax errors still
+  gets a map, and a run of one category never cuts a UTF-8 character in half.
 * `version()`: `"mruby 4.1.0-rc (3cf73ee), Prism 1.9.0"`
 * feature `ast`: `ast(src, filename) -> Option<String>`, Prism's syntax tree pretty-printed by
   `pm_prettyprint`, the format a debug build of `mrbc --verbose` prints (and the book's listings).

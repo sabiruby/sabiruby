@@ -260,14 +260,24 @@ sabiruby_mrc_ast(const uint8_t *src, size_t len, const char *filename)
    Syntax highlighting: one category byte per source byte.
 
    Moved from family-mruby's picoruby-syntax-highlight
-   (fmruby-core/lib/add/picoruby-syntax-highlight/src/syntax_highlight.c): the
-   same nine categories and the same pm_lex_callback_t, without the mruby
-   binding (no mrb_value, no mrb_malloc) and without its second, AST pass.
-   family-mruby walks the tree afterwards with pm_visit_node to paint method
-   names and whole symbols; here the method name is decided inside the lex
-   callback from the token before it (`def`, `.` or `&.`), so nothing but the
-   lexer runs and a source that does not parse is painted exactly as far as it
-   lexes. Prism is 1.9.0 on both sides, so no token name had to change.
+   (fmruby-core/lib/add/picoruby-syntax-highlight/src/syntax_highlight.c),
+   without its mruby binding (no mrb_value, no mrb_malloc) and otherwise whole:
+   the same nine categories, the same pm_lex_callback_t, and the same second
+   pass over the tree. Prism is 1.9.0 on both sides, so no token name had to
+   change.
+
+   Two passes, in family-mruby's order:
+
+     1. the lexer. One call per token, each token's start..end painted from its
+        type. This is what keeps a source that does not parse readable: the
+        lexer runs ahead of the parser and has already written every token it
+        reached.
+     2. the tree (pm_visit_node). What a token type cannot say: a method name is
+        an IDENTIFIER like any other, and a symbol's name is a token of its own.
+        The second pass overwrites the first, so `p 1`'s `p`, `x =~ y`'s `=~`,
+        `def ==`'s `==` and the whole of `:Plant` end up right. The garden's
+        scripts are mostly bare calls (`tell :all, "season", s`, `sleep 0.5`,
+        `every 60 do`), which the lexer alone cannot see at all.
 
    Categories (keep in sync with src/lib.rs and the plan's table):
      0 default  1 keyword  2 string  3 comment  4 number
@@ -292,9 +302,9 @@ sabiruby_mrc_ast(const uint8_t *src, size_t len, const char *filename)
 #define HIGHLIGHT_METHOD    8
 
 typedef struct {
-  uint8_t         *map;
-  size_t           size;
-  pm_token_type_t  prev; /* last token that was not a newline or a comment */
+  uint8_t       *map;
+  size_t         size;
+  const uint8_t *source;
 } highlight_data_t;
 
 static uint8_t
@@ -392,11 +402,8 @@ token_type_to_category(pm_token_type_t type)
   case PM_TOKEN_FLOAT_RATIONAL_IMAGINARY:
     return HIGHLIGHT_NUMBER;
 
-  /* Symbols. LABEL is `key:` whole, but SYMBOL_BEGIN is only the `:` of `:sym`
-     -- the name after it is an IDENTIFIER or a CONSTANT and keeps its own
-     category (`:Plant` is `:` symbol + `Plant` constant). family-mruby paints
-     the whole symbol because its AST pass sees PM_SYMBOL_NODE; the lexer alone
-     cannot, and the plan's 3.1 lists SYMBOL_BEGIN/LABEL and nothing else. */
+  /* Symbols. LABEL is `key:` whole; SYMBOL_BEGIN is only the `:` of `:sym`, and
+     the name after it is painted by the second pass (PM_SYMBOL_NODE). */
   case PM_TOKEN_SYMBOL_BEGIN:
   case PM_TOKEN_LABEL:
     return HIGHLIGHT_SYMBOL;
@@ -421,29 +428,6 @@ highlight_callback(void *data, pm_parser_t *parser, pm_token_t *token)
 {
   highlight_data_t *hd = (highlight_data_t *)data;
   uint8_t category = token_type_to_category(token->type);
-
-  /* The name of a method is not a token type of its own: family-mruby reads it
-     off the tree (PM_DEF_NODE's name_loc, PM_CALL_NODE's message_loc), we read
-     it off the token before it. `&.` counts as `.`: it is the same call. This
-     paints less than the tree does -- a bare `p 1` stays 0, and `def ==` and
-     `def []` are not identifiers -- and nothing that the tree would not. */
-  if (token->type == PM_TOKEN_IDENTIFIER
-      && (hd->prev == PM_TOKEN_KEYWORD_DEF || hd->prev == PM_TOKEN_DOT
-          || hd->prev == PM_TOKEN_AMPERSAND_DOT)) {
-    category = HIGHLIGHT_METHOD;
-  }
-
-  switch (token->type) {
-  case PM_TOKEN_NEWLINE:
-  case PM_TOKEN_IGNORED_NEWLINE:
-  case PM_TOKEN_COMMENT:
-    /* `obj.` and its method name may be on two lines, with a comment between */
-    break;
-  default:
-    hd->prev = token->type;
-    break;
-  }
-
   if (category == HIGHLIGHT_DEFAULT) return;
 
   size_t start = (size_t)(token->start - parser->start);
@@ -453,17 +437,75 @@ highlight_callback(void *data, pm_parser_t *parser, pm_token_t *token)
   for (size_t i = start; i < end; i++) hd->map[i] = category;
 }
 
+/* Paints one region of the map, as family-mruby's highlight_region does. */
+static void
+highlight_region(highlight_data_t *hd, const uint8_t *loc_start,
+                 const uint8_t *loc_end, uint8_t category)
+{
+  if (loc_start == NULL || loc_end == NULL || loc_start >= loc_end) return;
+  size_t start = (size_t)(loc_start - hd->source);
+  size_t end   = (size_t)(loc_end   - hd->source);
+  if (start > hd->size) return;
+  if (end > hd->size) end = hd->size;
+  for (size_t i = start; i < end; i++) hd->map[i] = category;
+}
+
+/*
+ * The second pass, moved from family-mruby unchanged: what a token type cannot
+ * say, the tree can. It runs after the lexer and overwrites what the lexer
+ * wrote, which is family-mruby's order too.
+ *
+ * - PM_CALL_NODE:   the method name (message_loc), unless the call is a bare
+ *                   identifier with no receiver and no arguments -- `x` in
+ *                   `x = 1; p x` parses as a call but reads as a variable
+ * - PM_DEF_NODE:    the name being defined (name_loc), operators included
+ * - PM_SYMBOL_NODE: the whole symbol, `:` and quotes included
+ */
+static bool
+highlight_visit_node(const pm_node_t *node, void *data)
+{
+  highlight_data_t *hd = (highlight_data_t *)data;
+
+  switch (PM_NODE_TYPE(node)) {
+  case PM_CALL_NODE: {
+    const pm_call_node_t *call = (const pm_call_node_t *)node;
+    if (call->base.flags & PM_CALL_NODE_FLAGS_VARIABLE_CALL) break;
+    highlight_region(hd, call->message_loc.start, call->message_loc.end, HIGHLIGHT_METHOD);
+    break;
+  }
+  case PM_DEF_NODE: {
+    const pm_def_node_t *def = (const pm_def_node_t *)node;
+    highlight_region(hd, def->name_loc.start, def->name_loc.end, HIGHLIGHT_METHOD);
+    break;
+  }
+  case PM_SYMBOL_NODE: {
+    const pm_symbol_node_t *sym = (const pm_symbol_node_t *)node;
+    const uint8_t *start = sym->opening_loc.start;
+    const uint8_t *end   = sym->value_loc.end;
+    if (sym->closing_loc.end != NULL && sym->closing_loc.end > end) end = sym->closing_loc.end;
+    if (start == NULL) start = sym->value_loc.start;
+    highlight_region(hd, start, end, HIGHLIGHT_SYMBOL);
+    break;
+  }
+  default:
+    break;
+  }
+
+  return true;
+}
+
 /* Fills out[0..len) with one category byte per byte of src. `out` must have room
-   for len bytes. A source that does not parse still gets a map: Prism's lexer
-   runs ahead of the parser and pm_parse recovers, and the callback has already
-   written every token it reached. */
+   for len bytes. A source that does not parse still gets a map: pm_parse
+   recovers, the lex callback has already written every token it reached, and the
+   tree it does build (a broken `def foo(` still has its DefNode) is walked as
+   usual. */
 void
 sabiruby_mrc_highlight(const uint8_t *src, size_t len, uint8_t *out)
 {
   if (!src || !out || len == 0) return;
   memset(out, HIGHLIGHT_DEFAULT, len);
 
-  highlight_data_t hd = { out, len, PM_TOKEN_EOF };
+  highlight_data_t hd = { out, len, src };
 
   pm_parser_t parser;
   pm_parser_init(&parser, src, len, NULL);
@@ -471,6 +513,7 @@ sabiruby_mrc_highlight(const uint8_t *src, size_t len, uint8_t *out)
   parser.lex_callback = &lex_cb;
 
   pm_node_t *root = pm_parse(&parser);
+  pm_visit_node(root, highlight_visit_node, &hd);
   pm_node_destroy(&parser, root);
   pm_parser_free(&parser);
 }

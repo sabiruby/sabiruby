@@ -241,13 +241,17 @@ pub fn ast(src: &[u8], filename: &str) -> Option<String> {
 /// |---|---|---|---|
 /// | 0 | default | 3 | comment | 6 | constant |
 /// | 1 | keyword | 4 | number | 7 | variable (`@ivar`, `@@cvar`, `$gvar`) |
-/// | 2 | string | 5 | symbol | 8 | method name (after `def`, `.` or `&.`) |
+/// | 2 | string | 5 | symbol | 8 | method name |
 ///
-/// The categories come from Prism's lexer (`csrc/shim.c`), so a `#{...}` inside a string, a
-/// regular expression and a heredoc are told apart the way the parser tells them apart, and
-/// **a source that does not parse still gets a map** -- the lexer recovers, and an editor's
-/// text is broken most of the time it is looked at. Token boundaries are character
-/// boundaries, so a run of one category never cuts a UTF-8 character in half.
+/// The categories come from Prism itself (`csrc/shim.c`): first its lexer, one call per token,
+/// so a `#{...}` inside a string, a regular expression and a heredoc are told apart the way
+/// the parser tells them apart; then its syntax tree, for what a token type cannot say -- the
+/// name of a method (`p 1` and `sleep 0.5` as much as `a.b` and `def c`) and the whole of a
+/// symbol (`:Plant`, quotes and all). An operator call is a call, so `=~` and `+` are method
+/// names too. **A source that does not parse still gets a map** -- the lexer runs ahead of the
+/// parser and the parser recovers -- which is what an editor needs, since its text is broken
+/// most of the time it is looked at. Token and node boundaries are character boundaries, so a
+/// run of one category never cuts a UTF-8 character in half.
 ///
 /// ```
 /// let map = sabiruby_compiler::highlight("def leaf\n  @n = 1 # ha\nend".as_bytes());
