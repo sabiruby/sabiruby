@@ -1,4 +1,4 @@
-//! The only `unsafe` of the crate: the three functions of `csrc/shim.c`.
+//! The only `unsafe` of the crate: the functions of `csrc/shim.c`.
 
 use std::ffi::{c_char, c_int, c_uint, c_void, CStr, CString};
 
@@ -18,6 +18,7 @@ unsafe extern "C" {
     fn sabiruby_mrc_compile_eval(src: *const u8, len: usize, filename: *const c_char, line: c_uint,
                                  flags: c_uint, scopes: *const u8, scopes_len: usize, nscopes: c_uint,
                                  out: *mut *mut u8, out_len: *mut usize, diag: *mut *mut c_char) -> c_int;
+    fn sabiruby_mrc_highlight(src: *const u8, len: usize, out: *mut u8);
     fn sabiruby_mrc_free(p: *mut c_void);
     fn sabiruby_mrc_version() -> *const c_char;
     #[cfg(feature = "ast")]
@@ -76,6 +77,16 @@ pub fn compile(src: &[u8], filename: &CString, flags: c_uint) -> (c_int, Vec<u8>
         sabiruby_mrc_free(diag as *mut c_void);
         (code, bin, text)
     }
+}
+
+/// One category byte (0..=8) per byte of `src`; see `csrc/shim.c`.
+pub fn highlight(src: &[u8]) -> Vec<u8> {
+    let mut map = vec![0u8; src.len()];
+    // SAFETY: as `compile` above. `src` outlives the call and the shim only reads it; `map`
+    // is `src.len()` bytes long, which is the `len` the shim is told to fill, and it is
+    // written before it is read back here. Nothing is allocated for the caller to release.
+    unsafe { sabiruby_mrc_highlight(src.as_ptr(), src.len(), map.as_mut_ptr()) };
+    map
 }
 
 pub fn version() -> &'static str {

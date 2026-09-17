@@ -256,6 +256,268 @@ sabiruby_mrc_ast(const uint8_t *src, size_t len, const char *filename)
 }
 #endif
 
+/* ---------------------------------------------------------------------------
+   Syntax highlighting: one category byte per source byte.
+
+   Moved from family-mruby's picoruby-syntax-highlight
+   (fmruby-core/lib/add/picoruby-syntax-highlight/src/syntax_highlight.c),
+   without its mruby binding (no mrb_value, no mrb_malloc) and otherwise whole:
+   the same nine categories, the same pm_lex_callback_t, and the same second
+   pass over the tree. Prism is 1.9.0 on both sides, so no token name had to
+   change.
+
+   Two passes, in family-mruby's order:
+
+     1. the lexer. One call per token, each token's start..end painted from its
+        type. This is what keeps a source that does not parse readable: the
+        lexer runs ahead of the parser and has already written every token it
+        reached.
+     2. the tree (pm_visit_node). What a token type cannot say: a method name is
+        an IDENTIFIER like any other, and a symbol's name is a token of its own.
+        The second pass overwrites the first, so `p 1`'s `p`, `x =~ y`'s `=~`,
+        `def ==`'s `==` and the whole of `:Plant` end up right. The garden's
+        scripts are mostly bare calls (`tell :all, "season", s`, `sleep 0.5`,
+        `every 60 do`), which the lexer alone cannot see at all.
+
+   Categories (keep in sync with src/lib.rs and the plan's table):
+     0 default  1 keyword  2 string  3 comment  4 number
+     5 symbol   6 constant 7 variable 8 method name
+
+   There is no maximum source size. family-mruby caps at 32 KiB because it runs
+   on an ESP32's fixed heap; here the map costs one byte per source byte next to
+   a source the caller already holds, and the whole Ruby of the garden demo --
+   prelude.rb 21433 + world_prelude.rb 17161 + world.rb 16249 + creatures/
+   beetle.rb 5870 + rabbit.rb 3632 = 64345 bytes -- is already nearly twice that cap,
+   while the largest single buffer the editor ever holds is world.rb's 16 KiB.
+   A cap would be a number with no budget behind it. */
+
+#define HIGHLIGHT_DEFAULT   0
+#define HIGHLIGHT_KEYWORD   1
+#define HIGHLIGHT_STRING    2
+#define HIGHLIGHT_COMMENT   3
+#define HIGHLIGHT_NUMBER    4
+#define HIGHLIGHT_SYMBOL    5
+#define HIGHLIGHT_CONSTANT  6
+#define HIGHLIGHT_VARIABLE  7
+#define HIGHLIGHT_METHOD    8
+
+typedef struct {
+  uint8_t       *map;
+  size_t         size;
+  const uint8_t *source;
+} highlight_data_t;
+
+static uint8_t
+token_type_to_category(pm_token_type_t type)
+{
+  switch (type) {
+  /* Keywords */
+  case PM_TOKEN_KEYWORD_ALIAS:
+  case PM_TOKEN_KEYWORD_AND:
+  case PM_TOKEN_KEYWORD_BEGIN:
+  case PM_TOKEN_KEYWORD_BEGIN_UPCASE:
+  case PM_TOKEN_KEYWORD_BREAK:
+  case PM_TOKEN_KEYWORD_CASE:
+  case PM_TOKEN_KEYWORD_CLASS:
+  case PM_TOKEN_KEYWORD_DEF:
+  case PM_TOKEN_KEYWORD_DEFINED:
+  case PM_TOKEN_KEYWORD_DO:
+  case PM_TOKEN_KEYWORD_DO_LOOP:
+  case PM_TOKEN_KEYWORD_ELSE:
+  case PM_TOKEN_KEYWORD_ELSIF:
+  case PM_TOKEN_KEYWORD_END:
+  case PM_TOKEN_KEYWORD_END_UPCASE:
+  case PM_TOKEN_KEYWORD_ENSURE:
+  case PM_TOKEN_KEYWORD_FALSE:
+  case PM_TOKEN_KEYWORD_FOR:
+  case PM_TOKEN_KEYWORD_IF:
+  case PM_TOKEN_KEYWORD_IF_MODIFIER:
+  case PM_TOKEN_KEYWORD_IN:
+  case PM_TOKEN_KEYWORD_MODULE:
+  case PM_TOKEN_KEYWORD_NEXT:
+  case PM_TOKEN_KEYWORD_NIL:
+  case PM_TOKEN_KEYWORD_NOT:
+  case PM_TOKEN_KEYWORD_OR:
+  case PM_TOKEN_KEYWORD_REDO:
+  case PM_TOKEN_KEYWORD_RESCUE:
+  case PM_TOKEN_KEYWORD_RESCUE_MODIFIER:
+  case PM_TOKEN_KEYWORD_RETRY:
+  case PM_TOKEN_KEYWORD_RETURN:
+  case PM_TOKEN_KEYWORD_SELF:
+  case PM_TOKEN_KEYWORD_SUPER:
+  case PM_TOKEN_KEYWORD_THEN:
+  case PM_TOKEN_KEYWORD_TRUE:
+  case PM_TOKEN_KEYWORD_UNDEF:
+  case PM_TOKEN_KEYWORD_UNLESS:
+  case PM_TOKEN_KEYWORD_UNLESS_MODIFIER:
+  case PM_TOKEN_KEYWORD_UNTIL:
+  case PM_TOKEN_KEYWORD_UNTIL_MODIFIER:
+  case PM_TOKEN_KEYWORD_WHEN:
+  case PM_TOKEN_KEYWORD_WHILE:
+  case PM_TOKEN_KEYWORD_WHILE_MODIFIER:
+  case PM_TOKEN_KEYWORD_YIELD:
+  case PM_TOKEN_KEYWORD___ENCODING__:
+  case PM_TOKEN_KEYWORD___FILE__:
+  case PM_TOKEN_KEYWORD___LINE__:
+    return HIGHLIGHT_KEYWORD;
+
+  /* Strings and string-like literals. EMBEXPR_BEGIN/END and EMBVAR are the
+     `#{`, `}` and `#` of an interpolation: the punctuation belongs to the
+     string, what is between them is lexed as ordinary code and stays 0. */
+  case PM_TOKEN_STRING_BEGIN:
+  case PM_TOKEN_STRING_CONTENT:
+  case PM_TOKEN_STRING_END:
+  case PM_TOKEN_HEREDOC_START:
+  case PM_TOKEN_HEREDOC_END:
+  case PM_TOKEN_CHARACTER_LITERAL:
+  case PM_TOKEN_BACKTICK:
+  case PM_TOKEN_PERCENT_LOWER_W:
+  case PM_TOKEN_PERCENT_UPPER_W:
+  case PM_TOKEN_PERCENT_LOWER_I:
+  case PM_TOKEN_PERCENT_UPPER_I:
+  case PM_TOKEN_PERCENT_LOWER_X:
+  case PM_TOKEN_WORDS_SEP:
+  case PM_TOKEN_EMBEXPR_BEGIN:
+  case PM_TOKEN_EMBEXPR_END:
+  case PM_TOKEN_EMBVAR:
+  case PM_TOKEN_REGEXP_BEGIN:
+  case PM_TOKEN_REGEXP_END:
+    return HIGHLIGHT_STRING;
+
+  /* Comments */
+  case PM_TOKEN_COMMENT:
+  case PM_TOKEN_EMBDOC_BEGIN:
+  case PM_TOKEN_EMBDOC_LINE:
+  case PM_TOKEN_EMBDOC_END:
+    return HIGHLIGHT_COMMENT;
+
+  /* Numbers */
+  case PM_TOKEN_INTEGER:
+  case PM_TOKEN_INTEGER_IMAGINARY:
+  case PM_TOKEN_INTEGER_RATIONAL:
+  case PM_TOKEN_INTEGER_RATIONAL_IMAGINARY:
+  case PM_TOKEN_FLOAT:
+  case PM_TOKEN_FLOAT_IMAGINARY:
+  case PM_TOKEN_FLOAT_RATIONAL:
+  case PM_TOKEN_FLOAT_RATIONAL_IMAGINARY:
+    return HIGHLIGHT_NUMBER;
+
+  /* Symbols. LABEL is `key:` whole; SYMBOL_BEGIN is only the `:` of `:sym`, and
+     the name after it is painted by the second pass (PM_SYMBOL_NODE). */
+  case PM_TOKEN_SYMBOL_BEGIN:
+  case PM_TOKEN_LABEL:
+    return HIGHLIGHT_SYMBOL;
+
+  /* Constants */
+  case PM_TOKEN_CONSTANT:
+    return HIGHLIGHT_CONSTANT;
+
+  /* Variables */
+  case PM_TOKEN_INSTANCE_VARIABLE:
+  case PM_TOKEN_CLASS_VARIABLE:
+  case PM_TOKEN_GLOBAL_VARIABLE:
+    return HIGHLIGHT_VARIABLE;
+
+  default:
+    return HIGHLIGHT_DEFAULT;
+  }
+}
+
+static void
+highlight_callback(void *data, pm_parser_t *parser, pm_token_t *token)
+{
+  highlight_data_t *hd = (highlight_data_t *)data;
+  uint8_t category = token_type_to_category(token->type);
+  if (category == HIGHLIGHT_DEFAULT) return;
+
+  size_t start = (size_t)(token->start - parser->start);
+  size_t end   = (size_t)(token->end   - parser->start);
+  if (start > hd->size) return;
+  if (end > hd->size) end = hd->size;
+  for (size_t i = start; i < end; i++) hd->map[i] = category;
+}
+
+/* Paints one region of the map, as family-mruby's highlight_region does. */
+static void
+highlight_region(highlight_data_t *hd, const uint8_t *loc_start,
+                 const uint8_t *loc_end, uint8_t category)
+{
+  if (loc_start == NULL || loc_end == NULL || loc_start >= loc_end) return;
+  size_t start = (size_t)(loc_start - hd->source);
+  size_t end   = (size_t)(loc_end   - hd->source);
+  if (start > hd->size) return;
+  if (end > hd->size) end = hd->size;
+  for (size_t i = start; i < end; i++) hd->map[i] = category;
+}
+
+/*
+ * The second pass, moved from family-mruby unchanged: what a token type cannot
+ * say, the tree can. It runs after the lexer and overwrites what the lexer
+ * wrote, which is family-mruby's order too.
+ *
+ * - PM_CALL_NODE:   the method name (message_loc), unless the call is a bare
+ *                   identifier with no receiver and no arguments -- `x` in
+ *                   `x = 1; p x` parses as a call but reads as a variable
+ * - PM_DEF_NODE:    the name being defined (name_loc), operators included
+ * - PM_SYMBOL_NODE: the whole symbol, `:` and quotes included
+ */
+static bool
+highlight_visit_node(const pm_node_t *node, void *data)
+{
+  highlight_data_t *hd = (highlight_data_t *)data;
+
+  switch (PM_NODE_TYPE(node)) {
+  case PM_CALL_NODE: {
+    const pm_call_node_t *call = (const pm_call_node_t *)node;
+    if (call->base.flags & PM_CALL_NODE_FLAGS_VARIABLE_CALL) break;
+    highlight_region(hd, call->message_loc.start, call->message_loc.end, HIGHLIGHT_METHOD);
+    break;
+  }
+  case PM_DEF_NODE: {
+    const pm_def_node_t *def = (const pm_def_node_t *)node;
+    highlight_region(hd, def->name_loc.start, def->name_loc.end, HIGHLIGHT_METHOD);
+    break;
+  }
+  case PM_SYMBOL_NODE: {
+    const pm_symbol_node_t *sym = (const pm_symbol_node_t *)node;
+    const uint8_t *start = sym->opening_loc.start;
+    const uint8_t *end   = sym->value_loc.end;
+    if (sym->closing_loc.end != NULL && sym->closing_loc.end > end) end = sym->closing_loc.end;
+    if (start == NULL) start = sym->value_loc.start;
+    highlight_region(hd, start, end, HIGHLIGHT_SYMBOL);
+    break;
+  }
+  default:
+    break;
+  }
+
+  return true;
+}
+
+/* Fills out[0..len) with one category byte per byte of src. `out` must have room
+   for len bytes. A source that does not parse still gets a map: pm_parse
+   recovers, the lex callback has already written every token it reached, and the
+   tree it does build (a broken `def foo(` still has its DefNode) is walked as
+   usual. */
+void
+sabiruby_mrc_highlight(const uint8_t *src, size_t len, uint8_t *out)
+{
+  if (!src || !out || len == 0) return;
+  memset(out, HIGHLIGHT_DEFAULT, len);
+
+  highlight_data_t hd = { out, len, src };
+
+  pm_parser_t parser;
+  pm_parser_init(&parser, src, len, NULL);
+  pm_lex_callback_t lex_cb = { &hd, highlight_callback };
+  parser.lex_callback = &lex_cb;
+
+  pm_node_t *root = pm_parse(&parser);
+  pm_visit_node(root, highlight_visit_node, &hd);
+  pm_node_destroy(&parser, root);
+  pm_parser_free(&parser);
+}
+
 void
 sabiruby_mrc_free(void *p)
 {

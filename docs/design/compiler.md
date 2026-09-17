@@ -21,9 +21,9 @@ that the bytecode is exactly the reference's. The plan this follows is
 * `compiler/build.rs`: compiles them with `cc` as `gnu99`, the reference build's `-std` (strict
   `c99` hides POSIX declarations such as `memccpy`, which wasi-libc then refuses).
 * `compiler/csrc/shim.c`: the only C written here (below).
-* `compiler/src/ffi.rs`: three `extern "C"` functions, the crate's only `unsafe`.
+* `compiler/src/ffi.rs`: the `extern "C"` functions, the crate's only `unsafe`.
 * `compiler/src/lib.rs`: `compile(src, &Options) -> Result<Vec<u8>, CompileError>`,
-  `Diagnostic`, `version()`.
+  `Diagnostic`, `highlight(src) -> Vec<u8>`, `version()`.
 
 ## The standalone path, as the reference mrbc
 
@@ -54,6 +54,30 @@ touches `mrc_ccontext` (it has bit fields), so no bindgen. Diagnostics come back
 (records separated by `0x1e`, fields by `0x1f`) and are split in Rust.
 
 `mrc_presym.c` writes a static variable on every parse, so `compile` holds a global lock.
+
+`sabiruby_mrc_highlight(src, len, out)` fills one **category byte per source byte** for an
+editor's colours: 0 default, 1 keyword, 2 string, 3 comment, 4 number, 5 symbol, 6 constant,
+7 variable, 8 method name. It is family-mruby's `picoruby-syntax-highlight` (same nine
+categories, same Prism 1.9.0) without its mruby binding and otherwise whole — two passes, in
+its order:
+
+1. **the lexer.** A `pm_lex_callback_t` on the parser paints each token's `start..end` as it
+   is lexed, from its type. A `#{}` inside a string, a regular expression, `%w[]` and a
+   heredoc are therefore told apart the way the parser tells them apart, and **a source with
+   syntax errors still comes back with a map** — the lexer runs ahead of the parser, and what
+   it reached is already written.
+2. **the tree.** `pm_visit_node` then paints what a token type cannot say, overwriting the
+   first pass: `PM_CALL_NODE`'s `message_loc` and `PM_DEF_NODE`'s `name_loc` as the method
+   name, `PM_SYMBOL_NODE` whole as a symbol. Without it the bare calls a script is mostly made
+   of (`tell :all, "season", s`, `sleep 0.5`, `every 60 do`) would carry no colour at all, and
+   `:Plant` would read as a colon and a constant. A call whose identifier only looks like a
+   variable is left alone (`PM_CALL_NODE_FLAGS_VARIABLE_CALL`), and an operator call is a call,
+   so `=~` and `+` are method names.
+
+There is no maximum source size, and no lock: nothing under `vendor/prism` touches
+`mrc_presym.c`'s global, so an editor may colour while another thread compiles.
+`compiler/tests/highlight.rs` records what Prism answers for each case;
+[`../worklog/2026-09-18-highlight.md`](../worklog/2026-09-18-highlight.md) is the work.
 
 With the feature `ast`, the shim also has `sabiruby_mrc_ast`: it parses with Prism as mrc does
 (no options, line 1, the file name as the file path) and returns `pm_prettyprint`'s text, the

@@ -234,6 +234,39 @@ pub fn ast(src: &[u8], filename: &str) -> Option<String> {
     ffi::ast(src, &filename)
 }
 
+/// One category byte per byte of `src`, for colouring an editor: `highlight(src).len() ==
+/// src.len()` and every byte is 0..=8.
+///
+/// | | | | |
+/// |---|---|---|---|
+/// | 0 | default | 3 | comment | 6 | constant |
+/// | 1 | keyword | 4 | number | 7 | variable (`@ivar`, `@@cvar`, `$gvar`) |
+/// | 2 | string | 5 | symbol | 8 | method name |
+///
+/// The categories come from Prism itself (`csrc/shim.c`): first its lexer, one call per token,
+/// so a `#{...}` inside a string, a regular expression and a heredoc are told apart the way
+/// the parser tells them apart; then its syntax tree, for what a token type cannot say -- the
+/// name of a method (`p 1` and `sleep 0.5` as much as `a.b` and `def c`) and the whole of a
+/// symbol (`:Plant`, quotes and all). An operator call is a call, so `=~` and `+` are method
+/// names too. **A source that does not parse still gets a map** -- the lexer runs ahead of the
+/// parser and the parser recovers -- which is what an editor needs, since its text is broken
+/// most of the time it is looked at. Token and node boundaries are character boundaries, so a
+/// run of one category never cuts a UTF-8 character in half.
+///
+/// ```
+/// let map = sabiruby_compiler::highlight("def leaf\n  @n = 1 # ha\nend".as_bytes());
+/// assert_eq!(map[0..3], [1, 1, 1]);   // `def` is a keyword
+/// assert_eq!(map[4..8], [8, 8, 8, 8]); // `leaf` is the method name
+/// ```
+///
+/// There is no maximum source size; `csrc/shim.c` says why.
+pub fn highlight(src: &[u8]) -> Vec<u8> {
+    // No LOCK: this reaches Prism only (`pm_parse`), and the global that makes a compilation
+    // serial is `vendor/mruby-compiler/src/mrc_presym.c`'s, which nothing under
+    // `vendor/prism` touches. An editor may colour while another thread compiles.
+    ffi::highlight(src)
+}
+
 /// The compiler this crate embeds, e.g. `"mruby 4.1.0-rc (3cf73ee), Prism 1.9.0"`.
 pub fn version() -> &'static str {
     ffi::version()

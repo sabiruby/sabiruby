@@ -8,6 +8,30 @@ Every claim here is traceable to a commit or to a document under `docs/`, and th
 named. Measurements are the ones in [`docs/verification/bench.md`](docs/verification/bench.md);
 nothing is estimated.
 
+## 0.5.2 — 2026-09-18
+
+`sabiruby-compiler` 0.2.2 → **0.2.3**: one new function, `highlight()`. `sabiruby` 0.5.1 →
+**0.5.2**: the VM is unchanged and this is a republish, the way `sabiruby-compiler` 0.2.2 was
+one in 0.5.0 — the repository releases under one name.
+
+* **`sabiruby_compiler::highlight(src) -> Vec<u8>`** — one category byte per source byte, for
+  an editor that wants to colour Ruby without writing a tokeniser. The map is as long as the
+  source and every byte is 0..=8: 0 default, 1 keyword, 2 string, 3 comment, 4 number,
+  5 symbol, 6 constant, 7 variable, 8 method name. Prism decides, in the two passes
+  family-mruby's `picoruby-syntax-highlight` uses and in its order: its lexer
+  (`pm_lex_callback_t`, one call per token, in `csrc/shim.c`), so interpolation, regular
+  expressions, `%w[]` and heredocs are told apart the way the parser tells them apart; then
+  its syntax tree (`pm_visit_node`) for what a token type cannot say — the name of a method
+  (`p 1` and `sleep 0.5` as much as `a.b` and `def c`; an operator call is a call, so `=~` and
+  `+` count) and the whole of a symbol (`:Plant`, quotes and all). **A source with syntax
+  errors still gets a map** — the lexer runs ahead of the parser and the parser recovers —
+  which is what an editor needs, since its text is broken most of the time it is looked at.
+  Token and node boundaries are character boundaries, so a run never cuts a UTF-8 character
+  in half (`compiler/tests/highlight.rs`, which spells out what Prism 1.9.0 answers for each
+  case). There is no maximum source size, and
+  [`docs/worklog/2026-09-18-highlight.md`](docs/worklog/2026-09-18-highlight.md) says why.
+  Nothing else changed: the VM, the bytecode and the golden tests are untouched.
+
 ## 0.5.1 — 2026-09-17
 
 `sabiruby` — two fixes to mruby-task's scheduler found by rubevy's garden demo, where replacing
