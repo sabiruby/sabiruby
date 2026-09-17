@@ -142,6 +142,16 @@ nil as nothing more than a value.
 shifting them along one register are the same thing to `OP_ENTER`, and what a `method_missing`
 that runs in the caller's frame can do that one in a nested run loop cannot.
 
+[2026-09-18-highlight](worklog/2026-09-18-highlight.md) is `highlight()`, the category byte per
+source byte an editor colours Ruby with (stage H0 of rubevy_games' `editor-highlight-plan.md`):
+what family-mruby's `picoruby-syntax-highlight` is made of and which of its three parts was
+deliberately left behind, why dropping its AST pass paints fewer method names and no wrong one,
+how the name of a method is read off the token before it when there is no tree to ask, what
+Prism 1.9.0 actually answers for interpolation, a regular expression, a `key:` label, a
+Japanese comment and a source that does not parse (measured before any expectation was written
+down), and the 64345 bytes of the garden's Ruby that say family-mruby's 32 KiB cap belongs to
+an ESP32's heap and not here — so there is no cap.
+
 ## Where things were (before 2026-09-15)
 
 Every document above sat directly under `docs/`; references in older commits, in the book's notes

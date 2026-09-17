@@ -256,6 +256,225 @@ sabiruby_mrc_ast(const uint8_t *src, size_t len, const char *filename)
 }
 #endif
 
+/* ---------------------------------------------------------------------------
+   Syntax highlighting: one category byte per source byte.
+
+   Moved from family-mruby's picoruby-syntax-highlight
+   (fmruby-core/lib/add/picoruby-syntax-highlight/src/syntax_highlight.c): the
+   same nine categories and the same pm_lex_callback_t, without the mruby
+   binding (no mrb_value, no mrb_malloc) and without its second, AST pass.
+   family-mruby walks the tree afterwards with pm_visit_node to paint method
+   names and whole symbols; here the method name is decided inside the lex
+   callback from the token before it (`def`, `.` or `&.`), so nothing but the
+   lexer runs and a source that does not parse is painted exactly as far as it
+   lexes. Prism is 1.9.0 on both sides, so no token name had to change.
+
+   Categories (keep in sync with src/lib.rs and the plan's table):
+     0 default  1 keyword  2 string  3 comment  4 number
+     5 symbol   6 constant 7 variable 8 method name
+
+   There is no maximum source size. family-mruby caps at 32 KiB because it runs
+   on an ESP32's fixed heap; here the map costs one byte per source byte next to
+   a source the caller already holds, and the whole Ruby of the garden demo --
+   prelude.rb 21433 + world_prelude.rb 17161 + world.rb 16249 + creatures/
+   beetle.rb 5870 + rabbit.rb 3632 = 64345 bytes -- is already nearly twice that cap,
+   while the largest single buffer the editor ever holds is world.rb's 16 KiB.
+   A cap would be a number with no budget behind it. */
+
+#define HIGHLIGHT_DEFAULT   0
+#define HIGHLIGHT_KEYWORD   1
+#define HIGHLIGHT_STRING    2
+#define HIGHLIGHT_COMMENT   3
+#define HIGHLIGHT_NUMBER    4
+#define HIGHLIGHT_SYMBOL    5
+#define HIGHLIGHT_CONSTANT  6
+#define HIGHLIGHT_VARIABLE  7
+#define HIGHLIGHT_METHOD    8
+
+typedef struct {
+  uint8_t         *map;
+  size_t           size;
+  pm_token_type_t  prev; /* last token that was not a newline or a comment */
+} highlight_data_t;
+
+static uint8_t
+token_type_to_category(pm_token_type_t type)
+{
+  switch (type) {
+  /* Keywords */
+  case PM_TOKEN_KEYWORD_ALIAS:
+  case PM_TOKEN_KEYWORD_AND:
+  case PM_TOKEN_KEYWORD_BEGIN:
+  case PM_TOKEN_KEYWORD_BEGIN_UPCASE:
+  case PM_TOKEN_KEYWORD_BREAK:
+  case PM_TOKEN_KEYWORD_CASE:
+  case PM_TOKEN_KEYWORD_CLASS:
+  case PM_TOKEN_KEYWORD_DEF:
+  case PM_TOKEN_KEYWORD_DEFINED:
+  case PM_TOKEN_KEYWORD_DO:
+  case PM_TOKEN_KEYWORD_DO_LOOP:
+  case PM_TOKEN_KEYWORD_ELSE:
+  case PM_TOKEN_KEYWORD_ELSIF:
+  case PM_TOKEN_KEYWORD_END:
+  case PM_TOKEN_KEYWORD_END_UPCASE:
+  case PM_TOKEN_KEYWORD_ENSURE:
+  case PM_TOKEN_KEYWORD_FALSE:
+  case PM_TOKEN_KEYWORD_FOR:
+  case PM_TOKEN_KEYWORD_IF:
+  case PM_TOKEN_KEYWORD_IF_MODIFIER:
+  case PM_TOKEN_KEYWORD_IN:
+  case PM_TOKEN_KEYWORD_MODULE:
+  case PM_TOKEN_KEYWORD_NEXT:
+  case PM_TOKEN_KEYWORD_NIL:
+  case PM_TOKEN_KEYWORD_NOT:
+  case PM_TOKEN_KEYWORD_OR:
+  case PM_TOKEN_KEYWORD_REDO:
+  case PM_TOKEN_KEYWORD_RESCUE:
+  case PM_TOKEN_KEYWORD_RESCUE_MODIFIER:
+  case PM_TOKEN_KEYWORD_RETRY:
+  case PM_TOKEN_KEYWORD_RETURN:
+  case PM_TOKEN_KEYWORD_SELF:
+  case PM_TOKEN_KEYWORD_SUPER:
+  case PM_TOKEN_KEYWORD_THEN:
+  case PM_TOKEN_KEYWORD_TRUE:
+  case PM_TOKEN_KEYWORD_UNDEF:
+  case PM_TOKEN_KEYWORD_UNLESS:
+  case PM_TOKEN_KEYWORD_UNLESS_MODIFIER:
+  case PM_TOKEN_KEYWORD_UNTIL:
+  case PM_TOKEN_KEYWORD_UNTIL_MODIFIER:
+  case PM_TOKEN_KEYWORD_WHEN:
+  case PM_TOKEN_KEYWORD_WHILE:
+  case PM_TOKEN_KEYWORD_WHILE_MODIFIER:
+  case PM_TOKEN_KEYWORD_YIELD:
+  case PM_TOKEN_KEYWORD___ENCODING__:
+  case PM_TOKEN_KEYWORD___FILE__:
+  case PM_TOKEN_KEYWORD___LINE__:
+    return HIGHLIGHT_KEYWORD;
+
+  /* Strings and string-like literals. EMBEXPR_BEGIN/END and EMBVAR are the
+     `#{`, `}` and `#` of an interpolation: the punctuation belongs to the
+     string, what is between them is lexed as ordinary code and stays 0. */
+  case PM_TOKEN_STRING_BEGIN:
+  case PM_TOKEN_STRING_CONTENT:
+  case PM_TOKEN_STRING_END:
+  case PM_TOKEN_HEREDOC_START:
+  case PM_TOKEN_HEREDOC_END:
+  case PM_TOKEN_CHARACTER_LITERAL:
+  case PM_TOKEN_BACKTICK:
+  case PM_TOKEN_PERCENT_LOWER_W:
+  case PM_TOKEN_PERCENT_UPPER_W:
+  case PM_TOKEN_PERCENT_LOWER_I:
+  case PM_TOKEN_PERCENT_UPPER_I:
+  case PM_TOKEN_PERCENT_LOWER_X:
+  case PM_TOKEN_WORDS_SEP:
+  case PM_TOKEN_EMBEXPR_BEGIN:
+  case PM_TOKEN_EMBEXPR_END:
+  case PM_TOKEN_EMBVAR:
+  case PM_TOKEN_REGEXP_BEGIN:
+  case PM_TOKEN_REGEXP_END:
+    return HIGHLIGHT_STRING;
+
+  /* Comments */
+  case PM_TOKEN_COMMENT:
+  case PM_TOKEN_EMBDOC_BEGIN:
+  case PM_TOKEN_EMBDOC_LINE:
+  case PM_TOKEN_EMBDOC_END:
+    return HIGHLIGHT_COMMENT;
+
+  /* Numbers */
+  case PM_TOKEN_INTEGER:
+  case PM_TOKEN_INTEGER_IMAGINARY:
+  case PM_TOKEN_INTEGER_RATIONAL:
+  case PM_TOKEN_INTEGER_RATIONAL_IMAGINARY:
+  case PM_TOKEN_FLOAT:
+  case PM_TOKEN_FLOAT_IMAGINARY:
+  case PM_TOKEN_FLOAT_RATIONAL:
+  case PM_TOKEN_FLOAT_RATIONAL_IMAGINARY:
+    return HIGHLIGHT_NUMBER;
+
+  /* Symbols. LABEL is `key:` whole, but SYMBOL_BEGIN is only the `:` of `:sym`
+     -- the name after it is an IDENTIFIER or a CONSTANT and keeps its own
+     category (`:Plant` is `:` symbol + `Plant` constant). family-mruby paints
+     the whole symbol because its AST pass sees PM_SYMBOL_NODE; the lexer alone
+     cannot, and the plan's 3.1 lists SYMBOL_BEGIN/LABEL and nothing else. */
+  case PM_TOKEN_SYMBOL_BEGIN:
+  case PM_TOKEN_LABEL:
+    return HIGHLIGHT_SYMBOL;
+
+  /* Constants */
+  case PM_TOKEN_CONSTANT:
+    return HIGHLIGHT_CONSTANT;
+
+  /* Variables */
+  case PM_TOKEN_INSTANCE_VARIABLE:
+  case PM_TOKEN_CLASS_VARIABLE:
+  case PM_TOKEN_GLOBAL_VARIABLE:
+    return HIGHLIGHT_VARIABLE;
+
+  default:
+    return HIGHLIGHT_DEFAULT;
+  }
+}
+
+static void
+highlight_callback(void *data, pm_parser_t *parser, pm_token_t *token)
+{
+  highlight_data_t *hd = (highlight_data_t *)data;
+  uint8_t category = token_type_to_category(token->type);
+
+  /* The name of a method is not a token type of its own: family-mruby reads it
+     off the tree (PM_DEF_NODE's name_loc, PM_CALL_NODE's message_loc), we read
+     it off the token before it. `&.` counts as `.`: it is the same call. This
+     paints less than the tree does -- a bare `p 1` stays 0, and `def ==` and
+     `def []` are not identifiers -- and nothing that the tree would not. */
+  if (token->type == PM_TOKEN_IDENTIFIER
+      && (hd->prev == PM_TOKEN_KEYWORD_DEF || hd->prev == PM_TOKEN_DOT
+          || hd->prev == PM_TOKEN_AMPERSAND_DOT)) {
+    category = HIGHLIGHT_METHOD;
+  }
+
+  switch (token->type) {
+  case PM_TOKEN_NEWLINE:
+  case PM_TOKEN_IGNORED_NEWLINE:
+  case PM_TOKEN_COMMENT:
+    /* `obj.` and its method name may be on two lines, with a comment between */
+    break;
+  default:
+    hd->prev = token->type;
+    break;
+  }
+
+  if (category == HIGHLIGHT_DEFAULT) return;
+
+  size_t start = (size_t)(token->start - parser->start);
+  size_t end   = (size_t)(token->end   - parser->start);
+  if (start > hd->size) return;
+  if (end > hd->size) end = hd->size;
+  for (size_t i = start; i < end; i++) hd->map[i] = category;
+}
+
+/* Fills out[0..len) with one category byte per byte of src. `out` must have room
+   for len bytes. A source that does not parse still gets a map: Prism's lexer
+   runs ahead of the parser and pm_parse recovers, and the callback has already
+   written every token it reached. */
+void
+sabiruby_mrc_highlight(const uint8_t *src, size_t len, uint8_t *out)
+{
+  if (!src || !out || len == 0) return;
+  memset(out, HIGHLIGHT_DEFAULT, len);
+
+  highlight_data_t hd = { out, len, PM_TOKEN_EOF };
+
+  pm_parser_t parser;
+  pm_parser_init(&parser, src, len, NULL);
+  pm_lex_callback_t lex_cb = { &hd, highlight_callback };
+  parser.lex_callback = &lex_cb;
+
+  pm_node_t *root = pm_parse(&parser);
+  pm_node_destroy(&parser, root);
+  pm_parser_free(&parser);
+}
+
 void
 sabiruby_mrc_free(void *p)
 {

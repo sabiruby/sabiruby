@@ -21,9 +21,9 @@ that the bytecode is exactly the reference's. The plan this follows is
 * `compiler/build.rs`: compiles them with `cc` as `gnu99`, the reference build's `-std` (strict
   `c99` hides POSIX declarations such as `memccpy`, which wasi-libc then refuses).
 * `compiler/csrc/shim.c`: the only C written here (below).
-* `compiler/src/ffi.rs`: three `extern "C"` functions, the crate's only `unsafe`.
+* `compiler/src/ffi.rs`: the `extern "C"` functions, the crate's only `unsafe`.
 * `compiler/src/lib.rs`: `compile(src, &Options) -> Result<Vec<u8>, CompileError>`,
-  `Diagnostic`, `version()`.
+  `Diagnostic`, `highlight(src) -> Vec<u8>`, `version()`.
 
 ## The standalone path, as the reference mrbc
 
@@ -54,6 +54,21 @@ touches `mrc_ccontext` (it has bit fields), so no bindgen. Diagnostics come back
 (records separated by `0x1e`, fields by `0x1f`) and are split in Rust.
 
 `mrc_presym.c` writes a static variable on every parse, so `compile` holds a global lock.
+
+`sabiruby_mrc_highlight(src, len, out)` fills one **category byte per source byte** for an
+editor's colours: 0 default, 1 keyword, 2 string, 3 comment, 4 number, 5 symbol, 6 constant,
+7 variable, 8 method name. It attaches a `pm_lex_callback_t` to the parser and paints each
+token's `start..end` as it is lexed, so the categories are the lexer's own reading — a `#{}`
+inside a string, a regular expression, `%w[]` and a heredoc are told apart the way the parser
+tells them apart — and a source with syntax errors still comes back with a map, which is what
+an editor needs. The name of a method is not a token type, so it is taken from the token
+before it (`def`, `.` or `&.`). This is family-mruby's `picoruby-syntax-highlight` (same nine
+categories, same Prism 1.9.0) without its mruby binding and without its second, AST pass; it
+therefore paints fewer method names (a bare `p 1` stays 0) and only the `:` of `:sym`. There
+is no maximum source size, and no lock: nothing under `vendor/prism` touches `mrc_presym.c`'s
+global, so an editor may colour while another thread compiles. `compiler/tests/highlight.rs`
+records what Prism answers for each case;
+[`../worklog/2026-09-18-highlight.md`](../worklog/2026-09-18-highlight.md) is the work.
 
 With the feature `ast`, the shim also has `sabiruby_mrc_ast`: it parses with Prism as mrc does
 (no options, line 1, the file name as the file path) and returns `pm_prettyprint`'s text, the

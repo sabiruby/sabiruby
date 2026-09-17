@@ -8,6 +8,27 @@ Every claim here is traceable to a commit or to a document under `docs/`, and th
 named. Measurements are the ones in [`docs/verification/bench.md`](docs/verification/bench.md);
 nothing is estimated.
 
+## 0.5.2 — 2026-09-18
+
+`sabiruby-compiler` 0.2.2 → **0.2.3**: one new function, `highlight()`. `sabiruby` 0.5.1 →
+**0.5.2**: the VM is unchanged and this is a republish, the way `sabiruby-compiler` 0.2.2 was
+one in 0.5.0 — the repository releases under one name.
+
+* **`sabiruby_compiler::highlight(src) -> Vec<u8>`** — one category byte per source byte, for
+  an editor that wants to colour Ruby without writing a tokeniser. The map is as long as the
+  source and every byte is 0..=8: 0 default, 1 keyword, 2 string, 3 comment, 4 number,
+  5 symbol, 6 constant, 7 variable, 8 method name. The categories come from Prism's own lexer
+  (`pm_lex_callback_t`, one call per token, in `csrc/shim.c`), so interpolation, regular
+  expressions, `%w[]` and heredocs are told apart the way the parser tells them apart, and
+  **a source with syntax errors still gets a map** — the lexer runs ahead of the parser and
+  keeps going, which is what an editor needs, since its text is broken most of the time it is
+  looked at. Token boundaries are character boundaries, so a run never cuts a UTF-8 character
+  in half (`compiler/tests/highlight.rs`, which spells out what Prism 1.9.0 answers for each
+  case). The nine categories and the shape of the C are moved from family-mruby's
+  `picoruby-syntax-highlight`; there is no maximum source size, and
+  [`docs/worklog/2026-09-18-highlight.md`](docs/worklog/2026-09-18-highlight.md) says why.
+  Nothing else changed: the VM, the bytecode and the golden tests are untouched.
+
 ## 0.5.1 — 2026-09-17
 
 `sabiruby` — two fixes to mruby-task's scheduler found by rubevy's garden demo, where replacing
