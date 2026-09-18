@@ -12,7 +12,10 @@ nothing is estimated.
 
 `sabiruby-compiler` 0.2.2 → **0.2.3**: one new function, `highlight()`. `sabiruby` 0.5.1 →
 **0.5.2**: the VM is unchanged and this is a republish, the way `sabiruby-compiler` 0.2.2 was
-one in 0.5.0 — the repository releases under one name.
+one in 0.5.0 — the repository releases under one name. Those two are what was published
+(2026-09-18, tag `v0.5.2` at `7be7b86`); `sabiruby-cli` 0.5.0, `sabiruby-macros` 0.1.0 and
+`sabiruby-serde` 0.1.0 have no change since `v0.5.1` and stay as they are on crates.io
+([`docs/worklog/2026-09-18-release-0.5.2.md`](docs/worklog/2026-09-18-release-0.5.2.md)).
 
 * **`sabiruby_compiler::highlight(src) -> Vec<u8>`** — one category byte per source byte, for
   an editor that wants to colour Ruby without writing a tokeniser. The map is as long as the

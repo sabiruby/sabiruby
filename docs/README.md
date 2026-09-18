@@ -152,6 +152,12 @@ Japanese comment and a source that does not parse (measured before any expectati
 down), and the 64345 bytes of the garden's Ruby that say family-mruby's 32 KiB cap belongs to
 an ESP32's heap and not here — so there is no cap.
 
+[2026-09-18-release-0.5.2](worklog/2026-09-18-release-0.5.2.md) is the publishing of that
+release: why only two of the five crates went out (`git diff --stat v0.5.1..HEAD` names
+`compiler/` and one line of the root `Cargo.toml`, nothing else), why the compiler could go
+before the VM this time, the commands and what they printed, and who is unaffected because
+they depend on the repository and not on crates.io (rubevy, rubevy_games, the playground).
+
 ## Where things were (before 2026-09-15)
 
 Every document above sat directly under `docs/`; references in older commits, in the book's notes

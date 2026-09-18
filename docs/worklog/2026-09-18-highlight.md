@@ -198,6 +198,7 @@ family-mruby は `HIGHLIGHT_MAX_SOURCE_SIZE 32768` を持っていて、それ�
 この版を publish しないと H1 以降が使えない）。CHANGELOG はこの 2 つを分けて書いた。
 `sabiruby` 側が中身の変更なしに版だけ動くのは、0.5.0 で `sabiruby-compiler` 0.2.2 が
 同じことをした前例がある。ここは著者の判断があれば戻せる（報告に上げた）。
+→ 同日、この 2 つの版のまま公開した（`2026-09-18-release-0.5.2.md`）。
 
 `docs/design/compiler.md` の「Layout」と「The shim」、`compiler/README.md` の API、
 CHANGELOG、この worklog と `docs/README.md` の目次。

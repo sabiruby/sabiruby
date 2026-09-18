@@ -168,6 +168,15 @@ repository URL of the organization move and one documentation link), but its opt
 dependency on the VM has to name 0.5.0 — a `sabiruby-cli` that pulled the VM at 0.5 and the
 compiler at 0.2.1 would have two different `sabiruby` crates in one program.
 
+A release need not publish all five. 0.5.2 (2026-09-18) published two: `sabiruby-compiler` 0.2.3
+(`highlight()`) and `sabiruby` 0.5.2 (the release's name; the VM's source is unchanged).
+`sabiruby-cli` 0.5.0, `sabiruby-macros` 0.1.0 and `sabiruby-serde` 0.1.0 had no change since
+`v0.5.1` and stay as published; the CLI's requirements (`sabiruby` `^0.5.0`,
+`sabiruby-compiler` `^0.2.2`) pick the new two up on a fresh install. Between those two the
+order is free — the compiler's optional dependency on the VM is `^0.5.0`, which the published
+0.5.1 already satisfied, and the VM's dev-dependency on the compiler is stripped from the
+package ([`docs/worklog/2026-09-18-release-0.5.2.md`](../worklog/2026-09-18-release-0.5.2.md)).
+
 A dev-dependency that names a version would be resolved from crates.io when the packaged crate
 is verified, so the one on `sabiruby-compiler` here carries a path and no version: a version
 would pin it to the last published compiler, which need not have the features this tree uses.
