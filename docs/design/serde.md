@@ -88,6 +88,68 @@ rather than with `nil`, so the failure is visible instead of looking like missin
 function that wants the ordinary raise answers with `VmResult<Value>` and calls `to_value`
 itself.
 
+## Declarations (`declare`)
+
+A host that wants its data *written* in Ruby rather than computed by it gives the VM a method
+per kind of thing and lets a script call it, a line per entry:
+
+```ruby
+unit :metre, symbol: "m",  scale: 1.0
+unit :inch,  symbol: "in", scale: 0.0254
+```
+
+```rust
+let units = Declarations::<Unit>::install(&mut vm).define(&mut vm, "unit");
+vm.load_and_run(&data_rb)?;                          // the script above
+let table: Vec<(String, Unit)> = units.take(&mut vm);
+```
+
+The first argument is the name (Symbol or String), the keyword arguments are the value: they
+reach a native as a trailing Hash, and only when there are any (`Vm::native_call_args`), so a
+declaration with no keywords is read as `{}` — a `T` whose fields all have defaults needs no
+empty Hash in the script. The method is defined with `Vm::define_closure` rather than
+`define_fn` for that reason: `define_fn` checks a fixed number of arguments.
+
+The deserialization happens inside the native, which is what puts the script's own file and
+line on every complaint serde has: "missing field `scale` (TypeError)" at `data.rb:2`, and the
+same for a field of the wrong type and for an unknown field under `#[serde(deny_unknown_fields)]`,
+which is worth recommending in a data file — a misspelled key is otherwise silently nothing. A
+name declared twice is an `ArgumentError` at the second declaration; the entry point that lets
+a later file amend an earlier one is a *differently named method* (`define_replacing`), so that
+overwriting is something a script asks for rather than something it does by accident. There is
+no limit on how many declarations a table takes or how long a name may be.
+
+`expose` is the way back — a host table a script looks up by name, answering with a Hash with
+Symbol keys (`Options::symbol_keys`) or `nil`:
+
+```rust
+let units = expose(&mut vm, "unit_of", table);   // unit_of(:metre)[:symbol] is "m"
+```
+
+It is deliberately a *second* table rather than a window on the one being collected: what a
+script reads back is what the host decided to publish, after it has checked the declarations
+and derived from them, and it may be published to a different VM from the one that declared
+them. That also keeps `take` honest — afterwards the VM holds none of the declarations.
+
+**Where the table lives.** In the VM, in the type's `HostStore` (`Vm::install_host_store`),
+one table per Rust type per VM. Not in `Vm::set_host_state`, which holds one value for the
+whole VM and which an embedder (rubevy) may already be using — overwriting it would make that
+host's own commands disappear; and not in a `static` or an `Arc<Mutex<…>>`, which this crate,
+being `no_std`, has no lock for. A store is a slab meant for the values `Data` objects name,
+and this is that slab holding one value that no `Data` object names: nothing is handed to
+Ruby, so the one thing the VM does with a store of its own — dropping an entry when an object
+of its tag is collected — never fires. What it costs is that tag, one number of
+`Vm::next_data_tag`'s sequence per declared type.
+
+Nothing in a table is a Ruby value — the names are `String`s and the entries are whatever `T`
+deserializes into — so a collection has nothing to reach there and a table cannot keep a Ruby
+object alive by accident. `take` moves the table out through `HostStore::take`, which leaves
+the slab's place reserved rather than giving its number up for reuse: a declaration made
+afterwards raises `RuntimeError` instead of filling a table nobody will read, and the number
+can never come to name a later table. `serde/tests/declare.rs` measures the rest of that
+claim: a VM whose declarations have been taken and collected has exactly as many live objects
+as one that was given no declarations at all.
+
 ## Why JSON lives here
 
 JSON is a serde format, and `serde_json` already is the parser and the writer — mruby/edge's
@@ -141,4 +203,10 @@ Two entry points, in the shape stage 3b of `host-bridge-plan.md` gave the others
 
 `serde/tests/roundtrip.rs` (the data model, both directions, with the Ruby side of each value
 printed by the VM), `serde/tests/json.rs` (the class, the two error classes, `Serde<T>` in a
-`define_fn` signature, and the CRuby case).
+`define_fn` signature, and the CRuby case), and `serde/tests/declare.rs` (declarations in
+order, a declaration without keywords, the file and line of a missing, mistyped and unknown
+field, a duplicate name, the overwriting door, taking the table twice, declaring after it was
+taken, what the collector is left with, and a table read back from Ruby).
+
+`tools/check_no_std.sh` builds the VM alone; this crate's own `no_std` build is
+`cargo build -p sabiruby-serde --lib --no-default-features --target thumbv7em-none-eabi`.

@@ -20,6 +20,24 @@ let back: Config = sabiruby_serde::from_value(&mut vm, v)?;
 vm.define_fn(object, "configure", |cfg: Serde<Config>| cfg.0.name);
 ```
 
+`declare` is the other way round — data *written* in Ruby, collected into a Rust table:
+
+```ruby
+unit :metre, symbol: "m",  scale: 1.0
+unit :inch,  symbol: "in", scale: 0.0254
+```
+
+```rust
+let units = Declarations::<Unit>::install(&mut vm).define(&mut vm, "unit");
+vm.load_and_run(&data_rb)?;
+let table: Vec<(String, Unit)> = units.take(&mut vm);   // in the order they were declared
+```
+
+Every field serde refuses — missing, of the wrong type, unknown under `deny_unknown_fields` —
+raises at the line of that declaration, in the script's own file; a name declared twice raises
+an `ArgumentError` unless the script uses the method that says it means to overwrite. The
+other direction, `expose`, lets a script look a host table up by name.
+
 and `install_json` gives the VM a `JSON` class — `JSON.parse`, `JSON.generate`,
 `JSON.pretty_generate`, `Object#to_json` — written in Rust on `serde_json`:
 

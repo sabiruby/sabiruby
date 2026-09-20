@@ -24,7 +24,7 @@ What changed in each release, with the commit behind every claim, is
 | [optimizations.md](design/optimizations.md) | (Japanese) the speed-ups of 2026-09-15 one by one — symptom, cause, change, effect, what was dropped — how to measure on this machine, what is still slow |
 | [utf8.md](design/utf8.md) | strings as characters (feature `utf8`) and as bytes |
 | [playground.md](design/playground.md) | the browser playground: the wasm module's C ABI, the debugger, real-time `sleep` |
-| [serde.md](design/serde.md) | `sabiruby-serde`: the data model between serde and `Value`, the error mapping, `Serde<T>` in a `define_fn` signature, and why `JSON` lives there |
+| [serde.md](design/serde.md) | `sabiruby-serde`: the data model between serde and `Value`, the error mapping, `Serde<T>` in a `define_fn` signature, declarations written in Ruby and collected into a Rust table (`declare`), and why `JSON` lives there |
 | [rbs.md](design/rbs.md) | (Japanese) RBS at the host boundary: the three uses considered, the parsers there are (mruby/edge's, `ruby-rbs`, a hand-written one), the Rust type → RBS type table, why the direction to take is *generating* RBS from `#[ruby_methods]`, and the author's 2026-09-17 decision — no parser in the VM, ship `sig/` |
 
 ## verification/ — how it is checked and measured
@@ -157,6 +157,14 @@ release: why only two of the five crates went out (`git diff --stat v0.5.1..HEAD
 `compiler/` and one line of the root `Cargo.toml`, nothing else), why the compiler could go
 before the VM this time, the commands and what they printed, and who is unaffected because
 they depend on the repository and not on crates.io (rubevy, rubevy_games, the playground).
+
+[2026-09-20-declare](worklog/2026-09-20-declare.md) is `sabiruby_serde::declare`, rubevy's
+`generalize-plan.md` stage R7 on this side of the fence (Japanese): why a table of
+declarations goes in the type's `HostStore` and not in `Vm::set_host_state` or behind a lock
+this crate has none of, what makes a slab meant for `Data` objects a fair place for a value no
+`Data` object names and what that costs, why `take` borrows the table for good instead of
+removing it, why what a script reads back is a second table rather than the one being filled,
+and the four shapes that were tried and dropped.
 
 ## Where things were (before 2026-09-15)
 

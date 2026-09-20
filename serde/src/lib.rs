@@ -69,6 +69,14 @@
 //! # Ok(()) }
 //! ```
 //!
+//! # Declarations
+//!
+//! [`declare`] is the same conversion put to a particular use: data *written* in Ruby —
+//! `unit :metre, symbol: "m", scale: 1.0`, a line per entry — collected into a
+//! `Vec<(String, T)>` the host takes once the script has run, with every field serde refuses
+//! raising at the line of that declaration. [`declare::expose`] is the way back: a host table
+//! a script looks up by name.
+//!
 //! # GC
 //!
 //! The values built here are not collector roots, exactly as in
@@ -82,6 +90,7 @@
 extern crate alloc;
 
 pub mod de;
+pub mod declare;
 pub mod error;
 #[cfg(feature = "json")]
 pub mod json;
