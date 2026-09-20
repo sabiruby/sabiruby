@@ -129,6 +129,13 @@ impl<T> HostStore<T> {
     /// This is how a method that is given the `&mut Vm` borrows its receiver: the value cannot
     /// stay borrowed from the store while the VM it is stored in is being used, so it moves
     /// out for the duration of the call and back afterwards.
+    ///
+    /// A value may also be taken and **never restored**, which closes the entry for good: the
+    /// number stays reserved (it is not returned to the free list the way
+    /// [`remove`](HostStore::remove) returns it), so nothing that still holds the handle can
+    /// reach a later value through it — every further `take` answers `None`. `sabiruby-serde`'s
+    /// `Declarations::take` uses it that way, to hand a finished table to the host while the
+    /// natives that filled it still hold its number. What it costs is the one empty slot.
     pub fn take(&mut self, handle: u64) -> Option<T> {
         let slot = self.slots.get_mut(handle as usize)?;
         if !matches!(slot, Cell::Full(_)) { return None; }

@@ -8,6 +8,28 @@ Every claim here is traceable to a commit or to a document under `docs/`, and th
 named. Measurements are the ones in [`docs/verification/bench.md`](docs/verification/bench.md);
 nothing is estimated.
 
+## Unreleased
+
+`sabiruby-serde` — a module for data *written* in Ruby. Nothing else changed: the VM, the
+compiler, the macros and the rest of this crate are untouched, and no version is raised
+([`docs/design/serde.md`](docs/design/serde.md) "Declarations",
+[`docs/worklog/2026-09-20-declare.md`](docs/worklog/2026-09-20-declare.md)).
+
+* **`sabiruby_serde::declare`** — `Declarations<T>` grows a method on the VM
+  (`unit :metre, symbol: "m", scale: 1.0`), reads each call's keyword Hash as a `T` through
+  `from_value`, and answers the host with `Vec<(String, T)>` in the order the script declared
+  them once it has run. Because the deserialization happens inside the native, everything
+  serde refuses — a missing field, a field of the wrong type, an unknown field under
+  `#[serde(deny_unknown_fields)]` — raises at the line of that declaration in the script's own
+  file. A name declared twice raises `ArgumentError`; the method that amends an earlier
+  declaration instead is a second, differently named one (`define_replacing`), so overwriting
+  is asked for rather than stumbled into. `expose` is the way back: a host table a script
+  looks up by name, answering with a Hash with Symbol keys. The tables live in the type's
+  `HostStore` in the VM — not in `Vm::set_host_state`, which an embedder may be using, and not
+  behind a lock, which `no_std` has none of — hold no Ruby value, and `take` moves them out
+  for good: a VM whose declarations have been taken and collected has exactly as many live
+  objects as one that was given none (`serde/tests/declare.rs`, fourteen cases).
+
 ## 0.5.2 — 2026-09-18
 
 `sabiruby-compiler` 0.2.2 → **0.2.3**: one new function, `highlight()`. `sabiruby` 0.5.1 →
