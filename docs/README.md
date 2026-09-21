@@ -191,6 +191,17 @@ crates.io, and the three repositories that use it — built from copies, which i
 warning in `2026-09-21-serde-lines.md` §7.6 was confirmed: a `[patch.crates-io]` whose crate no
 longer satisfies the requirement is not an error but two VMs in one graph.
 
+[2026-09-22-readmes](worklog/2026-09-22-readmes.md) is 0.6.1, the release that changed no `.rs`
+(Japanese): what each of the five crates.io pages claimed and what the tree actually says,
+claim by claim — a `Status` heading two releases old, a CLI switch that had been implemented
+for nine days, golden-test counts of 17 and 61 where there are 18 and 112, benchmark ratios one
+measurement behind, and two crates whose one-line `description` did not name the thing their
+last release was for; the three ways a README was made to go stale more slowly (no version or
+date in a heading, a measured number carrying the file it came from, and a machine's seconds
+dropped rather than re-measured); and why `2026-09-22-release-0.6.md` §10-1 is wrong —
+`CHANGELOG.md` has shipped inside the `sabiruby` tarball since `861b133`, and what crates.io
+does not render is not what `include` decides.
+
 ## Where things were (before 2026-09-15)
 
 Every document above sat directly under `docs/`; references in older commits, in the book's notes
