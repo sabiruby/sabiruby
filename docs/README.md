@@ -168,6 +168,17 @@ this crate has none of, what makes a slab meant for `Data` objects a fair place 
 removing it, why what a script reads back is a second table rather than the one being filled,
 and the four shapes that were tried and dropped.
 
+[2026-09-21-serde-lines](worklog/2026-09-21-serde-lines.md) is
+`serde-declare-lines-plan.md`'s D1–D3, the two things rubevy_games' Factory found in that crate
+while writing its data stage (Japanese): the two measurements taken before anything was written
+— that the interner never gives a symbol back (1000 names from Rust and 2000 from Ruby survive a
+collection intact), which is why a map's keys get a switch of their own rather than riding on
+`symbol_keys`, and that `Vm::current_line` answers with the line of the *next* instruction, so a
+native that asks it where it was called from is told the line after; why that is not a bug to
+fix but a second question (the playground's stepper wants exactly that answer) and what the
+three ways of doing without a new entry point would each have cost; and why "a key written as a
+string" is tested on the value that came out rather than on the Rust type.
+
 ## Where things were (before 2026-09-15)
 
 Every document above sat directly under `docs/`; references in older commits, in the book's notes

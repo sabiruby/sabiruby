@@ -91,4 +91,8 @@ rubevy_games の factory ブランチでやる。**rubevy と rubevy_games が�
 
 | 段階 | 状況 |
 |---|---|
-| D1〜D3 | 未着手（2026-09-21 作成） |
+| D1 | 済み（2026-09-21、`491ec0e`）。`Options::symbol_map_keys` と `Options::symbols()`、`#[non_exhaustive]`、`expose` が `Options::symbols()` で返す。**計画書の 1 行が違っていた**: `#[non_exhaustive]` は外の crate で関数更新構文も禁じるので、「`..Default::default()` に寄せる」は取れない — コンストラクタ + 公開フィールドへの代入にした（rustdoc に例）。Symbol にするかは「キーが**値として String になった**か」で判定（複合キーの中の文字列、整数、非 UTF-8、binary の String は触らない） |
+| D2 | 済み（2026-09-21、`d0bbde0`）。`Declared<T>`・`take_with_lines`、`take` はその上に 1 行。**VM に `Vm::backtrace_line()` を足した**（safe、`&self`、振る舞いの変更なし）: `Vm::current_line()` は `ci.pc` が実行中の命令の**次**を指すので 1 行後ろを答え、しかもそれは playground のステップ実行が欲しい答えなので直せない。行は「宣言が**終わる**行」＝ serde の raise が言う行と**同じ数**で、テストが同じソースの壊れた版と正しい版を突き合わせて示す |
+| D3 | 済み（2026-09-21、下のコミット）。`docs/design/serde.md`、`lib.rs` の頭、`docs/README.md` の目次、この表。**版は上げていない**（公開は著者）: 上げるなら `sabiruby-serde` 0.1.0 → **0.2.0**（`#[non_exhaustive]` は破壊的変更）、`sabiruby` 0.5.2 → **0.5.3**（`backtrace_line` は追加のみ） |
+
+games の側（rev を上げ、`data::line_of` を消す）でやることは worklog の「気づいた点」に。

@@ -39,14 +39,41 @@ layer alone, which builds for `thumbv7em-none-eabi`.
 | tuple variant | `{"Name" => [a, b]}` | a Hash of one entry |
 | struct variant | `{"Name" => {"a" => …}}` | a Hash of one entry |
 
-`Options { symbol_keys: true }` (through `to_value_with`) writes struct fields and variant
-names as Symbols instead. Writing has one shape; reading accepts both, which is the asymmetry
-that makes a struct fit a Hash a script wrote either way.
-
 Two consequences worth stating out loud. `Some(None)` and `None` are the same `nil` once they
 are in Ruby, so `Option<Option<T>>` does not survive the round trip — that is the mapping, not
 a bug. And a String that is not valid UTF-8 is bytes, not text: `deserialize_str` refuses it
 rather than replacing characters, and `deserialize_any` hands it over as a byte buffer.
+
+### Symbols, and which of them are an option
+
+`Options` (through `to_value_with`) picks how the names are written. It has two switches, both
+off by default, and `#[non_exhaustive]`, so that a third is not a breaking change — a host
+makes one with `Options::default()`, `Options::symbol_keys()` or `Options::symbols()` and
+assigns to the public fields for anything else, since `#[non_exhaustive]` forbids a struct
+literal outside the crate, functional update syntax included.
+
+| | what it writes as Symbols |
+|---|---|
+| `Options::default()` | nothing: `{"name" => "a", "in" => {"iron_ore" => 1}}` |
+| `Options::symbol_keys()` | struct fields and variant names: `{name: "a", in: {"iron_ore" => 1}}` |
+| `Options::symbols()` | those, and a **map's** keys where they serialize as Strings: `{name: "a", in: {iron_ore: 1}}` |
+
+Writing has one shape; reading accepts both, which is the asymmetry that makes a struct fit a
+Hash a script wrote either way.
+
+The two are separate switches rather than one, which is a deliberate asymmetry of its own. A
+struct's field names are finite and the type decides them, so interning them is bounded by the
+program. A map's keys are runtime values with no bound on how many there are, and **the VM's
+symbol table is never collected** (`design/gc.md`: "symbols — never collected"; `Interner` has
+no removal at all, and 1000 names interned from Rust and 2000 made and dropped from Ruby both
+survive a collection with not one given back). Interning every key of every map is therefore
+something a host asks for, not something it gets for asking that field names be Symbols.
+
+Which keys: the ones that *came out* a String — the test is on the value, not on the Rust type,
+which is already how this crate talks about a map ("the keys are whatever the key type
+serializes to"). `String`, `&str`, `char` and a newtype or `Some` around one all land there. An
+Integer key is left as it is, so is a composite key and every String inside it, so is a key that
+is not UTF-8, and so is one marked binary by `serialize_bytes`: bytes are not a name.
 
 ## Errors
 
@@ -119,8 +146,34 @@ a later file amend an earlier one is a *differently named method* (`define_repla
 overwriting is something a script asks for rather than something it does by accident. There is
 no limit on how many declarations a table takes or how long a name may be.
 
+**The line, for the checks serde cannot do.** What a declaration says about *itself* is
+refused where the script wrote it. What needs two declarations to be wrong — a recipe naming an
+item nothing declared, a machine size that does not match its picture — can only be asked once
+the script has run, by the host, and `take`'s `Vec<(String, T)>` had no line for it to name.
+`take_with_lines` is the same table as `Vec<Declared<T>>`:
+
+```rust
+pub struct Declared<T> { pub name: String, pub value: T, pub line: Option<u32> }   // non_exhaustive
+```
+
+The line is recorded by the native itself, at its first statement, from `Vm::backtrace_line` —
+**the same place serde's refusal gets its line from**, so a host's complaint and serde's point
+at the same line of the same file. `take` is one `map` on top of `take_with_lines`, so
+there is one place that records and the older entry point is unchanged. An amended declaration
+(`define_replacing`) keeps its place in the order and takes the *later* line, which is where
+the value the host now holds was written. `None` means the bytecode was built without debug
+information; there is no file name, because the VM's line is as far as this goes and a host
+that loaded the script knows what it called it.
+
+`Vm::current_line` is *not* that line, and this is worth stating because it looks like it. The
+run loop writes `ci.pc` past the instruction before dispatching it, so `current_line` answers
+with the line of the instruction that will run **next** — `Some(2)` for a declaration on line 1
+of a file. That is exactly right for the playground's stepper, which highlights the row about
+to run, and exactly wrong here. `Vm::backtrace_line` is the other question, stepping back over
+the pc as `Vm::backtrace` does.
+
 `expose` is the way back — a host table a script looks up by name, answering with a Hash with
-Symbol keys (`Options::symbol_keys`) or `nil`:
+Symbol keys (`Options::symbols`) or `nil`:
 
 ```rust
 let units = expose(&mut vm, "unit_of", table);   // unit_of(:metre)[:symbol] is "m"
@@ -130,6 +183,14 @@ It is deliberately a *second* table rather than a window on the one being collec
 script reads back is what the host decided to publish, after it has checked the declarations
 and derived from them, and it may be published to a different VM from the one that declared
 them. That also keeps `take` honest — afterwards the VM holds none of the declarations.
+
+`Options::symbols` rather than `Options::symbol_keys` means the Symbols go all the way down: a
+map inside a published entry gets Symbol keys too, so a recipe whose ingredients are a
+`BTreeMap<String, u32>` reads back as `recipe_of(:iron_plate)[:in][:iron_ore]` rather than
+`[:in]["iron_ore"]`. **The name a script writes is the name it reads back.** The bound that
+makes interning safe here is the one the general case does not have: the keys of a published
+table's maps are the names of declared things, as many as there are declarations, and a data
+file written in Ruby wrote them as Symbols in the first place, so nothing new is interned.
 
 **Where the table lives.** In the VM, in the type's `HostStore` (`Vm::install_host_store`),
 one table per Rust type per VM. Not in `Vm::set_host_state`, which holds one value for the
@@ -189,7 +250,7 @@ a host keeps across a call into the VM has to be registered with `Vm::gc_registe
 
 ## What the VM gained for this
 
-Two entry points, in the shape stage 3b of `host-bridge-plan.md` gave the others:
+Three entry points, in the shape stage 3b of `host-bridge-plan.md` gave the others:
 
 * `Vm::hash_entries(v) -> Option<Vec<(Value, Value)>>` — a Hash's entries in insertion order,
   the counterpart of `ary_vals`. Without it a host can only read a Hash key by key, and it has
@@ -198,15 +259,31 @@ Two entry points, in the shape stage 3b of `host-bridge-plan.md` gave the others
   wants with `hash_get`.)
 * `Vm::define_class_under(outer, name, superclass)` — `mrb_define_class_under`, so that
   `JSON::ParserError` is a constant of `JSON` and answers with its qualified name.
+* `Vm::backtrace_line() -> Option<u32>` — the line the first frame of `Vm::backtrace` carries,
+  which from inside a native is the line of the call. `declare` records it per declaration.
+  Every way of doing without it was worse: `current_line` answers a different question (the
+  next instruction, which the playground's stepper wants); reading `Vm::backtrace`'s first
+  string back apart is text a file name with a colon in it would break; and reaching into
+  `vm.ci` and `vm.ireps` from another crate would put the `pc - 1` this turns on in two places,
+  where forgetting it in one is a silent off-by-one line.
 
 ## Where it is checked
 
 `serde/tests/roundtrip.rs` (the data model, both directions, with the Ruby side of each value
-printed by the VM), `serde/tests/json.rs` (the class, the two error classes, `Serde<T>` in a
-`define_fn` signature, and the CRuby case), and `serde/tests/declare.rs` (declarations in
-order, a declaration without keywords, the file and line of a missing, mistyped and unknown
-field, a duplicate name, the overwriting door, taking the table twice, declaring after it was
-taken, what the collector is left with, and a table read back from Ruby).
+printed by the VM, and the three `Options` over a map's keys — unchanged under `symbol_keys`,
+Symbols under `symbols`, and a Hash a script wrote with Symbol keys `==` its old self after the
+trip), `serde/tests/json.rs` (the class, the two error classes, `Serde<T>` in a `define_fn`
+signature, and the CRuby case), and `serde/tests/declare.rs` (declarations in order, a
+declaration without keywords, the file and line of a missing, mistyped and unknown field, a
+duplicate name, the overwriting door, taking the table twice, declaring after it was taken,
+what the collector is left with, a table read back from Ruby with the names inside it as
+Symbols, and the line each declaration was on — the same number the raise from a broken version
+of that same declaration reports, the later line for an amended one, and `None` without debug
+information).
+
+`Vm::backtrace_line` itself is checked in the VM, in `tests/native.rs`: a native asks it for the
+line it was called from, gets the number `Vm::backtrace`'s first frame carries, and gets a
+different one from `Vm::current_line`.
 
 `tools/check_no_std.sh` builds the VM alone; this crate's own `no_std` build is
 `cargo build -p sabiruby-serde --lib --no-default-features --target thumbv7em-none-eabi`.
