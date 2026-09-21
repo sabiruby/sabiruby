@@ -11,7 +11,7 @@
 //!
 //! [`Declarations<T>`] is that method's other half: the first argument is the name (a Symbol or
 //! a String), the keyword arguments are the value — they arrive as a trailing Hash, which
-//! [`from_value`](crate::from_value) reads as a `T` — and what the host gets back, once the
+//! [`from_value`] reads as a `T` — and what the host gets back, once the
 //! script has run, is a `Vec<(String, T)>` in the order the script declared them.
 //!
 //! ```

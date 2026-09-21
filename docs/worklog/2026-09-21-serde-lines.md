@@ -533,3 +533,45 @@ $ diff tests/mrbtest/baseline.txt <(…)         BASELINE IDENTICAL
 
 本家テストは前任と同じ道（Docker の `tools/mrbtest.sh` ではなく、チェックインされている
 `.mrb` を release の CLI で回して baseline と比べる）。VM の計算は変えていないので 1 度。
+
+## 8. main の CI が赤かった件 — `cargo doc` の警告 1 件
+
+改名とは別の話だが同じブランチで直した（別コミット）。**main の CI が 09-20 の declare の
+マージ（`944b72b`）から 3 回続けて赤く**、落ちていたのは `test` ジョブの
+`cargo doc --no-deps --workspace --lib`（`.github/workflows/ci.yml:30`、`RUSTDOCFLAGS: -D warnings`）。
+
+§6 の 6 が「この変更より前からある警告 1 件」と書いて通り過ぎたもので、**CI は
+`-D warnings` でそれをエラーにしている**。ローカルで同じ環境変数を付けて再現した:
+
+```
+$ RUSTDOCFLAGS='-D warnings' cargo doc --no-deps --workspace --lib
+error: redundant explicit link target
+  --> serde/src/declare.rs:14:20
+   |
+14 | //! [`from_value`](crate::from_value) reads as a `T` …
+   |      ----------    ^^^^^^^^^^^^^^^^^ explicit target is redundant
+error: could not document `sabiruby-serde`
+```
+
+`declare.rs:83` が `use crate::{from_value, …}` しているので `from_value` は
+このモジュールのスコープで既に解決する。明示の target を落として `[`from_value`]` だけにした。
+rustdoc が出していた suggestion そのままで、リンク先は変わらない。
+
+改名で足した rustdoc のリンク（`[`Vm::next_line`]` を 2 か所、`[`Vm::backtrace_line`]`）も
+同じコマンドで確かめてある。CI の step のうちローカルで回せるものを一通り:
+
+```
+$ cargo test --workspace                                        251 passed / 0 failed
+$ cargo test -p sabiruby --no-default-features --features "std utf8"   全部 ok
+$ tools/check_no_std.sh --features regexp                       no_std OK
+$ tools/check_no_std.sh --features utf8                         no_std OK
+$ cargo build -p sabiruby --lib --target wasm32-unknown-unknown  Finished
+$ RUSTDOCFLAGS='-D warnings' cargo doc --no-deps --workspace --lib      Finished（0 警告）
+$ RUSTDOCFLAGS='-D warnings' CARGO_TARGET_DIR=target/doc-cli \
+      cargo doc --no-deps -p sabiruby-cli --bins                Finished
+$ cargo publish --dry-run --workspace                           （下記）
+$ cargo +1.85 check --workspace --all-targets                   （msrv ジョブ、下記）
+```
+
+ci.yml に clippy と fmt の step は無い（この repo は `cargo fmt` を使わない方針で、
+`rustfmt.toml` も無い）ので、回すものは上で全部である。
