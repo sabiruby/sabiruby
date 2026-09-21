@@ -166,7 +166,7 @@ information; there is no file name, because the VM's line is as far as this goes
 that loaded the script knows what it called it.
 
 `Vm::next_line` is *not* that line, and this is worth stating because the name it used to have
-(`current_line`, now a deprecated alias) made it look like it. The run loop writes `ci.pc` past
+made it look like it. The run loop writes `ci.pc` past
 the instruction before dispatching it, so `next_line` answers with the line of the instruction
 that will run **next** — `Some(2)` for a declaration on line 1 of a file. That is exactly right
 for the playground's stepper, which highlights the row about to run, and exactly wrong here.
