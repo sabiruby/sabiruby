@@ -51,7 +51,7 @@ namespaces — the same reason `use serde::Serialize;` gives you the trait and t
 The long one, still supported, naming both crates:
 
 ```toml
-sabiruby = "0.5"
+sabiruby = "0.6"
 sabiruby-macros = "0.1"
 ```
 

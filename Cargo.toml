@@ -1,6 +1,6 @@
 [package]
 name = "sabiruby"
-version = "0.5.2"
+version = "0.6.0"
 edition = "2024"
 # edition 2024 and core::ptr::fn_addr_eq need 1.85
 rust-version = "1.85"
