@@ -232,7 +232,7 @@ impl<'a, 'v> ser::SerializeTupleVariant for TupleVariantSer<'a, 'v> {
 /// A map. The keys are whatever the key type serializes to — a Ruby Hash takes any value as a
 /// key — so `HashMap<i64, _>` keeps its Integer keys rather than stringifying them.
 /// [`Options::symbol_map_keys`] is the one exception: it turns a key that came out a String
-/// into a Symbol ([`Serializer::map_key`]).
+/// into a Symbol (`Serializer::map_key`).
 pub struct MapSer<'a, 'v> {
     ser: &'a mut Serializer<'v>,
     pairs: Vec<(Value, Value)>,

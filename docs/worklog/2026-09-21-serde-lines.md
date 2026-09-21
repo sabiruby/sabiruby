@@ -282,10 +282,169 @@ $ diff tests/mrbtest/baseline.txt <(…)  → BASELINE IDENTICAL
 この仕事と無関係な差分が出る。Docker 自体は動いていた（`docker info` は通る）が、起動も
 再起動もしていない。
 
-## 4. D3 — docs
+## 4. D3 — docs と、版をどうするか
 
-（作業しながら追記）
+直したもの:
 
-## 5. 気づいた点
+* `docs/design/serde.md` — データモデルの節に「Symbols, and which of them are an option」を
+  新設（3 つの `Options` の表と、なぜ 2 つのスイッチなのかの理由 = §1.1 の測定）、
+  `declare` の節に「The line, for the checks serde cannot do」（`Declared<T>`、
+  `current_line` との違い）、`expose` の節に「Symbols が下まで届く」、
+  「What the VM gained for this」に `Vm::backtrace_line`（と、足さずに済ませる 3 案がそれぞれ
+  何を払うことになったか）、「Where it is checked」に増えたテスト。
+* `serde/src/lib.rs` の頭の表（`map` の行と `Options::symbols` への言及）と
+  「# Declarations」の節。
+* `docs/README.md` の worklog の目次にこの記録。plans の表の行は本体が更新する（計画書の §3 は
+  この段階で埋めた）。
+* `CHANGELOG.md` の Unreleased。**ここは黙って嘘になっていた**: 「the VM … untouched」と
+  書いてあったが `Vm::backtrace_line` を足したので、`sabiruby-serde` の 2 件と `sabiruby` の
+  1 件に書き分けた。版は上げていない。
 
-（作業しながら追記）
+**版は上げない**（公開は著者の仕事）。上げるとすればこうなる、というのが報告用の答え:
+
+| crate | 今 | 上げるなら | なぜ |
+|---|---|---|---|
+| `sabiruby-serde` | 0.1.0 | **0.2.0** | `Options` に `#[non_exhaustive]` を付けたのは破壊的変更（外の crate で struct リテラルが書けなくなる）。0.x では minor を上げるのが破壊的変更の作法 |
+| `sabiruby` | 0.5.2 | **0.5.3** | `Vm::backtrace_line` は追加のみ、振る舞いの変更なし |
+| `sabiruby-compiler` / `-cli` / `-macros` | — | 据え置き | 触っていない |
+
+### 4.1 rubevy と rubevy_games が今の main でそのまま建つか → **建つ**
+
+どちらの repo にも 1 バイトも書かずに確かめた。手順:
+
+```bash
+git -C rubevy_games archive HEAD | tar -x -C <scratchpad>/dl/games   # 作業木ではなく HEAD
+git -C rubevy       archive HEAD | tar -x -C <scratchpad>/dl/rubevy
+# コピーした木の [patch.crates-io] だけをこのブランチの worktree に向ける
+CARGO_TARGET_DIR=<scratchpad>/t-games cargo check --workspace --all-targets
+```
+
+**コマンドラインの `--config "patch.\"https://github.com/sabiruby/sabiruby\".sabiruby.path=…"` は
+効かなかった。** rubevy_games は既に `[patch.crates-io] sabiruby = { git = … }` を持っていて、
+その git ソースをさらに patch しようとすると `Cargo.lock` の固定（`#50cae754`）と衝突して
+
+```
+error: failed to select a version for `sabiruby`.
+    ... previously selected package `sabiruby v0.5.2 (https://github.com/sabiruby/sabiruby#50cae754)`
+```
+
+と断られる。指示が用意していた逃げ道（「`Cargo.lock` が書き換わるなら `CARGO_TARGET_DIR` を
+別にした上でコピーした木で」）に落として、**`git archive HEAD` で出した汚れていない木**の
+`[patch.crates-io]` を path に書き替えた。repo 自体は読むだけ（`rubevy` の作業木には
+別の担当の未コミットの `Cargo.toml` の変更が 6 行あったので、なおさら `HEAD` から出す意味があった）。
+
+結果:
+
+```
+=== rubevy check ===
+    Checking rubevy v0.0.1 (…/dl/rubevy)
+    Finished `dev` profile … in 21.48s
+rubevy exit=0
+=== games check ===
+   Compiling factory v0.1.0 (…/dl/games/factory)
+    Checking rubevy v0.0.1 (https://github.com/sabiruby/rubevy#abfc875f)
+    Checking games-shell v0.1.0 (…/dl/games/crates/games-shell)
+    Finished `dev` profile … in 2m 47s
+games exit=0
+```
+
+`cargo metadata` が `Adding sabiruby v0.5.2 (/home/kishima/book/kishima/sabiruby-wt-serde-lines)` と
+言っているので、見ているのは確かにこのブランチである。games の方は `rubevy` を GitHub の
+main（`abfc875f`）から引くので、**rubevy の main も依存として一緒に通っている**。
+`--all-targets` なのでテストのターゲットもコンパイルされている。
+
+### 4.2 Factory の単体テストを走らせたら、**狙いどおり 1 件だけ落ちた**
+
+建つことは分かったので、ついでに `cargo test -p factory --bins` を同じコピーで走らせた
+（`factory` は lib を持たないので `--bins`）。**33 passed, 1 failed:**
+
+```
+---- data::tests::a_script_reads_the_tables_back stdout ----
+thread '…' panicked at factory/src/data.rs:886:9:
+assertion `left == right` failed
+  left: Nil
+ right: Int(1)
+```
+
+落ちているのは
+
+```ruby
+$ore = recipe_of(:iron_plate)[:in]["iron_ore"]
+```
+
+の 1 行（`factory/src/data.rs:878`）で、**これがこの仕事で直したものそのもの**である。
+map のキーが Symbol になったので `["iron_ore"]` は `nil` を返し、`[:iron_ore]` が 1 を返す。
+games の側で rev を上げるときの読み替え（§5 の 3）は、**このテストが場所を教えてくれる**。
+`a_machine_gives_one_picture_for_each_tile_it_covers` はまだ `line_of` を使っているので通る
+（`take_with_lines` に替えたときに §5 の 2 の期待値が動く）。
+
+これは**ソース互換ではあるが振る舞いは変わる**変更で、`expose` を使っている Ruby が既に
+String でキーを引いていれば静かに `nil` になる、という実例でもある（§6 の 2）。
+
+## 5. games の側で rev を上げたときにやること
+
+この計画の外（sabiruby の main が push されたあと、rubevy_games の factory ブランチで）だが、
+読み替えが要る場所を数えておく。
+
+1. **`data::line_of` を消す**（`factory/src/data.rs:418` の 20 行と、`//!` の 39 行目の注意書き）。
+   呼び出しは 6 か所（498・534・560・570・576・592 行）で、全部
+   `Trouble { at: line_of(source, "machine", &name), … }` の形をしている。`take` を
+   `take_with_lines` に替え、`Declared` の `line` をそのまま `at` に入れる。ソース文字列を
+   引き回す引数（`source`）がそれで要らなくなるはず。
+2. **期待値が 1 つ変わる。** `line_of` は「宣言が**始まる**行」、`Declared::line` は
+   「**終わる**行」（= serde の raise と同じ）。`factory/src/data.rs:808` の
+   `a_machine_gives_one_picture_for_each_tile_it_covers` の**後半**（`made_in: :smelter`、
+   宣言されていない機械を指すレシピ）が `Some(4)` を期待していて、`GOOD` のそのレシピは
+   4 行目と 5 行目に跨り `made_in:` は 5 行目にある。読み替えると **`Some(5)`** になり、
+   同じ宣言を serde に断らせている `a_declaration_over_two_lines_is_reported_at_the_second`
+   （`Some(5)`）と**同じ数になる**。**揃うことが直った証拠**なので、期待値と、その上の
+   「Both are the declaration and neither is wrong, but they are not the same number」という
+   コメント（4 行）を書き替える。前半（`size: [2, 2]`、3 行目の 1 行の `machine` 宣言）は
+   `Some(3)` のまま。
+3. **読み替える綴り。** `expose` が返す Hash の中の map のキーが Symbol になったので、
+   `recipe_of(:iron_plate)[:in]["iron_ore"]` は **`[:in][:iron_ore]`** になる。
+   実際に引いている所は**テストの 1 行だけ**で、rev を上げるとそこが落ちて場所を教えてくれる
+   （§4.2 で実測: `factory/src/data.rs:878` の `$ore` の行、33 passed / 1 failed）。
+   あわせて `factory/src/data.rs:651` の注意書き（「map のキーは String で返る」の段落まるごと）と、
+   `//!` の 13・37 行あたりが `Vec<(String, T)>` と言っている所を直す。
+   F3 が書くインサータの Ruby は最初から Symbol で引けばよい。
+4. **`Options` を struct リテラルで作っている所は無い**（§2.3）ので、`#[non_exhaustive]` で
+   直す所は無い。
+
+## 6. 気づいた点
+
+仕事の範囲の外で気づいたこと。直さずに書く（`implementer.md` の報告の形式 6）。
+
+1. **`Vm::current_line` は名前が誘う。** `src/vm.rs:2621`。native の中から呼ぶと
+   「呼び出し元の行」が返ると読めるが、返るのは**その次の命令の行**で、1 行ずれる
+   （§1.2 の実測）。playground の stepper のためには正しい答えで、直すべきではない。
+   今回 rustdoc に「これは次の命令の行、エラーの行は `backtrace_line`」と書き足し、
+   `backtrace_line` を足して逃げ道は作ったが、**名前は変えていない**。`next_line()` の
+   ような名前にするか（破壊的）、このままかは著者の判断。
+   **属する先**: VM（sabiruby、`src/vm.rs`）。
+2. **`expose` の答えの綴りが変わるのは、版を上げずに出せば黙った振る舞いの変更である。**
+   `expose` が返す Hash の中の map のキーが String → Symbol になるので、既に
+   `table[:field]["name"]` と引いている Ruby があれば `nil` になる。今その Ruby は
+   **どこにも無い**（rubevy_games の Factory F2 は「答えること」しか確かめていない、
+   §5 の 3）ので実害は無いが、`sabiruby-serde` は crates.io に 0.1.0 が出ている。
+   **属する先**: 公開の判断（著者）。CHANGELOG の Unreleased に書いた。
+3. **`tools/check_no_std.sh` が `sabiruby-serde` を見ないのは今回も効いた。**
+   この crate の `no_std` は `docs/design/serde.md` の末尾に書いてある thumbv7em の
+   直接ビルドを手で打つしかない。`host-scale-plan` の H6 がこれを直す段階として既にある。
+   **属する先**: 計画済み（H6）。
+4. **`docs/design/serde.md` に「fourteen cases」という数が埋まっていた**（`declare.rs` の
+   テストの数）。テストを足すと嘘になる数で、実際に今回 19 になった。数を落として
+   「`serde/tests/declare.rs`」だけにした。ほかにも散文に数が埋まっている所があるかもしれない。
+   **属する先**: 文書の書き方（直した）。
+5. **`serde/src/declare.rs` のコメントにあった `src/vm.rs:4264` が、この変更でずれた。**
+   `Vm::native_call_args` は `backtrace_line` を足したぶん下にずれて 4293 になる
+   （足す前から 2 行ずれてもいた）。行番号を落として名前だけにした。**他のファイルにも
+   `src/vm.rs:NNNN` の形の参照がある**（`declare.rs` の rustdoc、design の文書）ので、
+   VM に手を入れるたびに静かに嘘になる。**属する先**: 文書の書き方／VM。
+6. **`cargo doc -p sabiruby-serde` が 1 件警告を出す**（`declare.rs:14` の
+   `[`from_value`](crate::from_value)` が redundant explicit link）。この変更より前からある。
+   **属する先**: バグというほどではない小物（sabiruby-serde）。
+7. **`Declared<T>` に `#[non_exhaustive]` を付けたので、外の crate はパターンで
+   分解するときに `..` が要る**（`let Declared { name, value, .. } = d;`）。
+   フィールドを読むぶんには何も変わらない。games の側で書くときに一度だけ当たる。
+   **属する先**: 使い勝手（報告のみ）。

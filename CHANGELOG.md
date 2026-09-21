@@ -10,10 +10,12 @@ nothing is estimated.
 
 ## Unreleased
 
-`sabiruby-serde` — a module for data *written* in Ruby. Nothing else changed: the VM, the
-compiler, the macros and the rest of this crate are untouched, and no version is raised
+`sabiruby-serde` — a module for data *written* in Ruby, and the two things writing a game's
+data stage on it turned up. The compiler and the macros are untouched; the VM gains one
+read-only entry point and changes no behaviour. No version is raised
 ([`docs/design/serde.md`](docs/design/serde.md) "Declarations",
-[`docs/worklog/2026-09-20-declare.md`](docs/worklog/2026-09-20-declare.md)).
+[`docs/worklog/2026-09-20-declare.md`](docs/worklog/2026-09-20-declare.md),
+[`docs/worklog/2026-09-21-serde-lines.md`](docs/worklog/2026-09-21-serde-lines.md)).
 
 * **`sabiruby_serde::declare`** — `Declarations<T>` grows a method on the VM
   (`unit :metre, symbol: "m", scale: 1.0`), reads each call's keyword Hash as a `T` through
@@ -28,7 +30,40 @@ compiler, the macros and the rest of this crate are untouched, and no version is
   `HostStore` in the VM — not in `Vm::set_host_state`, which an embedder may be using, and not
   behind a lock, which `no_std` has none of — hold no Ruby value, and `take` moves them out
   for good: a VM whose declarations have been taken and collected has exactly as many live
-  objects as one that was given none (`serde/tests/declare.rs`, fourteen cases).
+  objects as one that was given none (`serde/tests/declare.rs`).
+
+* **`Options::symbol_map_keys` and `Options::symbols()`** (`491ec0e`) — a *map's* keys as
+  Symbols where they serialize as Strings, so a table declared in Ruby as
+  `recipe :iron_plate, in: { iron_ore: 1 }` reads back as
+  `recipe_of(:iron_plate)[:in][:iron_ore]` and not `[:in]["iron_ore"]`. `symbol_keys` keeps
+  its meaning — a struct's field names are finite and the type decides them, while a map's
+  keys are runtime values with no bound on how many there are and the VM's symbol table is
+  never collected — so this is a switch of its own, off by default, and `Options::symbols()`
+  is both. `declare::expose` uses it: the keys of a published table's maps are the names of
+  declared things, and the Ruby data file wrote them as Symbols in the first place. `Options`
+  becomes `#[non_exhaustive]`, which is a **breaking change** for anything that built one with
+  a struct literal (nothing in this repository, rubevy, rubevy_games, sabiruby-playground or
+  mruby-porting-kit does); a host makes one with `default()`, `symbol_keys()` or `symbols()`
+  and assigns to the public fields.
+
+* **`Declarations::take_with_lines` and `Declared<T>`** (`d0bbde0`) — each declaration with the
+  line of the script it was on, for the checks serde cannot make. What a declaration says
+  about itself is refused inside the native, at that line; what needs two declarations to be
+  wrong — a recipe naming an item nothing declared — is the host's to check afterwards, and
+  `take`'s `Vec<(String, T)>` had nothing to point at. It is the same line serde's refusal
+  reports, from the same place, and `take` is written on top of `take_with_lines` so there is
+  one place that records it. An amended declaration (`define_replacing`) keeps its place in
+  the order and takes the later line; bytecode built without debug information has `None`.
+
+`sabiruby` — one entry point, no behaviour changed (`d0bbde0`).
+
+* **`Vm::backtrace_line() -> Option<u32>`** — the line the first frame of `Vm::backtrace`
+  carries, which from inside a native (which pushes no frame of its own) is the line of the
+  call. Distinct from `Vm::current_line`, which answers with the line of the instruction that
+  will run **next**, since `ci.pc` is past the instruction being executed: that is what a
+  debugger stopped at an instruction boundary wants to highlight, and it is one line late for
+  anything asking where it was called from. `current_line` is unchanged, and its rustdoc now
+  says which of the two it is (`tests/native.rs`).
 
 ## 0.5.2 — 2026-09-18
 

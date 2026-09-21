@@ -194,7 +194,7 @@ impl<T: for<'de> Deserialize<'de> + Send + Sync + 'static> Declarations<T> {
         let called = method.to_owned();
         vm.define_closure(class, method, move |vm, _self_, args, _blk| {
             // 1 argument or 2: the keyword arguments arrive as a trailing Hash, and only when
-            // there are any (`Vm::native_call_args`, src/vm.rs:4264)
+            // there are any (`Vm::native_call_args`)
             vm.check_argc(args, 1, 2)?;
             // taken first, before anything here can run Ruby: no frame is pushed for a
             // native, so this is the line of the call — the line an error raised below would
