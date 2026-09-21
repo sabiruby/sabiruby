@@ -1,6 +1,6 @@
 [package]
 name = "sabiruby-cli"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2024"
 rust-version = "1.85"
 description = "The `sabiruby` command: run Ruby source and mruby 4.1 bytecode on the SabiRuby VM, compile like mrbc"
@@ -26,5 +26,5 @@ path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
-sabiruby = { version = "0.5.0", path = "..", default-features = false, features = ["std"] }
-sabiruby-compiler = { version = "0.2.2", path = "../compiler", features = ["host"] }
+sabiruby = { version = "0.6.0", path = "..", default-features = false, features = ["std"] }
+sabiruby-compiler = { version = "0.3.0", path = "../compiler", features = ["host"] }

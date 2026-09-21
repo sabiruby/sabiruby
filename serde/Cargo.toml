@@ -1,6 +1,6 @@
 [package]
 name = "sabiruby-serde"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.85"
 description = "serde for SabiRuby: Rust values as Ruby values and back, and a JSON class built on serde_json"
@@ -22,7 +22,7 @@ default = ["json"]
 json = ["dep:serde_json"]
 
 [dependencies]
-sabiruby = { path = "..", version = "0.5", default-features = false }
+sabiruby = { path = "..", version = "0.6", default-features = false }
 serde = { version = "1", default-features = false, features = ["alloc"] }
 serde_json = { version = "1", optional = true, features = ["preserve_order"] }
 

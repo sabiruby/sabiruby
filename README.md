@@ -196,13 +196,13 @@ How to depend on it:
 ```toml
 [dependencies]
 # the VM. Pick one line:
-sabiruby = "0.5"                                          # std + utf8 + regexp (the defaults)
-# sabiruby = { version = "0.5", default-features = false } # no_std + alloc, byte strings, no Regexp
-# sabiruby = { version = "0.5", features = ["macros"] }    # + #[derive(RubyClass)] / #[ruby_methods]
+sabiruby = "0.6"                                          # std + utf8 + regexp (the defaults)
+# sabiruby = { version = "0.6", default-features = false } # no_std + alloc, byte strings, no Regexp
+# sabiruby = { version = "0.6", features = ["macros"] }    # + #[derive(RubyClass)] / #[ruby_methods]
 
 # optional companions
-sabiruby-compiler = { version = "0.2", features = ["host"] }  # compile Ruby source in the same program
-sabiruby-serde = "0.1"                                        # serde, and a JSON class
+sabiruby-compiler = { version = "0.3", features = ["host"] }  # compile Ruby source in the same program
+sabiruby-serde = "0.2"                                        # serde, and a JSON class
 ```
 
 The feature `macros` re-exports the two macros of `sabiruby-macros` at the crate root, so that

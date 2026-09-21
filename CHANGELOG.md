@@ -8,18 +8,55 @@ Every claim here is traceable to a commit or to a document under `docs/`, and th
 named. Measurements are the ones in [`docs/verification/bench.md`](docs/verification/bench.md);
 nothing is estimated.
 
-## Unreleased
+## 0.6.0 — 2026-09-22
 
 `sabiruby-serde` — a module for data *written* in Ruby, and the two things writing a game's
-data stage on it turned up. The compiler and the macros are untouched; the VM gains one
-read-only entry point, loses one deprecated alias and changes no behaviour. No version is
-raised here — publishing is the author's — but the removal is a breaking change, so **the next
-release of `sabiruby` is 0.6.0**, not a patch
+data stage on it turned up. The VM gains two read-only entry points, loses the name one of them
+replaced, and changes no behaviour
 ([`docs/design/serde.md`](docs/design/serde.md) "Declarations",
 [`docs/worklog/2026-09-20-declare.md`](docs/worklog/2026-09-20-declare.md),
-[`docs/worklog/2026-09-21-serde-lines.md`](docs/worklog/2026-09-21-serde-lines.md)).
+[`docs/worklog/2026-09-21-serde-lines.md`](docs/worklog/2026-09-21-serde-lines.md),
+[`docs/worklog/2026-09-22-release-0.6.md`](docs/worklog/2026-09-22-release-0.6.md)).
 
-* **`sabiruby_serde::declare`** — `Declarations<T>` grows a method on the VM
+Four of the five crates are published; `sabiruby-macros` is not.
+
+| crate | | | why |
+|---|---|---|---|
+| `sabiruby` | 0.5.2 | **0.6.0** | `Vm::current_line` removed (`5b4c0a5`), `next_line` and `backtrace_line` added (`cd013fa`, `d0bbde0`) |
+| `sabiruby-serde` | 0.1.0 | **0.2.0** | `Options` is `#[non_exhaustive]` (`491ec0e`); `declare` (`2f1043f`, `d0bbde0`) |
+| `sabiruby-compiler` | 0.2.3 | **0.3.0** | source unchanged; its optional `sabiruby` is a public dependency and now names 0.6 |
+| `sabiruby-cli` | 0.5.0 | **0.6.0** | source unchanged; the release's name, and it names both of the above |
+| `sabiruby-macros` | 0.1.0 | 0.1.0 | unchanged since `v0.5.1`, and it does not depend on the VM |
+
+### Coming from 0.5.2
+
+In the order a host meets them:
+
+1. **`Vm::current_line` is gone.** Replace it with `Vm::next_line` — same answer, same type,
+   nothing else to do. If what you wanted was the line an error names, the line a native was
+   called *from*, that is the new `Vm::backtrace_line`, which is one line earlier.
+   The deprecated alias `current_line` carried the rename for a day and was removed on
+   2026-09-22 (`5b4c0a5`); 0.5.2 never had `next_line`, so there is no version of the crate
+   where both names work.
+2. **`sabiruby_serde::Options` can no longer be built with a struct literal.** It is
+   `#[non_exhaustive]`, so `Options { symbol_keys: true }` does not compile outside the crate.
+   Write `Options::symbol_keys()`, `Options::symbols()` or `Options::default()` and assign to
+   the public fields. From here on a field added to `Options` is not a breaking change.
+3. **`declare::expose` writes a map's keys as Symbols.** A published table now answers
+   `recipe_of(:iron_plate)[:in][:iron_ore]` where it would have answered `[:in]["iron_ore"]`.
+   Ruby that indexed an exposed map with a String has to be changed. `to_value` and
+   `to_value_with` are unaffected unless you ask for it: the switch is
+   `Options::symbol_map_keys`, off by default, and `Options::symbols()` is the pair.
+4. **Version requirements.** `sabiruby = "0.6"`, `sabiruby-serde = "0.2"`,
+   `sabiruby-compiler = "0.3"`. A caret requirement inside `0.x` reads the minor as the major,
+   so `"0.5"` does not accept 0.6.0 and the four have to move together — a program that raises
+   only one of them ends up with two `sabiruby` crates and types that are not each other's.
+   For the same reason, a `[patch.crates-io]` whose patched crate still says `version = "0.5.x"`
+   stops being used at all rather than failing loudly.
+
+### `sabiruby-serde` 0.1.0 → 0.2.0
+
+* **`sabiruby_serde::declare`** (`2f1043f`, `c38f0e2`) — `Declarations<T>` grows a method on the VM
   (`unit :metre, symbol: "m", scale: 1.0`), reads each call's keyword Hash as a `T` through
   `from_value`, and answers the host with `Vec<(String, T)>` in the order the script declared
   them once it has run. Because the deserialization happens inside the native, everything
@@ -57,8 +94,10 @@ release of `sabiruby` is 0.6.0**, not a patch
   one place that records it. An amended declaration (`define_replacing`) keeps its place in
   the order and takes the later line; bytecode built without debug information has `None`.
 
-`sabiruby` — one entry point, one rename and the removal of the name it replaced, no behaviour
-changed (`d0bbde0`).
+### `sabiruby` 0.5.2 → 0.6.0
+
+Two entry points, one rename and the removal of the name it replaced, no behaviour changed
+(`cd013fa`, `d0bbde0`, `5b4c0a5`).
 
 * **`Vm::backtrace_line() -> Option<u32>`** — the line the first frame of `Vm::backtrace`
   carries, which from inside a native (which pushes no frame of its own) is the line of the
@@ -68,14 +107,12 @@ changed (`d0bbde0`).
   anything asking where it was called from (`tests/native.rs`).
 
 * **`Vm::current_line` is renamed `Vm::next_line`; the old name is gone** — a breaking change,
-  which is why the next release is **0.6.0** and not a patch on 0.5.2. Nothing about what the
+  which is why this release is **0.6.0** and not a patch on 0.5.2. Nothing about what the
   VM computes changed — the name did, because it invited the wrong reading: asked from inside
   a native it looks like it will say where the native was called from, and it says the line
   after. `next_line` says what it answers, and `backtrace_line` is the other question.
 
-  **Coming from 0.5.2:** replace `current_line` with `next_line` — same answer, same type,
-  nothing else to do; if what you actually wanted was the line an error names (where a native
-  was called from, which is one line earlier), that is `backtrace_line`.
+  What to write instead is "Coming from 0.5.2" above, item 1.
 
   The rename first landed with a `#[deprecated]` alias, because three repositories pin each
   other by commit and the old and the new name had to both work while those pins moved. The

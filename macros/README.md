@@ -35,7 +35,7 @@ derive macro and the trait it implements, which live in different namespaces (as
 same code:
 
 ```toml
-sabiruby = "0.5"
+sabiruby = "0.6"
 sabiruby-macros = "0.1"
 ```
 

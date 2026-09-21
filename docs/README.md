@@ -181,6 +181,16 @@ answer) and what the three ways of doing without a new entry point would each ha
 Its last sections are the rename that followed — `current_line` → `next_line`, which is why
 everything above them says `current_line` — and the day the alias it left behind was removed.
 
+[2026-09-22-release-0.6](worklog/2026-09-22-release-0.6.md) is the 0.6.0 preparation
+(Japanese): which four of the five crates go out and why `sabiruby-macros` does not, why
+`sabiruby-compiler` jumps to 0.3.0 rather than 0.2.4 although not a byte of it moved (with the
+feature `host` on, `sabiruby` is a *public* dependency, so raising its requirement breaks the
+compiler's own users too), every place a version requirement had to move with it, the order the
+`--workspace` dry-run chose and which three crates cannot be dry-run until the VM is on
+crates.io, and the three repositories that use it — built from copies, which is where the
+warning in `2026-09-21-serde-lines.md` §7.6 was confirmed: a `[patch.crates-io]` whose crate no
+longer satisfies the requirement is not an error but two VMs in one graph.
+
 ## Where things were (before 2026-09-15)
 
 Every document above sat directly under `docs/`; references in older commits, in the book's notes

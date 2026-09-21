@@ -146,8 +146,8 @@ browser playground runs. `wasm32-unknown-unknown` (no libc) is not supported.
 
 ## Publishing
 
-In dependency order: `sabiruby-macros` 0.1.0, `sabiruby` 0.5.0, `sabiruby-compiler` 0.2.2,
-`sabiruby-serde` 0.1.0, `sabiruby-cli` 0.5.0. The macros come *first* from 0.5.0 on: the VM's
+In dependency order: `sabiruby-macros` 0.1.0, `sabiruby` 0.6.0, `sabiruby-compiler` 0.3.0,
+`sabiruby-serde` 0.2.0, `sabiruby-cli` 0.6.0. The macros come *first* from 0.5.0 on: the VM's
 feature `macros` makes `sabiruby-macros` an optional dependency of the VM, so the VM can no
 longer be the first crate published. `cargo publish --workspace` works the order out itself
 (the compiler's dependency on the VM is optional, behind the `host` feature, so the VM still
@@ -176,6 +176,20 @@ A release need not publish all five. 0.5.2 (2026-09-18) published two: `sabiruby
 order is free — the compiler's optional dependency on the VM is `^0.5.0`, which the published
 0.5.1 already satisfied, and the VM's dev-dependency on the compiler is stripped from the
 package ([`docs/worklog/2026-09-18-release-0.5.2.md`](../worklog/2026-09-18-release-0.5.2.md)).
+
+0.6.0 (2026-09-22) publishes four of the five, and `sabiruby-compiler` is a republish again,
+for the same reason 0.2.2 was and with a different version number. Nothing of the vendored
+compiler or the shim moved since 0.2.3 (`git diff v0.5.2..HEAD -- compiler/` is empty), but the
+optional dependency on the VM has to name 0.6 or a `sabiruby-cli` would carry two VMs. The jump
+is to **0.3.0**, not 0.2.4, because this time the raise is itself breaking for the crate's own
+users: with the feature `host` on, `sabiruby` is a *public* dependency — `impl sabiruby::Host
+for Compiler` and `sabiruby::EvalOptions` are in the signature (`compiler/src/lib.rs`) — so a
+program that pins `sabiruby = "0.5"` and asks for `sabiruby-compiler = "0.2"` with `host` would
+be handed a compiler built against a VM it cannot pass its own types to. A caret requirement
+inside `0.x` treats the minor as the major, so the only way to say "this one needs the new VM"
+is 0.3.0. `sabiruby-macros` 0.1.0 is the one crate not republished: it has no change since
+`v0.5.1` and does not depend on the VM at all (what it generates names `::sabiruby::…`, and its
+dev-dependency is path-only), so nothing in it is tied to 0.6.
 
 A dev-dependency that names a version would be resolved from crates.io when the packaged crate
 is verified, so the one on `sabiruby-compiler` here carries a path and no version: a version
