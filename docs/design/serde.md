@@ -165,12 +165,12 @@ the value the host now holds was written. `None` means the bytecode was built wi
 information; there is no file name, because the VM's line is as far as this goes and a host
 that loaded the script knows what it called it.
 
-`Vm::current_line` is *not* that line, and this is worth stating because it looks like it. The
-run loop writes `ci.pc` past the instruction before dispatching it, so `current_line` answers
-with the line of the instruction that will run **next** — `Some(2)` for a declaration on line 1
-of a file. That is exactly right for the playground's stepper, which highlights the row about
-to run, and exactly wrong here. `Vm::backtrace_line` is the other question, stepping back over
-the pc as `Vm::backtrace` does.
+`Vm::next_line` is *not* that line, and this is worth stating because the name it used to have
+(`current_line`, now a deprecated alias) made it look like it. The run loop writes `ci.pc` past
+the instruction before dispatching it, so `next_line` answers with the line of the instruction
+that will run **next** — `Some(2)` for a declaration on line 1 of a file. That is exactly right
+for the playground's stepper, which highlights the row about to run, and exactly wrong here.
+`Vm::backtrace_line` is the other question, stepping back over the pc as `Vm::backtrace` does.
 
 `expose` is the way back — a host table a script looks up by name, answering with a Hash with
 Symbol keys (`Options::symbols`) or `nil`:
@@ -261,7 +261,7 @@ Three entry points, in the shape stage 3b of `host-bridge-plan.md` gave the othe
   `JSON::ParserError` is a constant of `JSON` and answers with its qualified name.
 * `Vm::backtrace_line() -> Option<u32>` — the line the first frame of `Vm::backtrace` carries,
   which from inside a native is the line of the call. `declare` records it per declaration.
-  Every way of doing without it was worse: `current_line` answers a different question (the
+  Every way of doing without it was worse: `next_line` answers a different question (the
   next instruction, which the playground's stepper wants); reading `Vm::backtrace`'s first
   string back apart is text a file name with a colon in it would break; and reaching into
   `vm.ci` and `vm.ireps` from another crate would put the `pc - 1` this turns on in two places,
@@ -283,7 +283,7 @@ information).
 
 `Vm::backtrace_line` itself is checked in the VM, in `tests/native.rs`: a native asks it for the
 line it was called from, gets the number `Vm::backtrace`'s first frame carries, and gets a
-different one from `Vm::current_line`.
+different one from `Vm::next_line`.
 
 `tools/check_no_std.sh` builds the VM alone; this crate's own `no_std` build is
 `cargo build -p sabiruby-serde --lib --no-default-features --target thumbv7em-none-eabi`.

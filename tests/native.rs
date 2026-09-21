@@ -225,13 +225,13 @@ fn a_vm_with_a_closure_and_host_state_is_still_send_and_sync() {
     assert_eq!(run(&mut vm, "p bump, bump"), "1\n2\n");
 }
 
-/// `Vm::backtrace_line` and `Vm::current_line` are two different questions, and a native that
+/// `Vm::backtrace_line` and `Vm::next_line` are two different questions, and a native that
 /// wants to record where it was called from wants the first one.
 ///
 /// A native pushes no frame of its own, so the innermost `CallInfo` a native sees is the Ruby
 /// frame that called it — and its `pc` is already past the SEND (`self.ci[top].pc = pc` runs
 /// before the instruction does). `backtrace_line` steps back over that, as `Vm::backtrace`
-/// does; `current_line` does not, which is what a debugger stopped at an instruction boundary
+/// does; `next_line` does not, which is what a debugger stopped at an instruction boundary
 /// wants and what the playground's stepper reads.
 #[test]
 fn a_native_asks_backtrace_line_for_the_line_it_was_called_from() {
@@ -240,7 +240,7 @@ fn a_native_asks_backtrace_line_for_the_line_it_was_called_from() {
     let sink = seen.clone();
     let object = vm.core.object;
     vm.define_closure(object, "note", move |vm, _self_, _args, _blk| {
-        sink.lock().unwrap().push((vm.backtrace_line(), vm.current_line(), vm.backtrace(None)));
+        sink.lock().unwrap().push((vm.backtrace_line(), vm.next_line(), vm.backtrace(None)));
         Ok(Value::Nil)
     });
     // a call on a line of its own, then one spread over two lines, then a trailing statement
@@ -275,4 +275,30 @@ fn without_debug_information_there_is_no_line_and_no_backtrace() {
     vm.load_and_run(&bin).expect("run");
     // the frames `backtrace` leaves out are the frames this has no line for
     assert_eq!(*seen.lock().unwrap(), [(None, 0)]);
+}
+
+/// `Vm::current_line` is the former name of `Vm::next_line`, kept while its users move over
+/// (`docs/plans/serde-declare-lines-plan.md` §4). Two things have to hold while it is here:
+/// it answers exactly as the new name does, and calling it warns.
+///
+/// `#[expect]` is what checks the warning: unlike `#[allow]` it is itself a lint, and the
+/// compiler reports an unfulfilled expectation. So this test stops compiling both if the
+/// alias stops being deprecated and when the alias is finally removed.
+#[expect(deprecated)]
+#[test]
+fn the_old_name_still_answers_the_same_and_says_it_is_deprecated() {
+    let seen: Arc<Mutex<Vec<(Option<u32>, Option<u32>)>>> = Arc::new(Mutex::new(Vec::new()));
+    let mut vm = Vm::with_mrblib().expect("vm");
+    let sink = seen.clone();
+    let object = vm.core.object;
+    vm.define_closure(object, "note", move |vm, _self_, _args, _blk| {
+        sink.lock().unwrap().push((vm.next_line(), vm.current_line()));
+        Ok(Value::Nil)
+    });
+    run(&mut vm, "note 1\nnote 2,\n     3\nx = 4\n");
+    let seen = seen.lock().unwrap();
+    // the same answer, whichever name it is asked by
+    for (new, old) in seen.iter() { assert_eq!(new, old); }
+    // and it is still the next instruction's line, one past the call (`note 1` is line 1)
+    assert_eq!(seen.iter().map(|(_, o)| *o).collect::<Vec<_>>(), [Some(2), Some(4)]);
 }

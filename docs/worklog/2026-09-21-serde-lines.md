@@ -448,3 +448,149 @@ String でキーを引いていれば静かに `nil` になる、という実例
    分解するときに `..` が要る**（`let Declared { name, value, .. } = d;`）。
    フィールドを読むぶんには何も変わらない。games の側で書くときに一度だけ当たる。
    **属する先**: 使い勝手（報告のみ）。
+
+## 7. 後日（同じ日）— `current_line` → `next_line`
+
+§6 の 1 に対する著者の答え。**2026-09-21、著者「`Vm::current_line` は改名してよい」**、
+新しい名前は `Vm::next_line`。作業場所は worktree `sabiruby-wt-next-line`
+（ブランチ `next-line`、先頭は `574aeff`）。計画書の節は
+[`serde-declare-lines-plan.md`](../plans/serde-declare-lines-plan.md) §4 に足した。
+
+### 7.1 振る舞いは 1 バイトも変えていない
+
+`src/vm.rs` の本体は `line_of(ci.pc)` のまま、名前だけ `next_line` にした。§1.2 で測った
+「1 命令先を指す」はそのままで、それが playground のステップ実行の欲しい答えだからである。
+rustdoc の 1 行目を「Source line of the instruction the innermost frame is at」から
+**「Source line of the instruction that will run **next**」**に書き替えた。前の 1 行目は
+返り値ではなく実装（`ci` と `pc`）を言っていて、名前と同じ誤読を誘っていた。
+
+### 7.2 古い名前を消さずに残した — 理由は依存の形
+
+`#[deprecated]` の別名 1 行（`self.next_line()`）にして残した。消さない理由は
+計画書 §4 に書いたとおりで、**3 つの repo が 1 本の線で繋がっている**ことにある:
+
+```
+rubevy_games/Cargo.lock ──固定──> sabiruby の rev
+        │                                 ▲
+        │ pages.yml が建てる              │ path = "../../sabiruby"
+        ▼                                 │
+sabiruby-playground の main ──────────────┘
+```
+
+games の `pages.yml` は playground の main を、games の lock が固定している sabiruby の rev
+（今は `50cae75`）に対して建てる。だから「sabiruby で古い名前を消す」と「playground が
+新しい名前を使う」が同時に main に入ると、games の lock が上がるまでの間は Pages の CI が
+必ず落ちる。別名が 1 つあれば、どの順で main に入ってもどちらの名前も通る。
+
+**指示の前提を 1 つ直した。** 指示は「playground の CI は sabiruby の main を隣に
+checkout する」と言っていたが、`sabiruby-playground/.github/workflows/pages.yml` を読むと
+`SABIRUBY_REF`（**今は `7be7b86` = v0.5.2**）という**明示的に固定された commit**である。
+つまり固定は 2 つあり、playground の側は自分の repo の中にも 1 つ持っている。
+これは順番を 1 段増やす: playground が `next_line` を使う commit では、
+**同じ commit で `SABIRUBY_REF` も上げないと playground 自身の Pages が落ちる**。
+`7be7b86` は `backtrace_line` すら無い（v0.5.2）ので、別名があっても届かない。
+
+別名を消す条件（games の lock が上がり、playground の main が `next_line` を使い、
+`SABIRUBY_REF` もその rev にあり、両方の Pages が緑）と入れる順番は計画書 §4 に書いた。
+**この仕事では消さない。**
+
+### 7.3 別名が本当に警告を出すことを、テストにコンパイラに確かめさせた
+
+`tests/native.rs` の `the_old_name_still_answers_the_same_and_says_it_is_deprecated`。
+指示は `#[allow(deprecated)]` を付けた 1 本だったが、`#[allow]` では
+**「警告が出ること」は確かめられない**（黙るだけで、`#[deprecated]` を外しても通る）。
+`#[expect(deprecated)]` にした: `expect` はそれ自体が lint で、期待した警告が**出なければ**
+`unfulfilled_lint_expectation` でコンパイラが文句を言う。つまりこのテストは
+
+* `#[deprecated]` を誰かが外したら、
+* 別名を消したら（`vm.current_line()` が無い）、
+
+どちらでもコンパイルが止まる。1.85 の MSRV に対して `#[expect]` は 1.81 からなので使える
+（`cargo check` を 1.85 で回す `msrv` ジョブを §7.5 で実際に通した）。中身は
+`next_line` と `current_line` を同じ native の中で両方呼び、**同じ答えであること**と、
+それが `[Some(2), Some(4)]`（呼び出しの 1 行先）であることを見ている。
+
+### 7.4 repo の中に古い名前は残っていない
+
+`grep -rn current_line --include='*.rs' --include='*.md' .` に残るのは 6 つのファイルだけで、
+どれも「古い呼び出し」ではない（行番号は書かない。§6 の 5 で踏んだとおり、VM に手を入れる
+たびに静かに嘘になる）:
+
+| どこ | 何 |
+|---|---|
+| `src/vm.rs` | 別名の定義（`#[deprecated]`）、1 か所 |
+| `tests/native.rs` | その別名のテスト（`#[expect(deprecated)]`）と、その rustdoc |
+| `CHANGELOG.md` | Unreleased の、改名そのものの記述 |
+| `docs/design/serde.md` ・ `docs/design/inspect.md` | 「前の名前は `current_line`」の括弧 1 つずつ |
+| `docs/plans/serde-declare-lines-plan.md` | §2 の本文（当時の記録、触らない）と §4（改名の節） |
+| `docs/worklog/2026-09-21-serde-lines.md` | §1・§3・§6（当時の記録、触らない）とこの節 |
+
+**過去の worklog と、済んだ計画書の本文は書き換えていない** — その時点で正しかった記録で、
+今の名前に直すと「なぜ改名したか」が読めなくなる。書き替えたのは「今」を言う文書だけ
+（`docs/design/*`、`docs/README.md`、`CHANGELOG.md`）で、design の 2 か所には
+「（当時 `current_line`）」と旧名を 1 語だけ残した。設計文書を読んで `git log` を引く人が
+橋を渡れるようにするためで、別名を消すときにこの 2 語も消える。
+
+### 7.5 確かめたこと
+
+```
+$ cargo test --workspace                       TOTAL passed: 251  failed: 0   （250 → +1）
+$ ./tools/check_no_std.sh                      no_std OK
+$ cargo build --workspace --all-targets        警告 0（deprecation も 0）
+$ git diff main -- '*.rs' | grep '^+' | grep -c unsafe     0
+$ ./target/release/sabiruby mrbtest tests/mrbtest/assert.mrb …（112 ファイル）
+$ diff tests/mrbtest/baseline.txt <(…)         BASELINE IDENTICAL
+```
+
+本家テストは前任と同じ道（Docker の `tools/mrbtest.sh` ではなく、チェックインされている
+`.mrb` を release の CLI で回して baseline と比べる）。VM の計算は変えていないので 1 度。
+
+## 8. main の CI が赤かった件 — `cargo doc` の警告 1 件
+
+改名とは別の話だが同じブランチで直した（別コミット）。**main の CI が 09-20 の declare の
+マージ（`944b72b`）から 3 回続けて赤く**、落ちていたのは `test` ジョブの
+`cargo doc --no-deps --workspace --lib`（`.github/workflows/ci.yml:30`、`RUSTDOCFLAGS: -D warnings`）。
+
+§6 の 6 が「この変更より前からある警告 1 件」と書いて通り過ぎたもので、**CI は
+`-D warnings` でそれをエラーにしている**。ローカルで同じ環境変数を付けて再現した:
+
+```
+$ RUSTDOCFLAGS='-D warnings' cargo doc --no-deps --workspace --lib
+error: redundant explicit link target
+  --> serde/src/declare.rs:14:20
+   |
+14 | //! [`from_value`](crate::from_value) reads as a `T` …
+   |      ----------    ^^^^^^^^^^^^^^^^^ explicit target is redundant
+error: could not document `sabiruby-serde`
+```
+
+`declare.rs:83` が `use crate::{from_value, …}` しているので `from_value` は
+このモジュールのスコープで既に解決する。明示の target を落として `[`from_value`]` だけにした。
+rustdoc が出していた suggestion そのままで、リンク先は変わらない。
+
+改名で足した rustdoc のリンク（`[`Vm::next_line`]` を 2 か所、`[`Vm::backtrace_line`]`）も
+同じコマンドで確かめてある。CI の step のうちローカルで回せるものを一通り:
+
+```
+$ cargo test --workspace                                        251 passed / 0 failed
+$ cargo test -p sabiruby --no-default-features --features "std utf8"   全部 ok
+$ tools/check_no_std.sh --features regexp                       no_std OK
+$ tools/check_no_std.sh --features utf8                         no_std OK
+$ cargo build -p sabiruby --lib --target wasm32-unknown-unknown  Finished
+$ RUSTDOCFLAGS='-D warnings' cargo doc --no-deps --workspace --lib      Finished（0 警告）
+$ RUSTDOCFLAGS='-D warnings' CARGO_TARGET_DIR=target/doc-cli \
+      cargo doc --no-deps -p sabiruby-cli --bins                Finished
+$ cargo publish --dry-run --workspace                           5 crate とも Finished、exit 0
+$ cargo +1.85 check --workspace --all-targets                   Finished（msrv ジョブ）
+```
+
+**全部通る。赤くなる理由はこの 1 件だけだった。** `--all-targets` の 1.85 が通るので、
+§7.3 の `#[expect(deprecated)]`（1.81 から）も MSRV の内側である。`publish --dry-run` は
+作業木が汚れていると止まる（`error: 1 files in the working directory contain changes that
+were not yet committed`）ので、コミットしてから回した。
+
+ci.yml に clippy と fmt の step は無い（この repo は `cargo fmt` を使わない方針で、
+`rustfmt.toml` も無い）ので、回すものは上で全部である。別ジョブの `msrv` は
+`dtolnay/rust-toolchain@1.85` で `cargo check --workspace --all-targets` だけで、
+ローカルでは `rustup` に入っている 1.85 を `CARGO_TARGET_DIR` を別にして回した
+（共有の target に 1.85 の成果物を混ぜないため）。

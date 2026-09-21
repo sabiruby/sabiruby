@@ -55,15 +55,23 @@ read-only entry point and changes no behaviour. No version is raised
   one place that records it. An amended declaration (`define_replacing`) keeps its place in
   the order and takes the later line; bytecode built without debug information has `None`.
 
-`sabiruby` — one entry point, no behaviour changed (`d0bbde0`).
+`sabiruby` — one entry point and one rename, no behaviour changed (`d0bbde0`).
 
 * **`Vm::backtrace_line() -> Option<u32>`** — the line the first frame of `Vm::backtrace`
   carries, which from inside a native (which pushes no frame of its own) is the line of the
-  call. Distinct from `Vm::current_line`, which answers with the line of the instruction that
+  call. Distinct from `Vm::next_line`, which answers with the line of the instruction that
   will run **next**, since `ci.pc` is past the instruction being executed: that is what a
   debugger stopped at an instruction boundary wants to highlight, and it is one line late for
-  anything asking where it was called from. `current_line` is unchanged, and its rustdoc now
-  says which of the two it is (`tests/native.rs`).
+  anything asking where it was called from (`tests/native.rs`).
+
+* **`Vm::current_line` is renamed `Vm::next_line`; the old name is deprecated** and kept as a
+  one-line alias that answers exactly as before. Nothing about what the VM computes changed —
+  the name did, because it invited the wrong reading: asked from inside a native it looks like
+  it will say where the native was called from, and it says the line after. `next_line` says
+  what it answers, and `backtrace_line` is the other question. The alias goes away in a later
+  release, once the one caller outside this repository (sabiruby-playground's stepper) is on
+  the new name; the condition is written down in
+  [`docs/plans/serde-declare-lines-plan.md`](docs/plans/serde-declare-lines-plan.md).
 
 ## 0.5.2 — 2026-09-18
 
