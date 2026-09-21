@@ -35,7 +35,7 @@
 //! | `None` / `Some(x)` | `nil` / `x` | `nil` is `None` |
 //! | `()`, unit struct | `nil` | `nil` |
 //! | seq, tuple, tuple struct | Array | Array |
-//! | map | Hash (keys as they serialize) | Hash |
+//! | map | Hash (keys as they serialize; [`Options::symbol_map_keys`] for String keys as Symbols) | Hash |
 //! | struct | Hash, String keys ([`Options::symbol_keys`] for Symbols) | Hash with String **or** Symbol keys |
 //! | unit variant | Symbol (`:Red`) | Symbol or String |
 //! | newtype variant | `{"Name" => value}` | a Hash of one entry |
@@ -44,7 +44,8 @@
 //!
 //! Reading is deliberately the more forgiving direction: a struct's fields are found under
 //! String or Symbol keys whichever way they were written, and a variant name may be a Symbol
-//! or a String. Writing has one shape, which [`Options`] picks.
+//! or a String. Writing has one shape, which [`Options`] picks — [`Options::symbols`] is both
+//! switches, the shape that reads back the way a Ruby data file wrote it.
 //!
 //! # Errors
 //!
@@ -107,17 +108,42 @@ pub use error::Error;
 pub use json::install_json;
 
 /// How a Rust value is written as a Ruby one.
+///
+/// Make one with [`default`](Options::default) or one of the constructors below and set the
+/// fields you want; the struct is `#[non_exhaustive]`, so a struct literal is not available
+/// outside this crate and a field added here later is not a breaking change:
+///
+/// ```
+/// let mut opts = sabiruby_serde::Options::symbol_keys();
+/// opts.symbol_map_keys = true;                      // the same as `Options::symbols()`
+/// ```
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Options {
     /// Write struct fields and variant names as Symbols (`{name: "a"}`) rather than as Strings
     /// (`{"name" => "a"}`). Off by default, because a Hash with String keys is what `JSON` and
     /// most Ruby data has, and reading accepts either way round.
     pub symbol_keys: bool,
+    /// Write a *map's* keys as Symbols where they serialize as Strings (`BTreeMap<String, _>`
+    /// becomes `{iron_ore: 1}` rather than `{"iron_ore" => 1}`). A key that serializes as
+    /// anything else — an Integer, an Array — is left as it is.
+    ///
+    /// A separate switch from [`symbol_keys`](Options::symbol_keys), and off by default, for a
+    /// reason that is not symmetry: a struct's field names are finite and the type decides
+    /// them, while a map's keys are runtime values with no bound on how many there are, and
+    /// the VM's symbol table is never collected (`docs/design/gc.md`: "symbols — never
+    /// collected"). Interning every key of every map is therefore something a host chooses,
+    /// not something it gets by asking for Symbol field names.
+    pub symbol_map_keys: bool,
 }
 
 impl Options {
-    /// Struct fields and variant names as Symbols.
-    pub fn symbol_keys() -> Options { Options { symbol_keys: true } }
+    /// Struct fields and variant names as Symbols; a map's keys as they serialize.
+    pub fn symbol_keys() -> Options { Options { symbol_keys: true, symbol_map_keys: false } }
+    /// Both: struct fields, variant names, and a map's String keys as Symbols. What
+    /// [`declare::expose`] answers with, and what reads back the way a Ruby data file wrote
+    /// it — `recipe_of(:iron_plate)[:in][:iron_ore]` rather than `[:in]["iron_ore"]`.
+    pub fn symbols() -> Options { Options { symbol_keys: true, symbol_map_keys: true } }
 }
 
 /// A `Serialize` value as a Ruby value, with String keys.

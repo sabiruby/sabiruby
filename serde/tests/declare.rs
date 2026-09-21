@@ -4,6 +4,8 @@
 //! The vocabulary here is units of measure, which is an example and nothing else: the crate
 //! knows no more about what is being declared than `serde` does.
 
+use std::collections::BTreeMap;
+
 use sabiruby::error::VmError;
 use sabiruby::{Value, Vm};
 use sabiruby_serde::declare::{expose, Declarations, OnDuplicate};
@@ -231,6 +233,32 @@ fn a_host_table_is_read_back_from_ruby_with_symbol_keys() {
     let e = run(&mut vm, "control.rb", "unit_of(:metre)\n").expect_err("gone");
     assert_eq!(raised(&mut vm, &e),
         "unit_of: the host has already taken this table out of the VM (RuntimeError) at control.rb:1");
+}
+
+/// A published entry with a map in it: the shape Factory's recipes have — the ingredients are
+/// names of other declared things, kept in Rust as a map's keys.
+#[derive(Serialize)]
+struct Recipe {
+    ingredients: BTreeMap<String, u32>,
+    time: f64,
+}
+
+#[test]
+fn the_names_inside_a_published_entry_read_back_as_the_symbols_they_were_written_as() {
+    let mut vm = vm();
+    let mut ingredients = BTreeMap::new();
+    ingredients.insert("iron_ore".to_string(), 1);
+    expose(&mut vm, "recipe_of", [("iron_plate".to_string(), Recipe { ingredients, time: 2.0 })]);
+    run(&mut vm, "control.rb", concat!(
+        "$whole = recipe_of(:iron_plate).inspect\n",
+        "$n = recipe_of(:iron_plate)[:ingredients][:iron_ore]\n",
+    )).expect("run");
+    let whole = vm.global_get("$whole");
+    // the field names and the names *inside* the entry are both Symbols: a data file that
+    // wrote `in: { iron_ore: 1 }` reads it back the same way round
+    assert_eq!(String::from_utf8_lossy(vm.str_bytes(whole).expect("a String")),
+        "{ingredients: {iron_ore: 1}, time: 2.0}");
+    assert_eq!(vm.global_get("$n"), Value::Int(1));
 }
 
 #[test]

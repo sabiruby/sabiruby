@@ -41,6 +41,24 @@ impl<'v> Serializer<'v> {
         }
     }
 
+    /// A map's key as it goes into the Hash: what it serialized to, except that under
+    /// [`Options::symbol_map_keys`] a key that came out a String becomes a Symbol.
+    ///
+    /// The test is the value, not the Rust type, because "the key is written as a string" is
+    /// exactly what a host means here: `String`, `&str` and `char` all land on a String, and so
+    /// does a newtype or a `Some` around one. A String that is not valid UTF-8 has no Symbol to
+    /// become and stays a String, and so does one marked binary (`serialize_bytes`), which is
+    /// bytes and not text — the same line this crate draws everywhere it reads text
+    /// (`docs/design/serde.md`, "The data model").
+    fn map_key(&mut self, k: Value) -> Value {
+        if !self.opts.symbol_map_keys || self.vm.str_binary(k) { return k; }
+        let name = match self.vm.str_bytes(k).map(core::str::from_utf8) {
+            Some(Ok(s)) => alloc::string::String::from(s),
+            _ => return k,
+        };
+        Value::Sym(self.vm.intern(&name))
+    }
+
     /// `{ name => value }`: how every variant that carries something is written.
     fn tagged(&mut self, name: &str, value: Value) -> Result<Value> {
         let k = self.key(name);
@@ -213,6 +231,8 @@ impl<'a, 'v> ser::SerializeTupleVariant for TupleVariantSer<'a, 'v> {
 
 /// A map. The keys are whatever the key type serializes to — a Ruby Hash takes any value as a
 /// key — so `HashMap<i64, _>` keeps its Integer keys rather than stringifying them.
+/// [`Options::symbol_map_keys`] is the one exception: it turns a key that came out a String
+/// into a Symbol ([`Serializer::map_key`]).
 pub struct MapSer<'a, 'v> {
     ser: &'a mut Serializer<'v>,
     pairs: Vec<(Value, Value)>,
@@ -223,7 +243,8 @@ impl<'a, 'v> ser::SerializeMap for MapSer<'a, 'v> {
     type Ok = Value;
     type Error = Error;
     fn serialize_key<T: ?Sized + Serialize>(&mut self, key: &T) -> Result<()> {
-        self.key = Some(key.serialize(&mut *self.ser)?);
+        let k = key.serialize(&mut *self.ser)?;
+        self.key = Some(self.ser.map_key(k));
         Ok(())
     }
     fn serialize_value<T: ?Sized + Serialize>(&mut self, value: &T) -> Result<()> {

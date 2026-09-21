@@ -15,13 +15,23 @@ fn vm() -> Vm {
     Vm::with_mrblib().expect("vm")
 }
 
+/// Compiles `src` under `filename` and runs it.
+fn run(vm: &mut Vm, filename: &str, src: &str) {
+    let bin = sabiruby_compiler::compile(src.as_bytes(), &sabiruby_compiler::Options {
+        filename: filename.into(), debug_info: true, ..Default::default()
+    }).expect("compile");
+    vm.load_and_run(&bin).expect("run");
+}
+
+/// A Ruby String as Rust text.
+fn string(vm: &mut Vm, v: Value) -> String {
+    String::from_utf8_lossy(vm.str_bytes(v).expect("a String")).into_owned()
+}
+
 /// `p value` as the VM prints it: the Ruby side of what the conversion built.
 fn inspect(vm: &mut Vm, v: Value) -> String {
     vm.global_set("$it", v);
-    let src = sabiruby_compiler::compile(b"p $it", &sabiruby_compiler::Options {
-        filename: "(test)".into(), debug_info: true, ..Default::default()
-    }).expect("compile");
-    vm.load_and_run(&src).expect("run");
+    run(vm, "(test)", "p $it");
     String::from_utf8_lossy(&vm.take_output()).trim_end().to_string()
 }
 
@@ -115,6 +125,89 @@ fn nested_structures_survive_the_trip() {
     assert!(inspect(&mut vm, v).contains(r#""pair" => [7, "seven"]"#));
 }
 
+/// A recipe's ingredients, the shape that started this: a name declared in Ruby as a Symbol,
+/// kept in Rust as the key of a map.
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+struct Recipe {
+    ingredients: BTreeMap<String, u32>,
+    time: f64,
+}
+
+fn a_recipe() -> Recipe {
+    let mut ingredients = BTreeMap::new();
+    ingredients.insert("iron_ore".to_string(), 1);
+    ingredients.insert("coal".to_string(), 2);
+    Recipe { ingredients, time: 2.0 }
+}
+
+#[test]
+fn a_maps_keys_are_strings_under_symbol_keys_as_they_always_were() {
+    let mut vm = vm();
+    let r = a_recipe();
+    // `symbol_keys` is the field names and nothing else: what it did before this option existed
+    let v = to_value_with(&mut vm, &r, Options::symbol_keys()).expect("to_value");
+    assert_eq!(inspect(&mut vm, v),
+        r#"{ingredients: {"coal" => 2, "iron_ore" => 1}, time: 2.0}"#);
+    let back: Recipe = from_value(&mut vm, v).expect("from_value");
+    assert_eq!(back, r);
+}
+
+#[test]
+fn symbols_reaches_a_maps_keys_too() {
+    let mut vm = vm();
+    let r = a_recipe();
+    let v = to_value_with(&mut vm, &r, Options::symbols()).expect("to_value");
+    assert_eq!(inspect(&mut vm, v), r#"{ingredients: {coal: 2, iron_ore: 1}, time: 2.0}"#);
+    let back: Recipe = from_value(&mut vm, v).expect("from_value");
+    assert_eq!(back, r);
+}
+
+#[test]
+fn a_hash_a_script_wrote_with_symbol_keys_comes_back_the_way_it_was_written() {
+    let mut vm = vm();
+    // the round trip the Factory data file wants: written in Ruby with Symbols, read as a Rust
+    // map, written back — and `==` its old self, keys and all
+    run(&mut vm, "data.rb", "$was = {iron_ore: 1, coal: 2}\n");
+    let was = vm.global_get("$was");
+    let map: BTreeMap<String, u32> = from_value(&mut vm, was).expect("from_value");
+    assert_eq!(map.get("iron_ore"), Some(&1));
+    let again = to_value_with(&mut vm, &map, Options::symbols()).expect("to_value");
+    vm.global_set("$again", again);
+    run(&mut vm, "data.rb", "$same = ($again == $was)\n$keys = $again.keys.inspect\n");
+    assert_eq!(vm.global_get("$same"), Value::True);
+    let keys = vm.global_get("$keys");
+    assert_eq!(string(&mut vm, keys), "[:coal, :iron_ore]");
+
+    // and without the option it is a different Hash, which is the bug this fixed
+    let plain = to_value_with(&mut vm, &map, Options::symbol_keys()).expect("to_value");
+    vm.global_set("$plain", plain);
+    run(&mut vm, "data.rb", "$same = ($plain == $was)\n");
+    assert_eq!(vm.global_get("$same"), Value::False);
+}
+
+#[test]
+fn only_a_key_that_serializes_as_a_string_becomes_a_symbol() {
+    let mut vm = vm();
+    let mut ints: BTreeMap<i64, &str> = BTreeMap::new();
+    ints.insert(7, "seven");
+    let v = to_value_with(&mut vm, &ints, Options::symbols()).expect("to_value");
+    // an Integer key is a value a Hash can hold; there is nothing to intern
+    assert_eq!(inspect(&mut vm, v), r#"{7 => "seven"}"#);
+
+    // a composite key keeps its shape, and the Strings *inside* it are not touched: what the
+    // option promises is the key, not every string in reach
+    let mut pairs: BTreeMap<(String, i64), i64> = BTreeMap::new();
+    pairs.insert(("a".into(), 1), 10);
+    let v = to_value_with(&mut vm, &pairs, Options::symbols()).expect("to_value");
+    assert_eq!(inspect(&mut vm, v), r#"{["a", 1] => 10}"#);
+
+    // bytes are bytes, not a name: a binary String stays a String even where it reads as text
+    let mut bytes: BTreeMap<Blob, i64> = BTreeMap::new();
+    bytes.insert(Blob(b"ab".to_vec()), 1);
+    let v = to_value_with(&mut vm, &bytes, Options::symbols()).expect("to_value");
+    assert_eq!(inspect(&mut vm, v), r#"{"ab" => 1}"#);
+}
+
 #[test]
 fn option_is_nil_and_nil_is_none() {
     let mut vm = vm();
@@ -168,8 +261,8 @@ fn numeric_boundaries() {
 }
 
 /// A field of bytes: `serialize_bytes` / `deserialize_byte_buf` without pulling in
-/// `serde_bytes` for one test.
-#[derive(PartialEq, Debug)]
+/// `serde_bytes` for one test. Ordered as well, so that it can be a map's key.
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 struct Blob(Vec<u8>);
 
 impl Serialize for Blob {

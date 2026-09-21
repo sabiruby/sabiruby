@@ -249,8 +249,17 @@ impl<T> core::fmt::Debug for Exposed<T> {
 struct Table<T>(BTreeMap<String, T>);
 
 /// Defines `method` on `Object`: a script calls it with a name (Symbol or String) and gets the
-/// entry as a Hash with Symbol keys ([`Options::symbol_keys`]), or `nil` for a name the table
-/// has not got.
+/// entry as a Hash with Symbol keys ([`Options::symbols`]), or `nil` for a name the table has
+/// not got.
+///
+/// The Symbols go all the way down: a map inside an entry gets Symbol keys too, so a table of
+/// recipes whose ingredients are a `BTreeMap<String, u32>` reads back as
+/// `recipe_of(:iron_plate)[:in][:iron_ore]`. That is [`Options::symbols`] rather than
+/// [`Options::symbol_keys`], and it is the right one *here* for a reason that does not hold of
+/// serialization in general: the keys of a published table's maps are the names of declared
+/// things — there are as many of them as there are declarations, and a data file written in
+/// Ruby wrote them as Symbols in the first place, so nothing new is interned. **The name a
+/// script writes is the name it reads back.**
 ///
 /// This is the other direction from [`Declarations`], and deliberately a separate table: what
 /// a script reads back is what the host decided to publish — after it has checked the
@@ -309,7 +318,7 @@ where
             None => return Err(already_taken(vm, &called)),
         };
         let answer = match t.0.get(&name) {
-            Some(v) => to_value_with(vm, v, Options::symbol_keys()),
+            Some(v) => to_value_with(vm, v, Options::symbols()),
             None => Ok(Value::Nil),
         };
         vm.host_store_mut::<Table<T>>().expect("the store is still there").restore(handle, t);
