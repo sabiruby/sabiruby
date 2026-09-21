@@ -503,16 +503,18 @@ games の `pages.yml` は playground の main を、games の lock が固定し�
 
 ### 7.4 repo の中に古い名前は残っていない
 
-```
-$ grep -rn current_line --include='*.rs' --include='*.md' .
-src/vm.rs:2633              別名の定義（#[deprecated]）
-tests/native.rs:281,287,296 その別名のテスト（#[expect(deprecated)]）
-CHANGELOG.md:64,70          Unreleased の、改名そのものの記述
-docs/design/serde.md:167    「前の名前は current_line だった」の 1 語
-docs/design/inspect.md:33   同上
-docs/plans/serde-declare-lines-plan.md   §2 の本文（当時の記録、触らない）と §4（改名の節）
-docs/worklog/2026-09-21-serde-lines.md   §1・§3・§6（当時の記録、触らない）とこの節
-```
+`grep -rn current_line --include='*.rs' --include='*.md' .` に残るのは 6 つのファイルだけで、
+どれも「古い呼び出し」ではない（行番号は書かない。§6 の 5 で踏んだとおり、VM に手を入れる
+たびに静かに嘘になる）:
+
+| どこ | 何 |
+|---|---|
+| `src/vm.rs` | 別名の定義（`#[deprecated]`）、1 か所 |
+| `tests/native.rs` | その別名のテスト（`#[expect(deprecated)]`）と、その rustdoc |
+| `CHANGELOG.md` | Unreleased の、改名そのものの記述 |
+| `docs/design/serde.md` ・ `docs/design/inspect.md` | 「前の名前は `current_line`」の括弧 1 つずつ |
+| `docs/plans/serde-declare-lines-plan.md` | §2 の本文（当時の記録、触らない）と §4（改名の節） |
+| `docs/worklog/2026-09-21-serde-lines.md` | §1・§3・§6（当時の記録、触らない）とこの節 |
 
 **過去の worklog と、済んだ計画書の本文は書き換えていない** — その時点で正しかった記録で、
 今の名前に直すと「なぜ改名したか」が読めなくなる。書き替えたのは「今」を言う文書だけ
@@ -569,9 +571,17 @@ $ cargo build -p sabiruby --lib --target wasm32-unknown-unknown  Finished
 $ RUSTDOCFLAGS='-D warnings' cargo doc --no-deps --workspace --lib      Finished（0 警告）
 $ RUSTDOCFLAGS='-D warnings' CARGO_TARGET_DIR=target/doc-cli \
       cargo doc --no-deps -p sabiruby-cli --bins                Finished
-$ cargo publish --dry-run --workspace                           （下記）
-$ cargo +1.85 check --workspace --all-targets                   （msrv ジョブ、下記）
+$ cargo publish --dry-run --workspace                           5 crate とも Finished、exit 0
+$ cargo +1.85 check --workspace --all-targets                   Finished（msrv ジョブ）
 ```
 
+**全部通る。赤くなる理由はこの 1 件だけだった。** `--all-targets` の 1.85 が通るので、
+§7.3 の `#[expect(deprecated)]`（1.81 から）も MSRV の内側である。`publish --dry-run` は
+作業木が汚れていると止まる（`error: 1 files in the working directory contain changes that
+were not yet committed`）ので、コミットしてから回した。
+
 ci.yml に clippy と fmt の step は無い（この repo は `cargo fmt` を使わない方針で、
-`rustfmt.toml` も無い）ので、回すものは上で全部である。
+`rustfmt.toml` も無い）ので、回すものは上で全部である。別ジョブの `msrv` は
+`dtolnay/rust-toolchain@1.85` で `cargo check --workspace --all-targets` だけで、
+ローカルでは `rustup` に入っている 1.85 を `CARGO_TARGET_DIR` を別にして回した
+（共有の target に 1.85 の成果物を混ぜないため）。
