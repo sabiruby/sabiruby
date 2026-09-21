@@ -1,12 +1,15 @@
 [package]
 name = "sabiruby-macros"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.85"
 description = "Derive and attribute macros for SabiRuby: a Rust struct and its impl block as a Ruby class, without writing the registration by hand"
 license = "MIT"
-keywords = ["mruby", "ruby", "macros", "embedded", "no-std"]
-categories = ["development-tools::ffi", "game-development", "no-std"]
+# `derive` rather than `no-std`: what these macros generate goes into a no_std VM, but the
+# crate itself is a proc macro built for the host machine, so searching no-std should not
+# find it. Same reason it is no longer in `categories`.
+keywords = ["mruby", "ruby", "macros", "derive", "embedded"]
+categories = ["development-tools::ffi", "game-development"]
 repository = "https://github.com/sabiruby/sabiruby"
 readme = "README.md"
 # What crates.io gets: the macros themselves. The tests (which need the VM and the reference

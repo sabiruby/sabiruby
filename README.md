@@ -11,10 +11,10 @@ The VM runs bytecode only and is pure Rust (`no_std`). Five crates live in this 
 | crate | what | |
 |---|---|---|
 | [`sabiruby`](https://crates.io/crates/sabiruby) | the VM library | pure Rust, `no_std` + `alloc`, wasm |
-| [`sabiruby-compiler`](https://crates.io/crates/sabiruby-compiler) | the reference compiler (mruby 4.1.0-rc's `mruby-compiler`: Prism as its parser, mruby's code generator) built as C; output byte-identical to `mrbc` | needs a C compiler |
-| [`sabiruby-cli`](https://crates.io/crates/sabiruby-cli) | the `sabiruby` command: `sabiruby foo.rb`, `-e`, `compile`, `dump`, with the switches of the reference `mruby` | depends on both |
-| [`sabiruby-macros`](https://crates.io/crates/sabiruby-macros) | `#[derive(RubyClass)]` and `#[ruby_methods]`: a Rust struct and its `impl` block as a Ruby class ([`docs/design/macros.md`](docs/design/macros.md)) | depends on neither; reached through `sabiruby`'s feature `macros` |
-| [`sabiruby-serde`](https://crates.io/crates/sabiruby-serde) | serde and a `JSON` class on top of the VM ([`docs/design/serde.md`](docs/design/serde.md)) | the VM itself never depends on serde |
+| [`sabiruby-compiler`](https://crates.io/crates/sabiruby-compiler) | the reference compiler (mruby 4.1.0-rc's `mruby-compiler`: Prism as its parser, mruby's code generator) built as C; output byte-identical to `mrbc`, plus `highlight()` for an editor's colours | needs a C compiler |
+| [`sabiruby-cli`](https://crates.io/crates/sabiruby-cli) | the `sabiruby` command: `sabiruby foo.rb`, `-e`, `-r`, `compile`, `dump`, with the switches of the reference `mruby` | depends on both |
+| [`sabiruby-macros`](https://crates.io/crates/sabiruby-macros) | `#[derive(RubyClass)]` and `#[ruby_methods]`: a Rust struct and its `impl` block as a Ruby class ([`docs/design/macros.md`](https://github.com/sabiruby/sabiruby/blob/main/docs/design/macros.md)) | depends on neither; reached through `sabiruby`'s feature `macros` |
+| [`sabiruby-serde`](https://crates.io/crates/sabiruby-serde) | serde and a `JSON` class on top of the VM, and `declare`: data *written* in Ruby collected into a Rust table ([`docs/design/serde.md`](https://github.com/sabiruby/sabiruby/blob/main/docs/design/serde.md)) | the VM itself never depends on serde |
 
 The Bevy integration lives in a separate crate, [`rubevy`](https://github.com/sabiruby/rubevy).
 Try it in the browser: **[SabiRuby Playground](https://sabiruby.github.io/sabiruby-playground/)**
@@ -25,9 +25,11 @@ layout (`R0` of the callee is `R[a]` of the caller), `OP_ENTER`, environments,
 the `RBreak`-based unwinding through `ensure`, `OP_CALL` as the body of
 `Proc#call`, and so on are ported from the book's description of `src/vm.c`.
 
-What changed in each release is [`CHANGELOG.md`](CHANGELOG.md).
+What changed in each release — every crate's version, what it added, and what a host has to
+change to move up — is [`CHANGELOG.md`](https://github.com/sabiruby/sabiruby/blob/main/CHANGELOG.md).
+This page says what is here now; the versions and the dates live there.
 
-## Status (2026-09-17, 0.5.0)
+## Status
 
 * RITE 04.00 reader (IREP / LVAR; DBG skipped), all 119 opcodes decoded, `EXT1..3` handled.
 * Interpreter with methods, blocks/closures (attached/detached environments), `super`
@@ -41,6 +43,16 @@ What changed in each release is [`CHANGELOG.md`](CHANGELOG.md).
 * mruby's own `mrblib/*.rb` (Enumerable, Comparable, `Array#each`, `Integer#times`, …) is
   compiled by the reference `mrbc` and embedded (`src/mrblib/core.mrb`), so those run as bytecode.
 * Step execution with an instruction budget (`Vm::start` / `Vm::step`) for host loops.
+* Embedding from Rust: `Vm::define_fn` makes an ordinary Rust function or closure a Ruby
+  method, reading its arguments through `FromRuby` and writing its answer through `IntoRuby`;
+  a Rust value stays in Rust, in a `HostStore` the VM carries, and Ruby holds a `Data` handle
+  the collector gives back (`Vm::set_on_free`). `#[derive(RubyClass)]` and `#[ruby_methods]`
+  write that registration (see Usage below). `Vm::set_host_state`, `Vm::ivar_get` /
+  `global_get` by name and the task entry points are the rest of the door.
+* Line numbers for a host's own messages: `Vm::next_line` (the instruction that will run next,
+  which is what a debugger stopped at a boundary highlights) and `Vm::backtrace_line` (the line
+  a native was called *from*), next to `Vm::backtrace`, snapshots and an event trace
+  ([`docs/design/inspect.md`](https://github.com/sabiruby/sabiruby/blob/main/docs/design/inspect.md)).
 
 * Keyword parameters, visibility (`private`/`protected`/`module_function`), `prepend`,
   hooks (`inherited`, `included`, `method_added`, …), `defined?`, frozen objects.
@@ -79,7 +91,9 @@ What changed in each release is [`CHANGELOG.md`](CHANGELOG.md).
 * Compiler: the reference `mruby-compiler` (Prism as its parser, mruby's own code generator)
   linked as C, in the `sabiruby-compiler`
   crate; the VM crate does not depend on it, the `sabiruby` command (`sabiruby-cli`) does.
-  Output is byte-identical to `mrbc` for every `.rb` in the repository. See
+  Output is byte-identical to `mrbc` for every `.rb` in the repository. The same crate answers
+  `highlight(src)` with one category byte per source byte — what an editor needs to colour Ruby
+  without writing a tokeniser, and it answers for broken source too. See
   [`docs/design/compiler.md`](https://github.com/sabiruby/sabiruby/blob/main/docs/design/compiler.md).
 
 Not yet: `$!` (nil even inside `rescue`; use
@@ -166,10 +180,12 @@ binary already built, so any two commits can be measured the same way and put si
 with `tools/bench_compare.sh`; without Docker the reference columns stay empty and SabiRuby's
 own numbers still come out. The kept results are in
 [`docs/verification/bench.md`](https://github.com/sabiruby/sabiruby/blob/main/docs/verification/bench.md) (best and median of the runs, plus instruction counts and
-ns/instruction from `sabiruby run --stats`). The ratio column is the number to watch: the
-first baseline (2026-09-11) was 1.8x–3.5x slower on arithmetic and 16x on array-heavy code;
-after the work of 2026-09-15 the whole set is 2.8x (median 3.05x), Hash 2.9x and `so_lists`
-4.4x — what changed and why is [`docs/design/optimizations.md`](https://github.com/sabiruby/sabiruby/blob/main/docs/design/optimizations.md) (Japanese).
+ns/instruction from `sabiruby run --stats`). The ratio to the reference is the number to
+watch, and the last baseline in that file is the current one: the first one was 1.8x–3.5x on
+arithmetic and 16x on array-heavy code, and the whole set of 27 benchmarks is **2.57x** by
+total time, 2.85x by the median of the per-benchmark ratios (`bench/results/96221fb.md`; the
+numbers here are whatever that file's last table says, not a promise). What changed and why is
+[`docs/design/optimizations.md`](https://github.com/sabiruby/sabiruby/blob/main/docs/design/optimizations.md) (Japanese).
 The value representation (16-byte enum) and the heap (index into a `Vec`) are the
 known structural costs; measure before changing them. Storage (registers, array elements,
 hash entries, ivars, envs, constants, globals) holds `Slot`; computation works on `Value`;
@@ -188,8 +204,8 @@ Remaining gems and their order: [`docs/design/gems.md`](https://github.com/sabir
 ## Usage
 
 The library: `cargo add sabiruby` (`default-features = false` for `no_std`). The command:
-`cargo install sabiruby-cli` (installs `sabiruby`; building it compiles the C sources of the
-reference compiler, about 2 s in a debug build and 7 s in a release build, on one core).
+`cargo install sabiruby-cli` (installs `sabiruby`; it needs a C compiler, because building it
+builds the reference compiler's C sources, which is most of the time a clean build takes).
 
 How to depend on it:
 
@@ -235,6 +251,7 @@ sabiruby -e 'p [1, 2].sum'     # one line of script (-e may be repeated)
 echo 'puts 1' | sabiruby       # no program file: read it from standard input
 sabiruby -c foo.rb             # check syntax only ("Syntax OK")
 sabiruby -v foo.rb             # version, then the instruction listing, then run
+sabiruby -r lib foo.rb         # require the library first (-r may be repeated)
 sabiruby -b foo.mrb            # bytecode only; -d sets $DEBUG; --stats prints instructions/time/GC
 sabiruby compile foo.rb -o foo.mrb   # like mrbc (-g, -c, --remove-lv, --no-ext-ops, --no-optimize)
 sabiruby dump foo.rb           # instruction listing (.rb or .mrb)

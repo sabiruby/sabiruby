@@ -22,7 +22,7 @@ column; `Display` prints the errors as `FILE:LINE:COL: message`, as `mrbc` does.
 ## What is vendored
 
 `vendor/` holds unmodified copies from mruby 4.1.0-rc (commit `3cf73ee`), listed with their
-licences in [`vendor/VENDOR.md`](vendor/VENDOR.md):
+licences in [`vendor/VENDOR.md`](https://github.com/sabiruby/sabiruby/blob/main/compiler/vendor/VENDOR.md):
 
 * `mrbgems/mruby-compiler` (`include/`, `src/`): MIT, Copyright (c) HASUMI Hitoshi
 * Prism 1.9.0 (`lib/prism`: `include/`, `src/`): MIT, Copyright Shopify Inc.
@@ -58,7 +58,7 @@ Compilations are serialised by a lock: `mrc_presym.c` writes a global on every p
 
 Needs a C compiler (`gnu99`, as the reference build) at build time. Built and tested on Linux (gcc) and macOS (clang)
 in CI; Windows (MSVC) is expected to work, as Prism and mruby support it, but is not tested.
-A clean build of the C part takes about 2 s (debug) and 7 s (release, one core).
+Compiling the vendored C is most of what a clean build of this crate costs, and it is paid once.
 
 **wasm32-wasip1** works with [wasi-sdk](https://github.com/WebAssembly/wasi-sdk) (checked with
 wasi-sdk 34, clang 23): set `CC_wasm32_wasip1=<wasi-sdk>/bin/clang` and
@@ -73,12 +73,14 @@ browser playground runs. `wasm32-unknown-unknown` (no libc) is not supported.
 
 ## Verification
 
-The repository's golden tests compile every `.rb` that has a `.mrb` produced by the reference
-`mrbc` (Docker image `kishima/mruby:4.1.0-rc`): the 17 VM fixtures, the 61 files of mruby's
-test suite (with `-g`, so DBG and LVAR are compared too) and the benchmarks. All are
-byte-identical. The error messages and exit codes of `sabiruby compile` match `mrbc`'s.
+The repository's golden tests (`compiler/tests/golden.rs`) compile every `.rb` that has a
+`.mrb` produced by the reference `mrbc` (Docker image `kishima/mruby:4.1.0-rc`): the VM
+fixtures, mruby's own test suite (with `-g`, so DBG and LVAR are compared too) and the
+benchmarks — 157 files as this is written. All are byte-identical. The error messages and exit
+codes of `sabiruby compile` match `mrbc`'s.
 
 ## License
 
 MIT for the Rust code and the shim; the vendored sources keep their own MIT licences
-(`vendor/VENDOR.md`).
+(`vendor/VENDOR.md`). What changed in each release is
+[`CHANGELOG.md`](https://github.com/sabiruby/sabiruby/blob/main/CHANGELOG.md) of the repository.

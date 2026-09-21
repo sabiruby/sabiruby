@@ -8,6 +8,28 @@ Every claim here is traceable to a commit or to a document under `docs/`, and th
 named. Measurements are the ones in [`docs/verification/bench.md`](docs/verification/bench.md);
 nothing is estimated.
 
+## 0.6.1 — 2026-09-22
+
+Documentation only: no `.rs` file changed (`git diff v0.6.0 -- '*.rs'` is empty). The author
+looked at crates.io after 0.6.0 went up and the five pages described an older repository, so
+every `description` and every crate README was walked claim by claim against the tree
+([`docs/worklog/2026-09-22-readmes.md`](docs/worklog/2026-09-22-readmes.md) has the table).
+All five crates move a patch, because a crate's page on crates.io is only rebuilt by a release.
+
+| crate | | | what was wrong |
+|---|---|---|---|
+| `sabiruby` | 0.6.0 | **0.6.1** | README headed "Status (2026-09-17, 0.5.0)"; nothing about the host bridge (`define_fn`, `HostStore`, `Data`), `next_line`/`backtrace_line` or `highlight()`; benchmark ratios two measurements old; a build time that no longer held |
+| `sabiruby-serde` | 0.2.0 | **0.2.1** | neither the `description` nor the first line of the README said `declare`, which is what 0.2.0 was for |
+| `sabiruby-compiler` | 0.3.0 | **0.3.1** | the `description` did not say `highlight()`; the golden-test counts said 17 fixtures and 61 test files where the repository has 18 and 112 |
+| `sabiruby-cli` | 0.6.0 | **0.6.1** | "`-r` (require) is not implemented yet" — it has been since `37d4a31`; `mrbtest` was missing from the listing |
+| `sabiruby-macros` | 0.1.0 | **0.1.1** | the one `Cargo.toml` line it shows said `sabiruby = { version = "0.5", … }`; `no-std` dropped from its keywords and categories (the proc macro itself is built for the host) |
+
+Three things were changed on purpose rather than corrected, so that the pages go stale more
+slowly: the version and the date are out of the `Status` heading (they are in this file), the
+per-benchmark ratios name the results file they came from, and the seconds a clean build of the
+C compiler takes are gone rather than re-measured, because that number is the machine's, not the
+crate's. Each crate's README now links this file by absolute URL, since only `sabiruby` ships it.
+
 ## 0.6.0 — 2026-09-22
 
 `sabiruby-serde` — a module for data *written* in Ruby, and the two things writing a game's

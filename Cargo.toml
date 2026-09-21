@@ -1,10 +1,10 @@
 [package]
 name = "sabiruby"
-version = "0.6.0"
+version = "0.6.1"
 edition = "2024"
 # edition 2024 and core::ptr::fn_addr_eq need 1.85
 rust-version = "1.85"
-description = "SabiRuby: a VM for mruby 4.1 bytecode written in Rust (\"rusted Ruby\"), checked against mruby 4.1.0-rc"
+description = "SabiRuby: an embeddable no_std Rust VM for mruby 4.1 bytecode (\"rusted Ruby\"), checked against mruby 4.1.0-rc, with a Rust host API for defining classes and methods"
 license = "MIT"
 keywords = ["mruby", "ruby", "bytecode", "vm", "embedded"]
 categories = ["compilers", "embedded", "game-development", "no-std"]

@@ -1,7 +1,8 @@
 # sabiruby-serde
 
 serde for [SabiRuby](https://crates.io/crates/sabiruby): a Rust value as a Ruby value and back,
-and a Ruby `JSON` built on top of it.
+`declare` for data *written* in Ruby and collected into a Rust table, and a Ruby `JSON` built on
+top of the same conversions.
 
 ```rust
 use serde::{Deserialize, Serialize};
@@ -35,8 +36,12 @@ let table: Vec<(String, Unit)> = units.take(&mut vm);   // in the order they wer
 
 Every field serde refuses — missing, of the wrong type, unknown under `deny_unknown_fields` —
 raises at the line of that declaration, in the script's own file; a name declared twice raises
-an `ArgumentError` unless the script uses the method that says it means to overwrite. The
-other direction, `expose`, lets a script look a host table up by name.
+an `ArgumentError` unless the script uses the method that says it means to overwrite.
+`take_with_lines` hands back the line each declaration was on, for the checks that need two
+declarations to see (a recipe naming an item nothing declared) and that serde cannot make. The
+other direction, `expose`, lets a script look a host table up by name, answering with a Hash
+whose keys are Symbols — `Options::symbol_map_keys` outside `declare`, and `Options::symbols()`
+for that and a struct's field names together.
 
 and `install_json` gives the VM a `JSON` class — `JSON.parse`, `JSON.generate`,
 `JSON.pretty_generate`, `Object#to_json` — written in Rust on `serde_json`:
@@ -50,8 +55,9 @@ is a layer above it. This crate is `no_std` + `alloc` too; the default feature `
 brings in `serde_json` (and, through its `preserve_order`, `std`), so
 `default-features = false` leaves the conversion layer alone.
 
-The data model, the error mapping and what differs from CRuby's JSON are
+The data model, the error mapping, the declarations and what differs from CRuby's JSON are
 [`docs/design/serde.md`](https://github.com/sabiruby/sabiruby/blob/main/docs/design/serde.md)
-of the repository.
+of the repository; what changed in each release, and what a host has to change to move up, is
+[`CHANGELOG.md`](https://github.com/sabiruby/sabiruby/blob/main/CHANGELOG.md).
 
 MIT licensed, like the rest of SabiRuby.

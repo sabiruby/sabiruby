@@ -6,7 +6,7 @@ and its `impl` block as a Ruby class, without writing the registration by hand.
 Add it through the VM crate's feature `macros` (one dependency, one `use`):
 
 ```toml
-sabiruby = { version = "0.5", features = ["macros"] }
+sabiruby = { version = "0.6", features = ["macros"] }
 ```
 
 ```rust
@@ -46,5 +46,7 @@ use sabiruby_macros::{RubyClass, ruby_methods}; // the macros
 
 This crate does not depend on `sabiruby`: what it generates names `::sabiruby::…` absolutely, so
 it compiles the same whichever way it was reached. What is generated, and what it does not
-cover, is `docs/design/macros.md` of the
-[repository](https://github.com/sabiruby/sabiruby).
+cover, is
+[`docs/design/macros.md`](https://github.com/sabiruby/sabiruby/blob/main/docs/design/macros.md)
+of the [repository](https://github.com/sabiruby/sabiruby); what changed in each release is its
+[`CHANGELOG.md`](https://github.com/sabiruby/sabiruby/blob/main/CHANGELOG.md).

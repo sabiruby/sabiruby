@@ -6,7 +6,7 @@
 //! companion crate [`sabiruby-compiler`](https://crates.io/crates/sabiruby-compiler) (the
 //! reference compiler built as C). The `sabiruby` command is the crate
 //! [`sabiruby-cli`](https://crates.io/crates/sabiruby-cli). Behaviour is checked against the
-//! reference mruby 4.1.0-rc (its own test suite passes 1819 of 1866 assertions; see the
+//! reference mruby 4.1.0-rc (its own test suite passes 2344 of 2507 assertions; see the
 //! repository's README for what is missing). The design follows the book *Deep dive into
 //! mruby* (register layout, callinfo, catch handlers, environments) and replaces mruby's
 //! C-side choices (boxing, tricolor GC, setjmp) with Rust-native ones.
