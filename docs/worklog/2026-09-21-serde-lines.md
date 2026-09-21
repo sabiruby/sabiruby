@@ -448,3 +448,88 @@ String でキーを引いていれば静かに `nil` になる、という実例
    分解するときに `..` が要る**（`let Declared { name, value, .. } = d;`）。
    フィールドを読むぶんには何も変わらない。games の側で書くときに一度だけ当たる。
    **属する先**: 使い勝手（報告のみ）。
+
+## 7. 後日（同じ日）— `current_line` → `next_line`
+
+§6 の 1 に対する著者の答え。**2026-09-21、著者「`Vm::current_line` は改名してよい」**、
+新しい名前は `Vm::next_line`。作業場所は worktree `sabiruby-wt-next-line`
+（ブランチ `next-line`、先頭は `574aeff`）。計画書の節は
+[`serde-declare-lines-plan.md`](../plans/serde-declare-lines-plan.md) §4 に足した。
+
+### 7.1 振る舞いは 1 バイトも変えていない
+
+`src/vm.rs` の本体は `line_of(ci.pc)` のまま、名前だけ `next_line` にした。§1.2 で測った
+「1 命令先を指す」はそのままで、それが playground のステップ実行の欲しい答えだからである。
+rustdoc の 1 行目を「Source line of the instruction the innermost frame is at」から
+**「Source line of the instruction that will run **next**」**に書き替えた。前の 1 行目は
+返り値ではなく実装（`ci` と `pc`）を言っていて、名前と同じ誤読を誘っていた。
+
+### 7.2 古い名前を消さずに残した — 理由は依存の形
+
+`#[deprecated]` の別名 1 行（`self.next_line()`）にして残した。消さない理由は
+計画書 §4 に書いたとおりで、**3 つの repo が 1 本の線で繋がっている**ことにある:
+
+```
+rubevy_games/Cargo.lock ──固定──> sabiruby の rev
+        │                                 ▲
+        │ pages.yml が建てる              │ path = "../../sabiruby"
+        ▼                                 │
+sabiruby-playground の main ──────────────┘
+```
+
+games の `pages.yml` は playground の main を、games の lock が固定している sabiruby の rev
+（今は `50cae75`）に対して建てる。だから「sabiruby で古い名前を消す」と「playground が
+新しい名前を使う」が同時に main に入ると、games の lock が上がるまでの間は Pages の CI が
+必ず落ちる。別名が 1 つあれば、どの順で main に入ってもどちらの名前も通る。
+
+別名を消す条件（games の lock が上がり、playground の main が `next_line` を使い、
+両方の CI が緑）は計画書 §4 に書いた。**この仕事では消さない。**
+
+### 7.3 別名が本当に警告を出すことを、テストにコンパイラに確かめさせた
+
+`tests/native.rs` の `the_old_name_still_answers_the_same_and_says_it_is_deprecated`。
+指示は `#[allow(deprecated)]` を付けた 1 本だったが、`#[allow]` では
+**「警告が出ること」は確かめられない**（黙るだけで、`#[deprecated]` を外しても通る）。
+`#[expect(deprecated)]` にした: `expect` はそれ自体が lint で、期待した警告が**出なければ**
+`unfulfilled_lint_expectation` でコンパイラが文句を言う。つまりこのテストは
+
+* `#[deprecated]` を誰かが外したら、
+* 別名を消したら（`vm.current_line()` が無い）、
+
+どちらでもコンパイルが止まる。1.85 の MSRV に対して `#[expect]` は 1.81 からなので使える
+（`cargo check` を 1.85 で回す `msrv` ジョブを §7.5 で実際に通した）。中身は
+`next_line` と `current_line` を同じ native の中で両方呼び、**同じ答えであること**と、
+それが `[Some(2), Some(4)]`（呼び出しの 1 行先）であることを見ている。
+
+### 7.4 repo の中に古い名前は残っていない
+
+```
+$ grep -rn current_line --include='*.rs' --include='*.md' .
+src/vm.rs:2633              別名の定義（#[deprecated]）
+tests/native.rs:281,287,296 その別名のテスト（#[expect(deprecated)]）
+CHANGELOG.md:64,70          Unreleased の、改名そのものの記述
+docs/design/serde.md:167    「前の名前は current_line だった」の 1 語
+docs/design/inspect.md:33   同上
+docs/plans/serde-declare-lines-plan.md   §2 の本文（当時の記録、触らない）と §4（改名の節）
+docs/worklog/2026-09-21-serde-lines.md   §1・§3・§6（当時の記録、触らない）とこの節
+```
+
+**過去の worklog と、済んだ計画書の本文は書き換えていない** — その時点で正しかった記録で、
+今の名前に直すと「なぜ改名したか」が読めなくなる。書き替えたのは「今」を言う文書だけ
+（`docs/design/*`、`docs/README.md`、`CHANGELOG.md`）で、design の 2 か所には
+「（当時 `current_line`）」と旧名を 1 語だけ残した。設計文書を読んで `git log` を引く人が
+橋を渡れるようにするためで、別名を消すときにこの 2 語も消える。
+
+### 7.5 確かめたこと
+
+```
+$ cargo test --workspace                       TOTAL passed: 251  failed: 0   （250 → +1）
+$ ./tools/check_no_std.sh                      no_std OK
+$ cargo build --workspace --all-targets        警告 0（deprecation も 0）
+$ git diff main -- '*.rs' | grep '^+' | grep -c unsafe     0
+$ ./target/release/sabiruby mrbtest tests/mrbtest/assert.mrb …（112 ファイル）
+$ diff tests/mrbtest/baseline.txt <(…)         BASELINE IDENTICAL
+```
+
+本家テストは前任と同じ道（Docker の `tools/mrbtest.sh` ではなく、チェックインされている
+`.mrb` を release の CLI で回して baseline と比べる）。VM の計算は変えていないので 1 度。

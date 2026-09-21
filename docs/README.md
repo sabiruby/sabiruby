@@ -173,11 +173,12 @@ and the four shapes that were tried and dropped.
 while writing its data stage (Japanese): the two measurements taken before anything was written
 — that the interner never gives a symbol back (1000 names from Rust and 2000 from Ruby survive a
 collection intact), which is why a map's keys get a switch of their own rather than riding on
-`symbol_keys`, and that `Vm::current_line` answers with the line of the *next* instruction, so a
-native that asks it where it was called from is told the line after; why that is not a bug to
-fix but a second question (the playground's stepper wants exactly that answer) and what the
-three ways of doing without a new entry point would each have cost; and why "a key written as a
-string" is tested on the value that came out rather than on the Rust type.
+`symbol_keys`, and that `Vm::next_line` (then named `current_line`) answers with the line of the
+*next* instruction, so a native that asks it where it was called from is told the line after;
+why that is not a bug to fix but a second question (the playground's stepper wants exactly that
+answer) and what the three ways of doing without a new entry point would each have cost; and why
+"a key written as a string" is tested on the value that came out rather than on the Rust type.
+Its last section is the rename that followed, `current_line` → `next_line`.
 
 ## Where things were (before 2026-09-15)
 

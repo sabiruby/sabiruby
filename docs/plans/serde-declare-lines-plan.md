@@ -96,3 +96,33 @@ rubevy_games の factory ブランチでやる。**rubevy と rubevy_games が�
 | D3 | 済み（2026-09-21、下のコミット）。`docs/design/serde.md`、`lib.rs` の頭、`docs/README.md` の目次、この表。**版は上げていない**（公開は著者）: 上げるなら `sabiruby-serde` 0.1.0 → **0.2.0**（`#[non_exhaustive]` は破壊的変更）、`sabiruby` 0.5.2 → **0.5.3**（`backtrace_line` は追加のみ） |
 
 games の側（rev を上げ、`data::line_of` を消す）でやることは worklog の「気づいた点」に。
+
+## 4. 後から: `current_line` → `next_line`
+
+worklog の §6 の 1（「`Vm::current_line` は名前が誘う」）に対する著者の答え。
+**2026-09-21、著者「`Vm::current_line` は改名してよい」。新しい名前は `Vm::next_line`。**
+
+振る舞いは 1 つも変えない。`line_of(ci.pc)` は playground のステップ実行
+（`sabiruby-playground/wasm/src/lib.rs` の `sabi_step_until`）が欲しい答えのままで、
+直すのは名前だけ — native の中から呼ぶと「呼び出し元の行」を返すと読めるのが問題で、
+返るのは次に実行する命令の行だった。エラーが言う行は `Vm::backtrace_line`。
+
+**古い名前を消さずに `#[deprecated]` の別名として残す。** 理由は依存の形である:
+
+* `sabiruby-playground/wasm/Cargo.toml` は `sabiruby = { path = "../../sabiruby" }` で、
+  playground の CI は sabiruby の main を隣に checkout する。
+* rubevy_games の `pages.yml` は、その playground の main を、games の `Cargo.lock` が
+  固定している sabiruby の rev に対して建てる。
+
+つまり「sabiruby で古い名前を消す」と「playground が新しい名前を使う」を同時に main に
+入れると、games の lock が古い間は Pages の CI が壊れる。別名があれば、どの順で入っても
+どちらの名前も通る。
+
+**別名を消す条件**（この段階ではやらない）:
+
+1. rubevy_games の `Cargo.lock` が、`next_line` のある sabiruby の rev を指している。
+2. sabiruby-playground の main が `next_line` を使っている。
+3. その両方で CI が緑（games の Pages、playground の CI）。
+
+そのあと、別名を消すのは 0.6.0 か、著者が決める版で。消すのは破壊的変更なので、
+`sabiruby` の patch 版では出さない。
