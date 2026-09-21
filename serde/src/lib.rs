@@ -75,8 +75,11 @@
 //! [`declare`] is the same conversion put to a particular use: data *written* in Ruby —
 //! `unit :metre, symbol: "m", scale: 1.0`, a line per entry — collected into a
 //! `Vec<(String, T)>` the host takes once the script has run, with every field serde refuses
-//! raising at the line of that declaration. [`declare::expose`] is the way back: a host table
-//! a script looks up by name.
+//! raising at the line of that declaration.
+//! [`take_with_lines`](declare::Declarations::take_with_lines) keeps that line for the host's
+//! own checks, the ones that need two declarations to see. [`declare::expose`] is the way
+//! back: a host table a script looks up by name, in the spelling the script wrote
+//! ([`Options::symbols`]).
 //!
 //! # GC
 //!

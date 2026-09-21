@@ -43,6 +43,12 @@
 //! earlier one is a *differently named* method ([`Declarations::define_replacing`]), so that
 //! overwriting is something the script asks for rather than something it can do by accident.
 //!
+//! What a declaration says about *itself* is therefore checked where the script wrote it. What
+//! needs two of them to be wrong — a recipe naming an item nothing declared — cannot be, and is
+//! the host's to check after the script has run. [`Declarations::take_with_lines`] is what lets
+//! the host's complaint name a line as serde's does: a [`Declared<T>`] per declaration, with
+//! the line it was on, and the same line, from the same place ([`Vm::backtrace_line`]).
+//!
 //! # Where the table lives while the script runs
 //!
 //! In the VM, in `T`'s [`HostStore`](sabiruby::host_store::HostStore) — one table per Rust
@@ -90,10 +96,34 @@ pub enum OnDuplicate {
     Replace,
 }
 
+/// One declaration as the host gets it back: what it was called, what it said, and the line of
+/// the script it was on.
+///
+/// `#[non_exhaustive]`, so that a later field (a file name, say) is not a breaking change; a
+/// host reads the fields and does not build one.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
+pub struct Declared<T> {
+    /// The first argument of the declaration, as a `String` whether the script wrote a Symbol
+    /// or a String.
+    pub name: String,
+    /// The keyword arguments, read as a `T`.
+    pub value: T,
+    /// The line of the script the declaration was on — the same line an error raised inside
+    /// that declaration says it is at ([`Vm::backtrace_line`]), so a host's own complaint and
+    /// serde's point at the same place.
+    ///
+    /// `None` where the declaration came from bytecode built without debug information: the
+    /// VM has no line to give, and `Exception#backtrace` is empty there too. Where a name was
+    /// declared twice through [`Declarations::define_replacing`], it is the line of the
+    /// *later* declaration, which is the one whose value survived.
+    pub line: Option<u32>,
+}
+
 /// The table a [`Declarations<T>`] fills: the entries in the order they were declared, and a
 /// name index, so that "is this one already there?" and a look-up are not a scan of the lot.
 struct Collected<T> {
-    order: Vec<(String, T)>,
+    order: Vec<Declared<T>>,
     at: BTreeMap<String, usize>,
 }
 
@@ -166,6 +196,10 @@ impl<T: for<'de> Deserialize<'de> + Send + Sync + 'static> Declarations<T> {
             // 1 argument or 2: the keyword arguments arrive as a trailing Hash, and only when
             // there are any (`Vm::native_call_args`, src/vm.rs:4264)
             vm.check_argc(args, 1, 2)?;
+            // taken first, before anything here can run Ruby: no frame is pushed for a
+            // native, so this is the line of the call — the line an error raised below would
+            // be reported at
+            let line = vm.backtrace_line();
             let name = name_of(vm, args[0])?;
             // the name is the identity of a declaration, so a duplicate is reported before
             // whatever is wrong inside the second one
@@ -189,8 +223,13 @@ impl<T: for<'de> Deserialize<'de> + Send + Sync + 'static> Declarations<T> {
                 None => return Err(already_taken(vm, &called)),
             };
             match t.at.get(&name).copied() {
-                Some(i) => t.order[i].1 = value,
-                None => { t.at.insert(name.clone(), t.order.len()); t.order.push((name, value)); }
+                // an amended declaration keeps its place in the order but takes the later
+                // line: that is where the value that survived was written
+                Some(i) => { t.order[i].value = value; t.order[i].line = line; }
+                None => {
+                    t.at.insert(name.clone(), t.order.len());
+                    t.order.push(Declared { name, value, line });
+                }
             }
             Ok(Value::Nil)
         });
@@ -206,7 +245,46 @@ impl<T: for<'de> Deserialize<'de> + Send + Sync + 'static> Declarations<T> {
     /// (The store keeps the *place* the table was in, which is what stops the number naming
     /// it from being handed out to a later table — see `HostStore::take`. What is left is one
     /// empty slot, holding nothing.)
+    ///
+    /// [`take_with_lines`](Declarations::take_with_lines) is the same table with the line each
+    /// declaration was on, which is what a check that spans two declarations needs.
     pub fn take(self, vm: &mut Vm) -> Vec<(String, T)> {
+        self.take_with_lines(vm).into_iter().map(|d| (d.name, d.value)).collect()
+    }
+
+    /// [`take`](Declarations::take) with the line of the script each declaration was on.
+    ///
+    /// What a declaration says about *itself* is checked by serde inside the native, so it
+    /// raises at the line of that declaration with the script's own file name. What needs two
+    /// declarations to be wrong — a recipe naming an item nothing declared — can only be
+    /// checked once the script has run, by the host, and this is what lets the host's
+    /// complaint name a line as serde's does. It is the same line: both come from
+    /// [`Vm::backtrace_line`], which is where `Exception#backtrace`'s first frame is.
+    ///
+    /// ```
+    /// # fn main() -> Result<(), sabiruby::VmError> {
+    /// # use sabiruby_serde::declare::Declarations;
+    /// # use serde::Deserialize;
+    /// # #[derive(Deserialize)] struct Unit { symbol: String }
+    /// # let mut vm = sabiruby::Vm::with_mrblib()?;
+    /// # let units = Declarations::<Unit>::install(&mut vm).define(&mut vm, "unit");
+    /// # let src = sabiruby_compiler::compile(b"unit :metre, symbol: \"m\"",
+    /// #     &sabiruby_compiler::Options { filename: "data.rb".into(), debug_info: true, ..Default::default() }).unwrap();
+    /// # vm.load_and_run(&src)?;
+    /// for d in units.take_with_lines(&mut vm) {
+    ///     if d.value.symbol.is_empty() {
+    ///         let at = d.line.map_or(String::new(), |l| format!("data.rb:{l}: "));
+    ///         println!("{at}{} has no symbol", d.name);
+    ///     }
+    /// }
+    /// # Ok(()) }
+    /// ```
+    ///
+    /// No file name: the VM's line is as far as this goes, and a host that loaded the script
+    /// knows what it called it. (A browser is the reason that is not quite a formality — the
+    /// playground's compiler names every program `playground.rb` — but that is the
+    /// playground's business, not this crate's.)
+    pub fn take_with_lines(self, vm: &mut Vm) -> Vec<Declared<T>> {
         match vm.host_store_mut::<Collected<T>>().and_then(|s| s.take(self.handle)) {
             Some(t) => t.order,
             None => Vec::new(),

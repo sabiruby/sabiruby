@@ -224,3 +224,55 @@ fn a_vm_with_a_closure_and_host_state_is_still_send_and_sync() {
     assert_send_sync(&vm);
     assert_eq!(run(&mut vm, "p bump, bump"), "1\n2\n");
 }
+
+/// `Vm::backtrace_line` and `Vm::current_line` are two different questions, and a native that
+/// wants to record where it was called from wants the first one.
+///
+/// A native pushes no frame of its own, so the innermost `CallInfo` a native sees is the Ruby
+/// frame that called it — and its `pc` is already past the SEND (`self.ci[top].pc = pc` runs
+/// before the instruction does). `backtrace_line` steps back over that, as `Vm::backtrace`
+/// does; `current_line` does not, which is what a debugger stopped at an instruction boundary
+/// wants and what the playground's stepper reads.
+#[test]
+fn a_native_asks_backtrace_line_for_the_line_it_was_called_from() {
+    let seen: Arc<Mutex<Vec<(Option<u32>, Option<u32>, Vec<String>)>>> = Arc::new(Mutex::new(Vec::new()));
+    let mut vm = Vm::with_mrblib().expect("vm");
+    let sink = seen.clone();
+    let object = vm.core.object;
+    vm.define_closure(object, "note", move |vm, _self_, _args, _blk| {
+        sink.lock().unwrap().push((vm.backtrace_line(), vm.current_line(), vm.backtrace(None)));
+        Ok(Value::Nil)
+    });
+    // a call on a line of its own, then one spread over two lines, then a trailing statement
+    // so that neither is the last instruction of the program
+    run(&mut vm, "note 1\nnote 2,\n     3\nx = 4\n");
+    let seen = seen.lock().unwrap();
+    let lines: Vec<_> = seen.iter().map(|(b, _, _)| *b).collect();
+    // the call is on line 1; the call spread over two lines is located where it ends, which is
+    // the line the SEND carries and the line an error raised inside the native would name
+    assert_eq!(lines, [Some(1), Some(3)]);
+    // the same number the backtrace's first frame carries — it is the same question
+    for (line, _, bt) in seen.iter() {
+        assert_eq!(bt.first().map(|s| s.as_str()), Some(format!("(test):{}", line.unwrap()).as_str()));
+    }
+    // and one instruction later is a different answer, which is why there are two of these
+    assert_eq!(seen.iter().map(|(_, c, _)| *c).collect::<Vec<_>>(), [Some(2), Some(4)]);
+}
+
+#[test]
+fn without_debug_information_there_is_no_line_and_no_backtrace() {
+    let seen: Arc<Mutex<Vec<(Option<u32>, usize)>>> = Arc::new(Mutex::new(Vec::new()));
+    let mut vm = Vm::with_mrblib().expect("vm");
+    let sink = seen.clone();
+    let object = vm.core.object;
+    vm.define_closure(object, "note", move |vm, _self_, _args, _blk| {
+        sink.lock().unwrap().push((vm.backtrace_line(), vm.backtrace(None).len()));
+        Ok(Value::Nil)
+    });
+    let bin = sabiruby_compiler::compile(b"note 1\n", &sabiruby_compiler::Options {
+        filename: "(test)".into(), debug_info: false, ..Default::default()
+    }).expect("compile");
+    vm.load_and_run(&bin).expect("run");
+    // the frames `backtrace` leaves out are the frames this has no line for
+    assert_eq!(*seen.lock().unwrap(), [(None, 0)]);
+}

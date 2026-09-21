@@ -178,7 +178,109 @@ doc        6 passed（5 → +1、`Options` の例）
 
 ## 3. D2 — `Declared<T>` と `take_with_lines`
 
-（作業しながら追記）
+### 3.1 `current_line()` では届かないので VM に口を 1 つ足した — `Vm::backtrace_line()`
+
+§1.2 で測ったとおり `current_line()` は 1 命令先を指す。足さずに済む道を 3 つ考えた:
+
+1. **`current_line()` を直す**（`line_of(ci.pc - 1)` にする）。**やらない。**
+   sabiruby-playground の `sabi_step_until` がステップ実行の「次に実行する行」としてこれを
+   読んでいて（`wasm/src/lib.rs:316`・`324`）、そこでは `line_of(pc)` の方が正しい。
+   既存の利用者の振る舞いを黙って変える変更で、しかも「どちらかが間違っている」のではなく
+   **意味の違う 2 つの問い**である。
+2. **serde から `vm.backtrace(None)` を呼んで先頭の文字列の `:N` を読む。** 文字列を組み立てて
+   また解くうえ、ファイル名にコロンが入りうるので切る場所が形頼みになる（Factory が
+   `place_in` で既に踏んだ穴と同じ）。
+3. **serde から `vm.ci` と `vm.ireps` を直に読む。** どちらも `pub` なので**書ける**が、
+   別 crate から VM の内部表現に手を入れることになり、`backtrace` と同じ計算を 2 か所に
+   持つことになる（`pc - 1` の引き算を忘れた方が静かに 1 行ずれる、まさにこの問題）。
+
+どれも良くないので、**VM に safe な読み取りを 1 つ足した**（計画書が許している）。unsafe は無し、
+`no_std` のまま、`&self` だけ:
+
+```rust
+/// The line the first frame of [`Vm::backtrace`] carries: where the instruction now
+/// running is. From inside a native — a `define_fn` or `define_closure` method, which
+/// pushes no frame of its own — that is the line of the call, so a native that records
+/// this and a native that raises name the same line.
+pub fn backtrace_line(&self) -> Option<u32> {
+    for ci in self.ci.iter().rev() {
+        let Some(ir) = self.ireps.get(ci.irep) else { continue };
+        if ir.lines.is_empty() { continue; }
+        return ir.line_of(ci.pc.saturating_sub(1));
+    }
+    None
+}
+```
+
+`backtrace` の `loc` と同じ走り方（デバッグ情報の無いフレームは飛ばす）にしてある。
+違うのは 1 点だけで、`backtrace` が置き場所を決めかねて `file:0` と書く場合をここでは `None` に
+している。`current_line()` の rustdoc にも「これは**次に実行する**命令の行で、エラーの行が
+欲しければ `backtrace_line` を見よ」と書き足した。**振る舞いは 1 つも変えていない。**
+
+VM 側のテストは `tests/native.rs` に 2 つ:
+`a_native_asks_backtrace_line_for_the_line_it_was_called_from`（1 行の呼び出しと 2 行に
+またがる呼び出しで、`backtrace_line` が `[Some(1), Some(3)]`、`backtrace(None)` の先頭が
+同じ `(test):1` と `(test):3`、`current_line` は 1 つ先の `[Some(2), Some(4)]`）と
+`without_debug_information_there_is_no_line_and_no_backtrace`（`(None, 0)`）。
+
+### 3.2 `Declared<T>` と、控える場所を 1 つにする
+
+```rust
+#[non_exhaustive]
+pub struct Declared<T> { pub name: String, pub value: T, pub line: Option<u32> }
+```
+
+`Collected<T>` の `order` を `Vec<(String, T)>` から `Vec<Declared<T>>` に替えた。
+`take_with_lines` はそれをそのまま返し、**`take` はその上に 1 行で書いた**
+（`.map(|d| (d.name, d.value))`）ので、控える場所は `define_on` のクロージャの 1 か所きり。
+返り値の型は変えていないので今の利用者（rubevy_games の Factory）はそのまま建つ。
+
+行を取るのは**クロージャの先頭、`check_argc` の直後**である。native はフレームを積まないので
+そこでの innermost フレームは呼び出し元の Ruby のフレームそのもので、この先で
+`from_value` が Ruby を走らせうる（キーの `hash`/`eql?`）より前に読んでおく必要がある。
+`define_replacing` の上書きは `t.order[i].value` と `t.order[i].line` を両方書き替える
+（順番の位置は動かさない）: ホストが持っている値が書かれた行は**後の宣言の行**だから。
+
+### 3.3 テスト — 「同じ数」を同じ入力で見せる
+
+計画書が求めているのは「2 行にまたがる宣言で、わざと型を間違えた版が raise で言う行と、
+正しい版が控えた行が一致する」こと。テストは **1 つのソース生成関数**（`over_two_lines(scale)`、
+`scale:` に渡すものだけが違う）から 2 本の走行を作り、**数を書かずに突き合わせている**:
+
+```rust
+let e = run(&mut vm, "data.rb", &over_two_lines("\"not a number\"")).expect_err(…);
+let complained_at = raised_at(&mut vm, &e);      // backtrace の先頭フレームの行
+assert_eq!(complained_at, 4);
+…
+assert_eq!(table.iter().map(|d| d.line).collect::<Vec<_>>(),
+    [Some(2), Some(complained_at), Some(5)]);
+```
+
+`unit :inch,` が 3 行目、`     symbol: "in", scale: …` が 4 行目で、**どちらも 4 と言う**
+（宣言が終わる行、`SEND` が持つ行）。Factory の `line_of` は同じ宣言に 3 を返していた
+（先頭の語で探すので「始まる行」）ので、迂回を消すと**その 1 件だけ数が変わる**（§5 の 2）。
+
+ほかに 3 つ: `take_is_take_with_lines_without_the_lines`（古い口が前と同じに答え、
+同じように表を空にする）、`an_amended_declaration_keeps_its_place_but_takes_the_later_line`
+（`[Some(3), Some(2)]` — `metre` は 1 行目で宣言され 3 行目で上書きされたので 3）、
+`a_declaration_from_bytecode_without_debug_information_has_no_line`（`None`）。
+
+```
+$ cargo test --workspace
+TOTAL passed: 250  failed: 0        （243 → +7）
+$ ./tools/check_no_std.sh            → no_std OK
+$ cargo build -p sabiruby-serde --lib --no-default-features --target thumbv7em-none-eabi
+                                     → Finished
+$ ./target/release/sabiruby mrbtest tests/mrbtest/assert.mrb …   # 本家テスト、VM に触ったので
+$ diff tests/mrbtest/baseline.txt <(…)  → BASELINE IDENTICAL
+```
+
+本家テストは Docker を使う `tools/mrbtest.sh` ではなく、**チェックインされている
+`tests/mrbtest/*.mrb` を `target/release/sabiruby mrbtest` で回して baseline と比べた**
+（`implementer.md` が書いている代替の道）。`mrbtest.sh` は `../../ref/mruby` から
+ソースを取り直して `src/mrblib/*.mrb` と `docs/verification/mrbtest.md` を書き替えるので、
+この仕事と無関係な差分が出る。Docker 自体は動いていた（`docker info` は通る）が、起動も
+再起動もしていない。
 
 ## 4. D3 — docs
 

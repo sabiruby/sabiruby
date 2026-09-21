@@ -2618,9 +2618,36 @@ impl Vm {
     }
 
     /// Source line of the instruction the innermost frame is at (`None` without debug info).
+    ///
+    /// `ci.pc` is past the instruction being executed, so this is the line of the instruction
+    /// that will run **next** — which is what a debugger stopped at an instruction boundary
+    /// wants to highlight, and what the playground's stepper reads. For the line an error
+    /// would be reported at, which from inside a native is the line of the call, see
+    /// [`Vm::backtrace_line`].
     pub fn current_line(&self) -> Option<u32> {
         let ci = self.ci.last()?;
         self.ireps[ci.irep].line_of(ci.pc)
+    }
+
+    /// The line the first frame of [`Vm::backtrace`] carries: where the instruction now
+    /// running is. From inside a native — a `define_fn` or `define_closure` method, which
+    /// pushes no frame of its own — that is the line of the call, so a native that records
+    /// this and a native that raises name the same line.
+    ///
+    /// Not [`Vm::current_line`], which is one instruction later. The two differ whenever the
+    /// call is the last instruction of its line, which is the usual case for a statement on a
+    /// line of its own: `unit :metre, symbol: "m"` on line 1 of a file gives `Some(1)` here
+    /// and `Some(2)` there.
+    ///
+    /// `None` where no frame below has debug information — the frames `backtrace` leaves out.
+    pub fn backtrace_line(&self) -> Option<u32> {
+        for ci in self.ci.iter().rev() {
+            let Some(ir) = self.ireps.get(ci.irep) else { continue };
+            if ir.lines.is_empty() { continue; }
+            // the `:0` `backtrace` would print for a frame it cannot place is `None` here
+            return ir.line_of(ci.pc.saturating_sub(1));
+        }
+        None
     }
 
     // ------------------------------------------------------------------ garbage collection
