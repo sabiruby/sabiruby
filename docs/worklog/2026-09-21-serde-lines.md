@@ -482,8 +482,17 @@ games の `pages.yml` は playground の main を、games の lock が固定し�
 新しい名前を使う」が同時に main に入ると、games の lock が上がるまでの間は Pages の CI が
 必ず落ちる。別名が 1 つあれば、どの順で main に入ってもどちらの名前も通る。
 
+**指示の前提を 1 つ直した。** 指示は「playground の CI は sabiruby の main を隣に
+checkout する」と言っていたが、`sabiruby-playground/.github/workflows/pages.yml` を読むと
+`SABIRUBY_REF`（**今は `7be7b86` = v0.5.2**）という**明示的に固定された commit**である。
+つまり固定は 2 つあり、playground の側は自分の repo の中にも 1 つ持っている。
+これは順番を 1 段増やす: playground が `next_line` を使う commit では、
+**同じ commit で `SABIRUBY_REF` も上げないと playground 自身の Pages が落ちる**。
+`7be7b86` は `backtrace_line` すら無い（v0.5.2）ので、別名があっても届かない。
+
 別名を消す条件（games の lock が上がり、playground の main が `next_line` を使い、
-両方の CI が緑）は計画書 §4 に書いた。**この仕事では消さない。**
+`SABIRUBY_REF` もその rev にあり、両方の Pages が緑）と入れる順番は計画書 §4 に書いた。
+**この仕事では消さない。**
 
 ### 7.3 別名が本当に警告を出すことを、テストにコンパイラに確かめさせた
 

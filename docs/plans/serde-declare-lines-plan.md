@@ -110,19 +110,30 @@ worklog の §6 の 1（「`Vm::current_line` は名前が誘う」）に対す�
 **古い名前を消さずに `#[deprecated]` の別名として残す。** 理由は依存の形である:
 
 * `sabiruby-playground/wasm/Cargo.toml` は `sabiruby = { path = "../../sabiruby" }` で、
-  playground の CI は sabiruby の main を隣に checkout する。
+  **何が隣に置かれるかは建てる側が決める** — 2 つある。
+* playground 自身の `pages.yml` は `SABIRUBY_REF`（**今は `7be7b86` = v0.5.2**）を
+  checkout する。main ではなく、明示的に固定された commit である。
 * rubevy_games の `pages.yml` は、その playground の main を、games の `Cargo.lock` が
-  固定している sabiruby の rev に対して建てる。
+  固定している sabiruby の rev（**今は `50cae754`**）に対して建てる。
 
+`next_line` は `574aeff` より後にしか無いので、**`7be7b86` でも `50cae754` でも建たない。**
 つまり「sabiruby で古い名前を消す」と「playground が新しい名前を使う」を同時に main に
-入れると、games の lock が古い間は Pages の CI が壊れる。別名があれば、どの順で入っても
-どちらの名前も通る。
+入れると、2 つの固定が上がるまでの間、どちらの Pages も壊れる。別名があれば、
+どの順で入ってもどちらの名前も通る。
+
+**入れる順番**（本体の手順）:
+
+1. sabiruby の `next-line` を main に入れて push。
+2. rubevy_games の `Cargo.lock` の sabiruby の rev を 1 まで上げて push。
+3. playground の `next-line` を main に入れて push。**同じ commit で `SABIRUBY_REF` も
+   1 に上げる**（さもないと playground 自身の Pages が `no method named next_line` で落ちる）。
+   2 と 3 は入れ替えてよいが、1 より先には来られない。
 
 **別名を消す条件**（この段階ではやらない）:
 
 1. rubevy_games の `Cargo.lock` が、`next_line` のある sabiruby の rev を指している。
-2. sabiruby-playground の main が `next_line` を使っている。
-3. その両方で CI が緑（games の Pages、playground の CI）。
+2. sabiruby-playground の main が `next_line` を使い、`SABIRUBY_REF` もその rev にある。
+3. その両方で CI が緑（games の Pages、playground の Pages）。
 
 そのあと、別名を消すのは 0.6.0 か、著者が決める版で。消すのは破壊的変更なので、
 `sabiruby` の patch 版では出さない。
