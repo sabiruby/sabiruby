@@ -30,8 +30,7 @@ a line number may go backwards, and the encoder relies on the wrap.
 
 * `Irep { lines: Vec<(u32, u32)>, filename: Option<Vec<u8>> }`, `Irep::line_of(pc)` — the line of
   the largest `start_pos` not greater than `pc`, i.e. `mrb_debug_get_line`.
-* `VmIrep` keeps both, so `Vm::next_line()` (named `current_line` when this was written) and
-  `FrameView::line` work at run time.
+* `VmIrep` keeps both, so `Vm::next_line()` and `FrameView::line` work at run time.
 * `vm::dump` now prints the line column, so a listing matches `mrbc --verbose`:
   `    3 004 GETUPVAR	R2	2	0`. Without debug info the column is blank.
 * A failure to decode is ignored (best effort), like the LVAR section: a binary without usable

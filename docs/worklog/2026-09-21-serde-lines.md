@@ -545,6 +545,99 @@ $ diff tests/mrbtest/baseline.txt <(…)         BASELINE IDENTICAL
 本家テストは前任と同じ道（Docker の `tools/mrbtest.sh` ではなく、チェックインされている
 `.mrb` を release の CLI で回して baseline と比べる）。VM の計算は変えていないので 1 度。
 
+### 7.6 翌日（2026-09-22）— 別名を消した
+
+**著者「`Vm::current_line` の別名を今 main で消す」。** 作業場所は worktree
+`sabiruby-wt-drop-alias`（ブランチ `drop-alias`、先頭は main の `8d0fea2`）。
+§7.2 で数えた 3 つのピンはどれも動き終えていて、着手前に自分でも確かめた:
+
+* rubevy_games `6ea7c68` の `Cargo.lock:4398` が
+  `git+https://github.com/sabiruby/sabiruby#8d0fea2993e75d05999c0a223b610123beeed86a`。
+* sabiruby-playground の main `f639f58` は `wasm/src/lib.rs:316,324` で `next_line` を呼び、
+  `.github/workflows/pages.yml:21` の `SABIRUBY_REF` も同じ `8d0fea2…`。
+* 本体の報告で、どちらの Pages も緑、公開ページに対する `test/browser.mjs` も全通過。
+
+消す前に、外に呼び出しが 1 つも残っていないことを先に見た（1 件でもあれば消さずに止まる、
+という順番で）。`rubevy` `rubevy_games` `sabiruby-playground` `mruby-porting-kit` `sabiruby`
+の `*.rs`（`target/`・`node_modules/`・過去の worklog を除く）で:
+
+```
+$ grep -rn current_line --include='*.rs' {rubevy,rubevy_games,sabiruby-playground,mruby-porting-kit,sabiruby}
+sabiruby/tests/native.rs:280  （別名のテストの rustdoc）
+sabiruby/tests/native.rs:295  （そのテストの中）
+sabiruby/src/vm.rs:2633       （別名の定義）
+```
+
+この repo の中の 3 行だけで、外は 0 件。同じ機械に並んでいる 10 個の worktree
+（`rubevy-wt-*`、`rubevy_games-wt-*`、`sabiruby-playground-wt-next-line`）も同じ grep で
+0 件だったので、別のブランチで作業している担当の足も踏まない。
+
+消したのは `src/vm.rs` の `#[deprecated] pub fn current_line`（4 行）と、`tests/native.rs` の
+`the_old_name_still_answers_the_same_and_says_it_is_deprecated`。**§7.3 の仕掛けがこの日
+仕事をした**: `#[expect(deprecated)]` は別名が無くなればコンパイルが止まるので、
+「別名を消したのにテストだけ残って緑」という状態にはそもそもなれない。
+`a_native_asks_backtrace_line_for_the_line_it_was_called_from`（`next_line` と
+`backtrace_line` が別の問いであることを見るほう）はそのまま残っている — 改名はそのために
+したのだから、こちらが本体である。
+
+確かめたこと（`5b4c0a5` の時点。数はすべて実行した出力から）:
+
+```
+$ cargo test --workspace         着手前 TOTAL passed: 251  failed: 0
+                                 消した後 TOTAL passed: 250  failed: 0   （別名のテスト 1 本ぶん）
+$ ./tools/check_no_std.sh                                   no_std OK
+$ cargo build --workspace --all-targets                     警告 0（5 crate を建て直して 1 行も出ない）
+$ RUSTDOCFLAGS='-D warnings' cargo doc --no-deps --workspace --lib
+                                 Finished — 消した項目への intra-doc リンクは残っていない
+$ cargo +1.85 check --workspace --all-targets               Finished（MSRV）
+$ git diff main -- '*.rs' | grep '^+' | grep -c unsafe      0
+```
+
+利用者の側も、どちらの repo にも書かずにスクラッチパッドで建てた。playground は
+§7.2 の図のとおり `path = "../../sabiruby"` で隣を見るので、隣にこのブランチを置けばよい:
+`pg/sabiruby` をこの worktree への symlink、`pg/sabiruby-playground` を main の
+`git archive` から展開したコピーにして、`wasm/` で `cargo check`。`wasm/.cargo/config.toml`
+が `target = "wasm32-wasip1"` を立てているので C の側に wasi-sdk が要り、素で回すと
+`cc-rs: failed to find tool "clang"` で落ちる。`tools/build.sh` が探すのと同じ
+`~/.local/wasi-sdk-34.0-x86_64-linux` を `CC_wasm32_wasip1` / `AR_wasm32_wasip1` に渡すと
+`Finished`（警告なし）。rubevy_games も同じくコピーの側だけを触り、根の
+`[patch.crates-io]` の 3 行を git からこの worktree の path に書き替えて
+`cargo check --workspace --all-targets`（`CARGO_TARGET_DIR` もスクラッチパッド）。
+
+**版**: 公開のメソッドを消すのは破壊的変更なので、次に公開する `sabiruby` は
+**0.6.0**（§7.5 の時点の見込みだった 0.5.3 ではない）。ここでは上げない（公開は著者）。
+上げるときに**一緒に**直さないと止まるところが 6 つある。どれも `sabiruby` への
+version 要求で、caret なので `0.5.x` の要求は `0.6.0` を受けない:
+
+| どこ | 今 |
+|---|---|
+| `serde/Cargo.toml` | `sabiruby = { path = "..", version = "0.5", … }` |
+| `cli/Cargo.toml` | `sabiruby = { version = "0.5.0", path = "..", … }` |
+| `compiler/Cargo.toml` | `sabiruby = { version = "0.5.0", path = "..", … }` |
+| rubevy `Cargo.toml`（2 か所） | `sabiruby = "0.5.1"` と `{ version = "0.5.1", features = ["macros"] }` |
+| rubevy_games `Cargo.toml` | `sabiruby = "0.5.1"` |
+
+外の 2 つは crates.io の話だけではない。games は `[patch.crates-io]` で全部を git に送って
+いて、**patch した crate の版が要求を満たさないと cargo は patch を使わない**（crates.io の
+0.5.x に落ちるか、2 つ目の VM が入る）。つまり `Cargo.toml` の `version` を 0.6.0 にした
+その日から、rubevy と rubevy_games の要求を上げるまで games は今までどおりには建たない。
+rubevy は games の git 依存なので、rubevy を先に直して push する順番になる。
+版を上げるかどうかと順番は著者が決めることなので、ここでは触っていない。
+
+**気づいた点**（7.6 の範囲で）:
+
+1. **`docs/README.md` の目次が、旧名を橋として使っていた。** 「`Vm::next_line`（当時
+   `current_line`）」という括弧は、この worklog が全編 `current_line` で書かれていることの
+   断り書きでもあった。括弧は外したが、代わりに「なぜこの記録は旧名で書かれているか」を
+   最後の 1 文（改名の節への案内）で言うようにした。旧名を消すときに、**旧名で書かれた
+   記録への入口まで消さない**、が次に同じことをするときの教訓。
+   **属する先**: docs の書き方（報告のみ）。
+2. **playground の `cargo check` は wasi-sdk が要る。** `wasm/.cargo/config.toml` が
+   target を立てているので、「素の `cargo check` で見られる」と思って回すと C の
+   ツールチェーンで落ちる。`README` の Building には書いてあるが、**検証の手順としては
+   `tools/build.sh` の中にしか環境変数の組み立てが無い**ので、毎回読み直すことになる。
+   **属する先**: sabiruby-playground の使い勝手（報告のみ、直していない）。
+
 ## 8. main の CI が赤かった件 — `cargo doc` の警告 1 件
 
 改名とは別の話だが同じブランチで直した（別コミット）。**main の CI が 09-20 の declare の

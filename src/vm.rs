@@ -2628,12 +2628,6 @@ impl Vm {
         self.ireps[ci.irep].line_of(ci.pc)
     }
 
-    /// Former name of [`Vm::next_line`], kept while its users move over.
-    #[deprecated(note = "renamed to `next_line`: it answers the line of the instruction that runs next; for the line an error names, see `backtrace_line`")]
-    pub fn current_line(&self) -> Option<u32> {
-        self.next_line()
-    }
-
     /// The line the first frame of [`Vm::backtrace`] carries: where the instruction now
     /// running is. From inside a native — a `define_fn` or `define_closure` method, which
     /// pushes no frame of its own — that is the line of the call, so a native that records

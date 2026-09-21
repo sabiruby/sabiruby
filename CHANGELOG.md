@@ -12,7 +12,9 @@ nothing is estimated.
 
 `sabiruby-serde` — a module for data *written* in Ruby, and the two things writing a game's
 data stage on it turned up. The compiler and the macros are untouched; the VM gains one
-read-only entry point and changes no behaviour. No version is raised
+read-only entry point, loses one deprecated alias and changes no behaviour. No version is
+raised here — publishing is the author's — but the removal is a breaking change, so **the next
+release of `sabiruby` is 0.6.0**, not a patch
 ([`docs/design/serde.md`](docs/design/serde.md) "Declarations",
 [`docs/worklog/2026-09-20-declare.md`](docs/worklog/2026-09-20-declare.md),
 [`docs/worklog/2026-09-21-serde-lines.md`](docs/worklog/2026-09-21-serde-lines.md)).
@@ -55,7 +57,8 @@ read-only entry point and changes no behaviour. No version is raised
   one place that records it. An amended declaration (`define_replacing`) keeps its place in
   the order and takes the later line; bytecode built without debug information has `None`.
 
-`sabiruby` — one entry point and one rename, no behaviour changed (`d0bbde0`).
+`sabiruby` — one entry point, one rename and the removal of the name it replaced, no behaviour
+changed (`d0bbde0`).
 
 * **`Vm::backtrace_line() -> Option<u32>`** — the line the first frame of `Vm::backtrace`
   carries, which from inside a native (which pushes no frame of its own) is the line of the
@@ -64,14 +67,22 @@ read-only entry point and changes no behaviour. No version is raised
   debugger stopped at an instruction boundary wants to highlight, and it is one line late for
   anything asking where it was called from (`tests/native.rs`).
 
-* **`Vm::current_line` is renamed `Vm::next_line`; the old name is deprecated** and kept as a
-  one-line alias that answers exactly as before. Nothing about what the VM computes changed —
-  the name did, because it invited the wrong reading: asked from inside a native it looks like
-  it will say where the native was called from, and it says the line after. `next_line` says
-  what it answers, and `backtrace_line` is the other question. The alias goes away in a later
-  release, once the one caller outside this repository (sabiruby-playground's stepper) is on
-  the new name; the condition is written down in
-  [`docs/plans/serde-declare-lines-plan.md`](docs/plans/serde-declare-lines-plan.md).
+* **`Vm::current_line` is renamed `Vm::next_line`; the old name is gone** — a breaking change,
+  which is why the next release is **0.6.0** and not a patch on 0.5.2. Nothing about what the
+  VM computes changed — the name did, because it invited the wrong reading: asked from inside
+  a native it looks like it will say where the native was called from, and it says the line
+  after. `next_line` says what it answers, and `backtrace_line` is the other question.
+
+  **Coming from 0.5.2:** replace `current_line` with `next_line` — same answer, same type,
+  nothing else to do; if what you actually wanted was the line an error names (where a native
+  was called from, which is one line earlier), that is `backtrace_line`.
+
+  The rename first landed with a `#[deprecated]` alias, because three repositories pin each
+  other by commit and the old and the new name had to both work while those pins moved. The
+  alias was removed on 2026-09-22, once rubevy_games' `Cargo.lock` and sabiruby-playground's
+  `SABIRUBY_REF` both named a commit that has `next_line` and both Pages builds were green —
+  the condition written down in
+  [`docs/plans/serde-declare-lines-plan.md`](docs/plans/serde-declare-lines-plan.md) §4.
 
 ## 0.5.2 — 2026-09-18
 

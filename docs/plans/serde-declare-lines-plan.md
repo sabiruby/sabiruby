@@ -94,6 +94,7 @@ rubevy_games の factory ブランチでやる。**rubevy と rubevy_games が�
 | D1 | 済み（2026-09-21、`491ec0e`）。`Options::symbol_map_keys` と `Options::symbols()`、`#[non_exhaustive]`、`expose` が `Options::symbols()` で返す。**計画書の 1 行が違っていた**: `#[non_exhaustive]` は外の crate で関数更新構文も禁じるので、「`..Default::default()` に寄せる」は取れない — コンストラクタ + 公開フィールドへの代入にした（rustdoc に例）。Symbol にするかは「キーが**値として String になった**か」で判定（複合キーの中の文字列、整数、非 UTF-8、binary の String は触らない） |
 | D2 | 済み（2026-09-21、`d0bbde0`）。`Declared<T>`・`take_with_lines`、`take` はその上に 1 行。**VM に `Vm::backtrace_line()` を足した**（safe、`&self`、振る舞いの変更なし）: `Vm::current_line()` は `ci.pc` が実行中の命令の**次**を指すので 1 行後ろを答え、しかもそれは playground のステップ実行が欲しい答えなので直せない。行は「宣言が**終わる**行」＝ serde の raise が言う行と**同じ数**で、テストが同じソースの壊れた版と正しい版を突き合わせて示す |
 | D3 | 済み（2026-09-21、下のコミット）。`docs/design/serde.md`、`lib.rs` の頭、`docs/README.md` の目次、この表。**版は上げていない**（公開は著者）: 上げるなら `sabiruby-serde` 0.1.0 → **0.2.0**（`#[non_exhaustive]` は破壊的変更）、`sabiruby` 0.5.2 → **0.5.3**（`backtrace_line` は追加のみ） |
+| §4 改名 | 済み。改名は 2026-09-21（main の `8d0fea2`）、**別名の削除は 2026-09-22（`5b4c0a5`）** — 下の §4 の末尾。版はここでも上げていないが、公開のメソッドを消したので次に公開する `sabiruby` は上の 0.5.3 ではなく **0.6.0**（破壊的変更を patch では出せない） |
 
 games の側（rev を上げ、`data::line_of` を消す）でやることは worklog の「気づいた点」に。
 
@@ -137,3 +138,24 @@ worklog の §6 の 1（「`Vm::current_line` は名前が誘う」）に対す�
 
 そのあと、別名を消すのは 0.6.0 か、著者が決める版で。消すのは破壊的変更なので、
 `sabiruby` の patch 版では出さない。
+
+### 消した — 2026-09-22、`5b4c0a5`
+
+**2026-09-22、著者「`Vm::current_line` の別名を今 main で消す」。** 上の 3 つの条件は
+そろっていた: rubevy_games の `Cargo.lock` は `8d0fea2`（`next_line` のある rev）を指して
+push 済みで Pages が緑、sabiruby-playground の main（`f639f58`）は `wasm/src/lib.rs` の
+ステッパで `next_line` を呼び、`SABIRUBY_REF` も `8d0fea2`、Pages が緑で、公開ページに対する
+`test/browser.mjs` が全通過している。
+
+消したのは `src/vm.rs` の `#[deprecated] pub fn current_line` と、`tests/native.rs` の
+別名のテスト（`#[expect(deprecated)]` — 別名が無くなればコンパイルが止まる仕掛けで、
+この日それが仕事をした）。`next_line` と `backtrace_line` が**別の問い**であることを見る
+テストは残っている。外の repo（rubevy、rubevy_games、sabiruby-playground、
+mruby-porting-kit）の `*.rs` に `current_line` の呼び出しは 0 件だった。
+
+**過去の worklog と、この節より上の済んだ本文は書き替えていない** — 別名を残した理由は、
+その時点で正しかった記録である。書き替えたのは「今」を言う文書だけ（`docs/design/serde.md`・
+`docs/design/inspect.md` の旧名の括弧、`docs/README.md`、`CHANGELOG.md` の Unreleased）。
+
+**版はここでも上げない**（公開は著者）。ただし公開のメソッドを消したので、次に公開する
+`sabiruby` は **0.6.0** である。そのとき一緒に直すものは worklog の 7.6 に。
