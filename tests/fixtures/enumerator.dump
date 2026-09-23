@@ -1,4 +1,4 @@
-irep 0x649b004bb0c0 nregs=7 nlocals=2 pools=2 syms=10 reps=1 ilen=128
+irep 0xADDR nregs=7 nlocals=2 pools=2 syms=10 reps=1 ilen=128
 local variable names:
   R1:e
 catch type: rescue   begin: 0089 end: 0095 target: 0098
@@ -49,7 +49,7 @@ file: /w/enumerator.rb
     6 125 RETURN	R2	
     6 127 STOP
 
-irep 0x649b004bc830 nregs=6 nlocals=4 pools=1 syms=0 reps=0 ilen=19
+irep 0xADDR nregs=6 nlocals=4 pools=1 syms=0 reps=0 ilen=19
 local variable names:
   R1:s
   R2:i

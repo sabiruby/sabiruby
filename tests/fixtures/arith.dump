@@ -1,4 +1,4 @@
-irep 0x59d2b40091d0 nregs=12 nlocals=2 pools=2 syms=3 reps=0 ilen=89
+irep 0xADDR nregs=12 nlocals=2 pools=2 syms=3 reps=0 ilen=89
 local variable names:
   R1:x
 file: /w/arith.rb

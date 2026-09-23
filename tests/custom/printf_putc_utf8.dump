@@ -1,4 +1,4 @@
-irep 0x5657d05186c0 nregs=5 nlocals=1 pools=4 syms=3 reps=0 ilen=87
+irep 0xADDR nregs=5 nlocals=1 pools=4 syms=3 reps=0 ilen=87
 file: /w/printf_putc_utf8.rb
    11 000 STRING	R2	L[0]	; →
    11 003 SSEND		R1	:putc	n=1

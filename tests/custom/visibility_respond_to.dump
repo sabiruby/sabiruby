@@ -1,4 +1,4 @@
-irep 0x5ff883bf8900 nregs=14 nlocals=7 pools=32 syms=35 reps=3 ilen=812
+irep 0xADDR nregs=14 nlocals=7 pools=32 syms=35 reps=3 ilen=812
 local variable names:
   R1:o
   R2:e
@@ -282,14 +282,14 @@ file: /w/visibility_respond_to.rb
    85 809 RETURN	R7	
    85 811 STOP
 
-irep 0x5ff883c052a0 nregs=3 nlocals=1 pools=0 syms=3 reps=2 ilen=13
+irep 0xADDR nregs=3 nlocals=1 pools=0 syms=3 reps=2 ilen=13
 file: /w/visibility_respond_to.rb
    27 000 TDEF		R1	:call_other	I[0]
    28 004 SSEND0	R1	:protected
    29 007 TDEF		R1	:prot	I[1]
    29 011 RETURN	R1	
 
-irep 0x5ff883c069d0 nregs=5 nlocals=3 pools=0 syms=1 reps=0 ilen=12
+irep 0xADDR nregs=5 nlocals=3 pools=0 syms=1 reps=0 ilen=12
 local variable names:
   R1:x
 file: /w/visibility_respond_to.rb
@@ -298,13 +298,13 @@ file: /w/visibility_respond_to.rb
    27 007 SEND0		R3	:prot
    27 010 RETURN	R3	
 
-irep 0x5ff883c074c0 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/visibility_respond_to.rb
    29 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    29 004 STRING	R2	L[0]	; prot
    29 007 RETURN	R2	
 
-irep 0x5ff883c04f00 nregs=3 nlocals=1 pools=0 syms=5 reps=3 ilen=20
+irep 0xADDR nregs=3 nlocals=1 pools=0 syms=5 reps=3 ilen=20
 file: /w/visibility_respond_to.rb
    52 000 TDEF		R1	:pub	I[0]
    53 004 SSEND0	R1	:private
@@ -313,27 +313,27 @@ file: /w/visibility_respond_to.rb
    56 014 TDEF		R1	:prot	I[2]
    56 018 RETURN	R1	
 
-irep 0x5ff883c051f0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
 file: /w/visibility_respond_to.rb
    52 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    52 004 RETNIL
 
-irep 0x5ff883bf7ef0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
 file: /w/visibility_respond_to.rb
    54 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    54 004 RETNIL
 
-irep 0x5ff883c06390 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
 file: /w/visibility_respond_to.rb
    56 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    56 004 RETNIL
 
-irep 0x5ff883c0b330 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/visibility_respond_to.rb
    77 000 TDEF		R1	:respond_to_missing?	I[0]
    77 004 RETURN	R1	
 
-irep 0x5ff883bf7870 nregs=8 nlocals=4 pools=0 syms=1 reps=0 ilen=25
+irep 0xADDR nregs=8 nlocals=4 pools=0 syms=1 reps=0 ilen=25
 local variable names:
   R1:name
   R2:include_all

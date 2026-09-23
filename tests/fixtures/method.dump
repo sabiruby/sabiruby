@@ -1,4 +1,4 @@
-irep 0x57b242e375c0 nregs=8 nlocals=1 pools=0 syms=4 reps=3 ilen=76
+irep 0xADDR nregs=8 nlocals=1 pools=0 syms=4 reps=3 ilen=76
 file: /w/method.rb
     1 000 TDEF		R1	:add	I[0]
     4 004 TDEF		R1	:fib	I[1]
@@ -26,7 +26,7 @@ file: /w/method.rb
    14 073 RETURN	R1	
    14 075 STOP
 
-irep 0x57b242e3a040 nregs=7 nlocals=4 pools=0 syms=0 reps=0 ilen=14
+irep 0xADDR nregs=7 nlocals=4 pools=0 syms=0 reps=0 ilen=14
 local variable names:
   R1:a
   R2:b
@@ -37,7 +37,7 @@ file: /w/method.rb
     2 010 ADD		R4	(R5)
     2 012 RETURN	R4	
 
-irep 0x57b242e3ab30 nregs=8 nlocals=3 pools=0 syms=1 reps=0 ilen=45
+irep 0xADDR nregs=8 nlocals=3 pools=0 syms=1 reps=0 ilen=45
 local variable names:
   R1:n
 file: /w/method.rb
@@ -57,7 +57,7 @@ file: /w/method.rb
     5 041 ADD		R3	(R4)
     5 043 RETURN	R3	
 
-irep 0x57b242e3b270 nregs=8 nlocals=5 pools=0 syms=0 reps=0 ilen=27
+irep 0xADDR nregs=8 nlocals=5 pools=0 syms=0 reps=0 ilen=27
 local variable names:
   R1:a
   R2:b

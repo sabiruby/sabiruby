@@ -2,7 +2,8 @@
 # SabiRuby's own tests (tests/custom, runner tests/custom.rs). For each
 # tests/custom/*.rb: compile it with the reference mrbc (Docker image
 # kishima/mruby:4.1.0-rc2, with -g) into .mrb and record the reference mruby's
-# output as .rc.out and the reference listing (with line numbers) as .dump. The expected output (.expected) is decided by hand and is
+# output as .rc.out and the reference listing (with line numbers) as .dump (its per-run
+# pointers, `irep 0x...`, written as 0xADDR inside the container). The expected output (.expected) is decided by hand and is
 # not touched if it exists; when missing it is created from .rc.out.
 #   tools/custom.sh              # all cases
 #   tools/custom.sh eval_locals  # one case
@@ -19,6 +20,7 @@ for rb in tests/custom/${1:-*}.rb; do
   docker run --rm -v "$PWD/tests/custom:/w" $img /bin/sh -c "
     mrbc -g -o /w/$name.mrb /w/$name.rb &&
     mrbc -g --verbose /w/$name.rb > /w/$name.dump 2>&1 &&
+    sed -i -E 's/0x[0-9a-f]{6,}/0xADDR/g' /w/$name.dump &&
     mruby /w/$name.rb > /w/$name.rc.out 2>&1 || true"
   if [ ! -f "$base.expected" ]; then
     cp "$base.rc.out" "$base.expected"

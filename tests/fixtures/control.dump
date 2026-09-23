@@ -1,4 +1,4 @@
-irep 0x5a56ea0b4720 nregs=8 nlocals=3 pools=0 syms=8 reps=0 ilen=176
+irep 0xADDR nregs=8 nlocals=3 pools=0 syms=8 reps=0 ilen=176
 local variable names:
   R1:i
   R2:v

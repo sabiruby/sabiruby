@@ -1,4 +1,4 @@
-irep 0x5d061f64de00 nregs=10 nlocals=2 pools=0 syms=14 reps=4 ilen=150
+irep 0xADDR nregs=10 nlocals=2 pools=0 syms=14 reps=4 ilen=150
 local variable names:
   R1:pt
 file: /w/klass.rb
@@ -55,7 +55,7 @@ file: /w/klass.rb
    31 147 RETURN	R2	
    31 149 STOP
 
-irep 0x5d061f651040 nregs=4 nlocals=1 pools=0 syms=5 reps=3 ilen=21
+irep 0xADDR nregs=4 nlocals=1 pools=0 syms=5 reps=3 ilen=21
 file: /w/klass.rb
     2 000 LOADSYM	R2	:x
     2 003 SSEND		R1	:attr_reader	n=1
@@ -64,7 +64,7 @@ file: /w/klass.rb
    10 015 TDEF		R1	:to_s	I[2]
    10 019 RETURN	R1	
 
-irep 0x5d061f652770 nregs=5 nlocals=4 pools=0 syms=2 reps=0 ilen=15
+irep 0xADDR nregs=5 nlocals=4 pools=0 syms=2 reps=0 ilen=15
 local variable names:
   R1:x
   R2:y
@@ -75,7 +75,7 @@ file: /w/klass.rb
     5 010 SETIV		@y	R4
     5 013 RETURN	R4	
 
-irep 0x5d061f653260 nregs=5 nlocals=2 pools=0 syms=2 reps=0 ilen=14
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=2 reps=0 ilen=14
 file: /w/klass.rb
     7 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
     8 004 GETIV		R2	@x
@@ -83,7 +83,7 @@ file: /w/klass.rb
     8 010 ADD		R2	(R3)
     8 012 RETURN	R2	
 
-irep 0x5d061f6539c0 nregs=4 nlocals=2 pools=3 syms=2 reps=0 ilen=29
+irep 0xADDR nregs=4 nlocals=2 pools=3 syms=2 reps=0 ilen=29
 file: /w/klass.rb
    10 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    11 004 STRING	R2	L[0]	; (
@@ -97,13 +97,13 @@ file: /w/klass.rb
    11 025 STRCAT	R2	(R3)
    11 027 RETURN	R2	
 
-irep 0x5d061f652380 nregs=2 nlocals=1 pools=0 syms=2 reps=2 ilen=10
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=2 reps=2 ilen=10
 file: /w/klass.rb
    15 000 TDEF		R1	:initialize	I[0]
    19 004 TDEF		R1	:sum	I[1]
    19 008 RETURN	R1	
 
-irep 0x5d061f652650 nregs=9 nlocals=5 pools=0 syms=1 reps=0 ilen=24
+irep 0xADDR nregs=9 nlocals=5 pools=0 syms=1 reps=0 ilen=24
 local variable names:
   R1:x
   R2:y
@@ -118,7 +118,7 @@ file: /w/klass.rb
    17 019 SETIV		@z	R5
    17 022 RETURN	R5	
 
-irep 0x5d061f654f90 nregs=5 nlocals=2 pools=0 syms=1 reps=0 ilen=17
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=1 reps=0 ilen=17
 file: /w/klass.rb
    19 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    20 004 MOVE		R3	R1
@@ -127,12 +127,12 @@ file: /w/klass.rb
    20 013 ADD		R2	(R3)
    20 015 RETURN	R2	
 
-irep 0x5d061f655110 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/klass.rb
    28 000 TDEF		R1	:hi	I[0]
    28 004 RETURN	R1	
 
-irep 0x5d061f656120 nregs=4 nlocals=2 pools=1 syms=1 reps=0 ilen=14
+irep 0xADDR nregs=4 nlocals=2 pools=1 syms=1 reps=0 ilen=14
 file: /w/klass.rb
    28 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    28 004 STRING	R2	L[0]	; hi 
@@ -140,7 +140,7 @@ file: /w/klass.rb
    28 010 STRCAT	R2	(R3)
    28 012 RETURN	R2	
 
-irep 0x5d061f652190 nregs=4 nlocals=1 pools=0 syms=2 reps=0 ilen=9
+irep 0xADDR nregs=4 nlocals=1 pools=0 syms=2 reps=0 ilen=9
 file: /w/klass.rb
    30 000 GETCONST	R2	Greet
    30 003 SSEND		R1	:include	n=1

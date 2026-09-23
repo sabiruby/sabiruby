@@ -1,4 +1,4 @@
-irep 0x64a4b9dd34c0 nregs=7 nlocals=1 pools=0 syms=7 reps=1 ilen=53
+irep 0xADDR nregs=7 nlocals=1 pools=0 syms=7 reps=1 ilen=53
 file: /w/eval_class_eval_scope.rb
     8 000 LOADNIL	R1	(nil)
     8 002 LOADNIL	R2	(nil)
@@ -20,7 +20,7 @@ file: /w/eval_class_eval_scope.rb
    14 050 RETURN	R1	
    14 052 STOP
 
-irep 0x64a4b9dd4bf0 nregs=5 nlocals=2 pools=1 syms=3 reps=1 ilen=20
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=3 reps=1 ilen=20
 file: /w/eval_class_eval_scope.rb
     9 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    10 004 GETCONST	R2	K
@@ -29,7 +29,7 @@ file: /w/eval_class_eval_scope.rb
    11 014 TDEF		R2	:g	I[0]
    11 018 RETURN	R2	
 
-irep 0x64a4b9dd6380 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
 file: /w/eval_class_eval_scope.rb
    11 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    11 004 LOADI_2	R2	(2)

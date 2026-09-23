@@ -1,4 +1,4 @@
-irep 0x5d46da2a00e0 nregs=20 nlocals=11 pools=17 syms=22 reps=7 ilen=939
+irep 0xADDR nregs=20 nlocals=11 pools=17 syms=22 reps=7 ilen=939
 local variable names:
   R1:h
   R2:k
@@ -327,7 +327,7 @@ file: /w/hash_index_boundary.rb
    93 936 RETURN	R11	
    93 938 STOP
 
-irep 0x5d46da2ae6a0 nregs=6 nlocals=4 pools=0 syms=1 reps=1 ilen=19
+irep 0xADDR nregs=6 nlocals=4 pools=0 syms=1 reps=1 ilen=19
 local variable names:
   R1:n
   R3:h
@@ -339,7 +339,7 @@ file: /w/hash_index_boundary.rb
    11 013 SENDB		R4	:times	n=0
    12 017 RETURN	R3		; R3:h
 
-irep 0x5d46da2afdd0 nregs=8 nlocals=3 pools=1 syms=0 reps=0 ilen=26
+irep 0xADDR nregs=8 nlocals=3 pools=1 syms=0 reps=0 ilen=26
 local variable names:
   R1:i
 file: /w/hash_index_boundary.rb
@@ -353,7 +353,7 @@ file: /w/hash_index_boundary.rb
    11 022 SETIDX	R4	(R5)	(R6)
    11 024 RETURN	R3	
 
-irep 0x5d46da2af9e0 nregs=15 nlocals=4 pools=3 syms=8 reps=1 ilen=131
+irep 0xADDR nregs=15 nlocals=4 pools=3 syms=8 reps=1 ilen=131
 local variable names:
   R1:n
   R3:h
@@ -404,7 +404,7 @@ file: /w/hash_index_boundary.rb
    19 125 SSEND		R4	:p	n=1
    19 129 RETURN	R4	
 
-irep 0x5d46da2afd10 nregs=5 nlocals=3 pools=1 syms=0 reps=0 ilen=14
+irep 0xADDR nregs=5 nlocals=3 pools=1 syms=0 reps=0 ilen=14
 local variable names:
   R1:i
 file: /w/hash_index_boundary.rb
@@ -414,7 +414,7 @@ file: /w/hash_index_boundary.rb
    18 010 STRCAT	R3	(R4)
    18 012 RETURN	R3	
 
-irep 0x5d46da2b0fc0 nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=22
+irep 0xADDR nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=22
 local variable names:
   R1:i
 file: /w/hash_index_boundary.rb
@@ -426,7 +426,7 @@ file: /w/hash_index_boundary.rb
    24 016 SEND		R3	:delete	n=1
    24 020 RETURN	R3	
 
-irep 0x5d46da2af7f0 nregs=8 nlocals=3 pools=1 syms=1 reps=0 ilen=25
+irep 0xADDR nregs=8 nlocals=3 pools=1 syms=1 reps=0 ilen=25
 local variable names:
   R1:i
 file: /w/hash_index_boundary.rb
@@ -439,7 +439,7 @@ file: /w/hash_index_boundary.rb
    26 019 SEND		R3	:delete	n=1
    26 023 RETURN	R3	
 
-irep 0x5d46da2ae330 nregs=4 nlocals=1 pools=0 syms=6 reps=4 ilen=25
+irep 0xADDR nregs=4 nlocals=1 pools=0 syms=6 reps=4 ilen=25
 file: /w/hash_index_boundary.rb
    43 000 TDEF		R1	:initialize	I[0]
    44 004 TDEF		R1	:hash	I[1]
@@ -449,7 +449,7 @@ file: /w/hash_index_boundary.rb
    47 019 SSEND		R1	:attr_reader	n=1
    47 023 RETURN	R1	
 
-irep 0x5d46da2ae600 nregs=4 nlocals=3 pools=0 syms=1 reps=0 ilen=12
+irep 0xADDR nregs=4 nlocals=3 pools=0 syms=1 reps=0 ilen=12
 local variable names:
   R1:n
 file: /w/hash_index_boundary.rb
@@ -458,13 +458,13 @@ file: /w/hash_index_boundary.rb
    43 007 SETIV		@n	R3
    43 010 RETURN	R3	
 
-irep 0x5d46da2b4500 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=9
 file: /w/hash_index_boundary.rb
    44 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    44 004 LOADI8	R2	42
    44 007 RETURN	R2	
 
-irep 0x5d46da2b4ac0 nregs=6 nlocals=3 pools=0 syms=4 reps=0 ilen=31
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=4 reps=0 ilen=31
 local variable names:
   R1:o
 file: /w/hash_index_boundary.rb
@@ -479,7 +479,7 @@ file: /w/hash_index_boundary.rb
    45 027 EQ		R3	(R4)
    45 029 RETURN	R3	
 
-irep 0x5d46da2b4db0 nregs=6 nlocals=3 pools=0 syms=1 reps=0 ilen=13
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=1 reps=0 ilen=13
 local variable names:
   R1:o
 file: /w/hash_index_boundary.rb
@@ -488,7 +488,7 @@ file: /w/hash_index_boundary.rb
    46 007 SSEND		R3	:eql?	n=1
    46 011 RETURN	R3	
 
-irep 0x5d46da2b5550 nregs=8 nlocals=3 pools=0 syms=2 reps=0 ilen=28
+irep 0xADDR nregs=8 nlocals=3 pools=0 syms=2 reps=0 ilen=28
 local variable names:
   R1:i
 file: /w/hash_index_boundary.rb
@@ -502,7 +502,7 @@ file: /w/hash_index_boundary.rb
    50 024 SETIDX	R4	(R5)	(R6)
    50 026 RETURN	R3	
 
-irep 0x5d46da2b5d80 nregs=8 nlocals=3 pools=0 syms=0 reps=0 ilen=20
+irep 0xADDR nregs=8 nlocals=3 pools=0 syms=0 reps=0 ilen=20
 local variable names:
   R1:x
 file: /w/hash_index_boundary.rb

@@ -1,4 +1,4 @@
-irep 0x57549bedc740 nregs=50 nlocals=2 pools=6 syms=58 reps=2 ilen=592
+irep 0xADDR nregs=50 nlocals=2 pools=6 syms=58 reps=2 ilen=592
 local variable names:
   R1:ksc
 file: /w/visibility_builtins.rb
@@ -198,7 +198,7 @@ file: /w/visibility_builtins.rb
    51 589 RETURN	R2	
    51 591 STOP
 
-irep 0x57549bed7ec0 nregs=8 nlocals=5 pools=7 syms=5 reps=0 ilen=122
+irep 0xADDR nregs=8 nlocals=5 pools=7 syms=5 reps=0 ilen=122
 local variable names:
   R1:mod
   R2:name
@@ -245,7 +245,7 @@ file: /w/visibility_builtins.rb
    14 116 SSEND		R5	:puts	n=1
    14 120 RETURN	R5	
 
-irep 0x57549bee0ef0 nregs=8 nlocals=4 pools=0 syms=1 reps=0 ilen=16
+irep 0xADDR nregs=8 nlocals=4 pools=0 syms=1 reps=0 ilen=16
 local variable names:
   R1:mod
   R2:name

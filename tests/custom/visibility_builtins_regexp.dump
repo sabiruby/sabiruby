@@ -1,4 +1,4 @@
-irep 0x5f75c9e405b0 nregs=8 nlocals=3 pools=4 syms=10 reps=1 ilen=116
+irep 0xADDR nregs=8 nlocals=3 pools=4 syms=10 reps=1 ilen=116
 local variable names:
   R1:r
   R2:e
@@ -43,7 +43,7 @@ file: /w/visibility_builtins_regexp.rb
    15 113 RETURN	R3	
    15 115 STOP
 
-irep 0x5f75c9e44f70 nregs=9 nlocals=4 pools=5 syms=3 reps=0 ilen=64
+irep 0xADDR nregs=9 nlocals=4 pools=5 syms=3 reps=0 ilen=64
 local variable names:
   R1:mod
   R2:name

@@ -1,4 +1,4 @@
-irep 0x57b9d72e0970 nregs=8 nlocals=3 pools=19 syms=33 reps=10 ilen=597
+irep 0xADDR nregs=8 nlocals=3 pools=19 syms=33 reps=10 ilen=597
 local variable names:
   R1:e
   R2:o
@@ -203,78 +203,78 @@ file: /w/visibility_toplevel_def.rb
    79 594 RETURN	R3	
    79 596 STOP
 
-irep 0x57b9d72ea8c0 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/visibility_toplevel_def.rb
     6 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
     6 004 STRING	R2	L[0]	; top_m
     6 007 RETURN	R2	
 
-irep 0x57b9d72ea5a0 nregs=3 nlocals=2 pools=0 syms=1 reps=1 ilen=10
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=1 reps=1 ilen=10
 file: /w/visibility_toplevel_def.rb
    30 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    30 004 TDEF		R2	:in_block	I[0]
    30 008 RETURN	R2	
 
-irep 0x57b9d72eb7e0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
 file: /w/visibility_toplevel_def.rb
    30 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    30 004 RETNIL
 
-irep 0x57b9d72ec480 nregs=3 nlocals=2 pools=0 syms=1 reps=1 ilen=10
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=1 reps=1 ilen=10
 file: /w/visibility_toplevel_def.rb
    34 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    34 004 TDEF		R2	:in_fiber	I[0]
    34 008 RETURN	R2	
 
-irep 0x57b9d72ecfb0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
 file: /w/visibility_toplevel_def.rb
    34 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    34 004 RETNIL
 
-irep 0x57b9d72ee170 nregs=3 nlocals=2 pools=0 syms=1 reps=1 ilen=10
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=1 reps=1 ilen=10
 file: /w/visibility_toplevel_def.rb
    38 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    38 004 TDEF		R2	:inner	I[0]
    38 008 RETURN	R2	
 
-irep 0x57b9d72ee480 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
 file: /w/visibility_toplevel_def.rb
    38 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    38 004 RETNIL
 
-irep 0x57b9d72ef670 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/visibility_toplevel_def.rb
    43 000 TDEF		R1	:in_class	I[0]
    43 004 RETURN	R1	
 
-irep 0x57b9d72edf20 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
 file: /w/visibility_toplevel_def.rb
    43 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    43 004 RETNIL
 
-irep 0x57b9d72ee0a0 nregs=3 nlocals=2 pools=0 syms=1 reps=1 ilen=10
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=1 reps=1 ilen=10
 file: /w/visibility_toplevel_def.rb
    45 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    45 004 TDEF		R2	:in_class_eval	I[0]
    45 008 RETURN	R2	
 
-irep 0x57b9d72f06a0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
 file: /w/visibility_toplevel_def.rb
    45 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    45 004 RETNIL
 
-irep 0x57b9d72f0270 nregs=3 nlocals=2 pools=0 syms=1 reps=1 ilen=10
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=1 reps=1 ilen=10
 file: /w/visibility_toplevel_def.rb
    48 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    48 004 TDEF		R2	:on_singleton	I[0]
    48 008 RETURN	R2	
 
-irep 0x57b9d72f0370 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
 file: /w/visibility_toplevel_def.rb
    48 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    48 004 RETNIL
 
-irep 0x57b9d72ef2d0 nregs=4 nlocals=1 pools=0 syms=4 reps=2 ilen=19
+irep 0xADDR nregs=4 nlocals=1 pools=0 syms=4 reps=2 ilen=19
 file: /w/visibility_toplevel_def.rb
    54 000 SSEND0	R1	:private
    55 003 LOADSYM	R2	:by_define_method
@@ -283,19 +283,19 @@ file: /w/visibility_toplevel_def.rb
    56 013 TDEF		R1	:by_def	I[1]
    56 017 RETURN	R1	
 
-irep 0x57b9d72f12b0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
 file: /w/visibility_toplevel_def.rb
    55 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    55 004 LOADI_1	R2	(1)
    55 006 RETURN	R2	
 
-irep 0x57b9d72f13d0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
 file: /w/visibility_toplevel_def.rb
    56 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    56 004 LOADI_2	R2	(2)
    56 006 RETURN	R2	
 
-irep 0x57b9d72f1fa0 nregs=4 nlocals=1 pools=0 syms=5 reps=3 ilen=27
+irep 0xADDR nregs=4 nlocals=1 pools=0 syms=5 reps=3 ilen=27
 file: /w/visibility_toplevel_def.rb
    63 000 TDEF		R1	:a	I[0]
    64 004 SSEND0	R1	:private
@@ -306,31 +306,31 @@ file: /w/visibility_toplevel_def.rb
    68 021 SSEND		R1	:private	n=1
    68 025 RETURN	R1	
 
-irep 0x57b9d72f1ff0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
 file: /w/visibility_toplevel_def.rb
    63 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    63 004 LOADI_1	R2	(1)
    63 006 RETURN	R2	
 
-irep 0x57b9d72edcb0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
 file: /w/visibility_toplevel_def.rb
    65 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    65 004 LOADI_2	R2	(2)
    65 006 RETURN	R2	
 
-irep 0x57b9d72f33e0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
 file: /w/visibility_toplevel_def.rb
    67 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    67 004 LOADI_3	R2	(3)
    67 006 RETURN	R2	
 
-irep 0x57b9d72f2390 nregs=3 nlocals=1 pools=0 syms=2 reps=1 ilen=9
+irep 0xADDR nregs=3 nlocals=1 pools=0 syms=2 reps=1 ilen=9
 file: /w/visibility_toplevel_def.rb
    75 000 SSEND0	R1	:module_function
    76 003 TDEF		R1	:mf1	I[0]
    76 007 RETURN	R1	
 
-irep 0x57b9d72f0e30 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/visibility_toplevel_def.rb
    76 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    76 004 STRING	R2	L[0]	; mf1

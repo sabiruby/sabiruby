@@ -1,4 +1,4 @@
-irep 0x64d6a16cadd0 nregs=5 nlocals=1 pools=6 syms=6 reps=0 ilen=85
+irep 0xADDR nregs=5 nlocals=1 pools=6 syms=6 reps=0 ilen=85
 file: /w/utf8_reference_bugs.rb
    16 000 STRING	R2	L[0]	; あい
    16 003 STRING	R3	L[1]	; あ

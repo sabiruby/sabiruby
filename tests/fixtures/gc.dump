@@ -1,4 +1,4 @@
-irep 0x55d4cc4eef10 nregs=22 nlocals=14 pools=5 syms=33 reps=17 ilen=740
+irep 0xADDR nregs=22 nlocals=14 pools=5 syms=33 reps=17 ilen=740
 local variable names:
   R1:base
   R2:h
@@ -258,21 +258,21 @@ file: /w/gc.rb
   121 737 RETURN	R14	
   121 739 STOP
 
-irep 0x55d4cc4f1790 nregs=4 nlocals=2 pools=0 syms=2 reps=0 ilen=12
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=2 reps=0 ilen=12
 file: /w/gc.rb
     7 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
     7 004 GETCONST	R2	Object
     7 007 SEND0		R2	:new
     7 010 RETURN	R2	
 
-irep 0x55d4cc4f2260 nregs=4 nlocals=2 pools=0 syms=2 reps=0 ilen=12
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=2 reps=0 ilen=12
 file: /w/gc.rb
    11 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    11 004 GETCONST	R2	Object
    11 007 SEND0		R2	:new
    11 010 RETURN	R2	
 
-irep 0x55d4cc4f29c0 nregs=4 nlocals=1 pools=0 syms=5 reps=3 ilen=21
+irep 0xADDR nregs=4 nlocals=1 pools=0 syms=5 reps=3 ilen=21
 file: /w/gc.rb
    21 000 LOADSYM	R2	:n
    21 003 SSEND		R1	:attr_reader	n=1
@@ -281,7 +281,7 @@ file: /w/gc.rb
    24 015 TDEF		R1	:eql?	I[2]
    24 019 RETURN	R1	
 
-irep 0x55d4cc4f4570 nregs=4 nlocals=3 pools=0 syms=1 reps=0 ilen=12
+irep 0xADDR nregs=4 nlocals=3 pools=0 syms=1 reps=0 ilen=12
 local variable names:
   R1:n
 file: /w/gc.rb
@@ -290,7 +290,7 @@ file: /w/gc.rb
    22 007 SETIV		@n	R3
    22 010 RETURN	R3	
 
-irep 0x55d4cc4f5060 nregs=5 nlocals=2 pools=1 syms=3 reps=0 ilen=24
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=3 reps=0 ilen=24
 file: /w/gc.rb
    23 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    23 004 STRING	R2	L[0]	; k
@@ -302,7 +302,7 @@ file: /w/gc.rb
    23 019 SEND0		R2	:hash
    23 022 RETURN	R2	
 
-irep 0x55d4cc4f57e0 nregs=6 nlocals=3 pools=0 syms=2 reps=0 ilen=23
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=2 reps=0 ilen=23
 local variable names:
   R1:o
 file: /w/gc.rb
@@ -315,7 +315,7 @@ file: /w/gc.rb
    24 019 EQ		R3	(R4)
    24 021 RETURN	R3	
 
-irep 0x55d4cc4f5a40 nregs=5 nlocals=3 pools=0 syms=1 reps=0 ilen=12
+irep 0xADDR nregs=5 nlocals=3 pools=0 syms=1 reps=0 ilen=12
 local variable names:
   R1:o
 file: /w/gc.rb
@@ -324,7 +324,7 @@ file: /w/gc.rb
    29 007 SEND0		R3	:size
    29 010 RETURN	R3	
 
-irep 0x55d4cc4f2f00 nregs=6 nlocals=3 pools=0 syms=1 reps=2 ilen=25
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=1 reps=2 ilen=25
 local variable names:
   R2:n
 file: /w/gc.rb
@@ -337,7 +337,7 @@ file: /w/gc.rb
    35 020 ARRAY		R3	2
    35 023 RETURN	R3	
 
-irep 0x55d4cc4f3210 nregs=5 nlocals=2 pools=0 syms=0 reps=0 ilen=17
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=0 reps=0 ilen=17
 file: /w/gc.rb
    35 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    35 004 GETUPVAR	R2	2	0
@@ -345,20 +345,20 @@ file: /w/gc.rb
    35 011 SETUPVAR	R2	2	0
    35 015 RETURN	R2	
 
-irep 0x55d4cc4f3fd0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=10
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=10
 file: /w/gc.rb
    35 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    35 004 GETUPVAR	R2	2	0
    35 008 RETURN	R2	
 
-irep 0x55d4cc4f43b0 nregs=4 nlocals=2 pools=0 syms=1 reps=0 ilen=13
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=0 ilen=13
 file: /w/gc.rb
    39 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    39 004 GETUPVAR	R2	3	0
    39 008 SEND0		R2	:call
    39 011 RETURN	R2	
 
-irep 0x55d4cc4f44f0 nregs=6 nlocals=3 pools=1 syms=4 reps=1 ilen=30
+irep 0xADDR nregs=6 nlocals=3 pools=1 syms=4 reps=1 ilen=30
 local variable names:
   R2:x
 file: /w/gc.rb
@@ -373,13 +373,13 @@ file: /w/gc.rb
    43 026 LOADI_2	R3	(2)
    43 028 RETURN	R3	
 
-irep 0x55d4cc4f6ec0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=10
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=10
 file: /w/gc.rb
    43 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    43 004 GETUPVAR	R2	2	0
    43 008 RETURN	R2	
 
-irep 0x55d4cc4f7690 nregs=5 nlocals=2 pools=1 syms=3 reps=1 ilen=24
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=3 reps=1 ilen=24
 file: /w/gc.rb
    50 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    51 004 GETCONST	R2	Fiber
@@ -390,7 +390,7 @@ file: /w/gc.rb
    54 020 ADD		R2	(R3)
    54 022 RETURN	R2	
 
-irep 0x55d4cc4f7790 nregs=6 nlocals=2 pools=1 syms=4 reps=0 ilen=26
+irep 0xADDR nregs=6 nlocals=2 pools=1 syms=4 reps=0 ilen=26
 file: /w/gc.rb
    51 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    52 004 GETCONST	R2	GC
@@ -402,7 +402,7 @@ file: /w/gc.rb
    53 020 SEND		R2	:yield	n=1
    53 024 RETURN	R2	
 
-irep 0x55d4cc4f3cd0 nregs=5 nlocals=3 pools=0 syms=3 reps=1 ilen=23
+irep 0xADDR nregs=5 nlocals=3 pools=0 syms=3 reps=1 ilen=23
 local variable names:
   R1:i
 file: /w/gc.rb
@@ -414,7 +414,7 @@ file: /w/gc.rb
    59 018 SEND0		R3	:resume
    59 021 RETURN	R3	
 
-irep 0x55d4cc4f6260 nregs=5 nlocals=2 pools=0 syms=2 reps=0 ilen=17
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=2 reps=0 ilen=17
 file: /w/gc.rb
    59 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    59 004 GETCONST	R2	Fiber
@@ -422,13 +422,13 @@ file: /w/gc.rb
    59 011 SEND		R2	:yield	n=1
    59 015 RETURN	R2	
 
-irep 0x55d4cc4f8ae0 nregs=3 nlocals=2 pools=0 syms=1 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=1 reps=0 ilen=9
 file: /w/gc.rb
    61 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    61 004 LOADSYM	R2	:still_works
    61 007 RETURN	R2	
 
-irep 0x55d4cc4f8c20 nregs=4 nlocals=2 pools=0 syms=1 reps=1 ilen=20
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=1 ilen=20
 file: /w/gc.rb
    70 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    71 004 LOADI_1	R2	(1)
@@ -438,7 +438,7 @@ file: /w/gc.rb
    71 014 SENDB		R2	:each	n=0
    71 018 RETURN	R2	
 
-irep 0x55d4cc4f8f30 nregs=9 nlocals=3 pools=2 syms=2 reps=0 ilen=36
+irep 0xADDR nregs=9 nlocals=3 pools=2 syms=2 reps=0 ilen=36
 local variable names:
   R1:x
 catch type: ensure   begin: 0004 end: 0017 target: 0017
@@ -459,7 +459,7 @@ file: /w/gc.rb
    76 032 RAISEIF	R5	
    76 034 RETURN	R3	
 
-irep 0x55d4cc4fa440 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=17
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=17
 file: /w/gc.rb
    92 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    92 004 GETUPVAR	R2	9	0
@@ -467,7 +467,7 @@ file: /w/gc.rb
    92 011 SETUPVAR	R2	9	0
    92 015 RETURN	R2	
 
-irep 0x55d4cc4f8750 nregs=7 nlocals=5 pools=0 syms=3 reps=2 ilen=35
+irep 0xADDR nregs=7 nlocals=5 pools=0 syms=3 reps=2 ilen=35
 local variable names:
   R1:i
   R3:c
@@ -485,7 +485,7 @@ file: /w/gc.rb
   105 029 SDEF		R5	:w	I[1]
   105 033 RETURN	R5	
 
-irep 0x55d4cc4f8830 nregs=5 nlocals=2 pools=0 syms=2 reps=1 ilen=16
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=2 reps=1 ilen=16
 file: /w/gc.rb
   103 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
   103 004 LOADSYM	R3	:v
@@ -493,31 +493,31 @@ file: /w/gc.rb
   103 010 SSENDB	R2	:define_method	n=1
   103 014 RETURN	R2	
 
-irep 0x55d4cc4f7f00 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=10
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=10
 file: /w/gc.rb
   103 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
   103 004 GETUPVAR	R2	1	1
   103 008 RETURN	R2	
 
-irep 0x55d4cc4fa770 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
 file: /w/gc.rb
   105 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
   105 004 LOADI_1	R2	(1)
   105 006 RETURN	R2	
 
-irep 0x55d4cc4f96c0 nregs=3 nlocals=2 pools=0 syms=1 reps=1 ilen=10
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=1 reps=1 ilen=10
 file: /w/gc.rb
   107 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
   107 004 TDEF		R2	:m	I[0]
   107 008 RETURN	R2	
 
-irep 0x55d4cc4f9780 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/gc.rb
   107 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
   107 004 STRING	R2	L[0]	; kept
   107 007 RETURN	R2	
 
-irep 0x55d4cc4f9fc0 nregs=7 nlocals=3 pools=1 syms=1 reps=0 ilen=22
+irep 0xADDR nregs=7 nlocals=3 pools=1 syms=1 reps=0 ilen=22
 local variable names:
   R1:x
 file: /w/gc.rb
@@ -530,7 +530,7 @@ file: /w/gc.rb
   113 017 ARRAY		R3	2
   113 020 RETURN	R3	
 
-irep 0x55d4cc4fa0c0 nregs=7 nlocals=4 pools=0 syms=3 reps=0 ilen=22
+irep 0xADDR nregs=7 nlocals=4 pools=0 syms=3 reps=0 ilen=22
 local variable names:
   R1:x
   R2:y
@@ -543,7 +543,7 @@ file: /w/gc.rb
   114 016 SEND		R4	:<=>	n=1
   114 020 RETURN	R4	
 
-irep 0x55d4cc4f83f0 nregs=5 nlocals=2 pools=0 syms=4 reps=0 ilen=23
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=4 reps=0 ilen=23
 file: /w/gc.rb
   119 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
   119 004 GETUPVAR	R2	13	0

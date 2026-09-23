@@ -1,4 +1,4 @@
-irep 0x56253f264ee0 nregs=9 nlocals=4 pools=0 syms=25 reps=8 ilen=285
+irep 0xADDR nregs=9 nlocals=4 pools=0 syms=25 reps=8 ilen=285
 local variable names:
   R1:w
   R2:e
@@ -99,14 +99,14 @@ file: /w/singleton_method_hooks.rb
    65 282 RETURN	R4	
    65 284 STOP
 
-irep 0x56253f26b310 nregs=2 nlocals=1 pools=0 syms=3 reps=3 ilen=14
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=3 reps=3 ilen=14
 file: /w/singleton_method_hooks.rb
     8 000 TDEF		R1	:singleton_method_added	I[0]
    11 004 TDEF		R1	:singleton_method_removed	I[1]
    14 008 TDEF		R1	:singleton_method_undefined	I[2]
    14 012 RETURN	R1	
 
-irep 0x56253f26ca40 nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=18
+irep 0xADDR nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=18
 local variable names:
   R1:name
 file: /w/singleton_method_hooks.rb
@@ -117,7 +117,7 @@ file: /w/singleton_method_hooks.rb
     9 012 SSEND		R3	:puts	n=1
     9 016 RETURN	R3	
 
-irep 0x56253f26d530 nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=18
+irep 0xADDR nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=18
 local variable names:
   R1:name
 file: /w/singleton_method_hooks.rb
@@ -128,7 +128,7 @@ file: /w/singleton_method_hooks.rb
    12 012 SSEND		R3	:puts	n=1
    12 016 RETURN	R3	
 
-irep 0x56253f26dc90 nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=18
+irep 0xADDR nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=18
 local variable names:
   R1:name
 file: /w/singleton_method_hooks.rb
@@ -139,19 +139,19 @@ file: /w/singleton_method_hooks.rb
    15 012 SSEND		R3	:puts	n=1
    15 016 RETURN	R3	
 
-irep 0x56253f26c610 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
 file: /w/singleton_method_hooks.rb
    20 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    20 004 LOADI_1	R2	(1)
    20 006 RETURN	R2	
 
-irep 0x56253f26c960 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
 file: /w/singleton_method_hooks.rb
    21 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    21 004 LOADI_2	R2	(2)
    21 006 RETURN	R2	
 
-irep 0x56253f26c4c0 nregs=4 nlocals=1 pools=0 syms=5 reps=1 ilen=20
+irep 0xADDR nregs=4 nlocals=1 pools=0 syms=5 reps=1 ilen=20
 file: /w/singleton_method_hooks.rb
    26 000 TDEF		R1	:three	I[0]
    27 004 LOADSYM	R2	:two
@@ -160,20 +160,20 @@ file: /w/singleton_method_hooks.rb
    28 014 SSEND		R1	:undef_method	n=1
    28 018 RETURN	R1	
 
-irep 0x56253f26c5a0 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
 file: /w/singleton_method_hooks.rb
    26 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    26 004 LOADI_3	R2	(3)
    26 006 RETURN	R2	
 
-irep 0x56253f26f3b0 nregs=2 nlocals=1 pools=0 syms=2 reps=2 ilen=12
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=2 reps=2 ilen=12
 file: /w/singleton_method_hooks.rb
    40 000 LOADSELF	R1	(R0)
    40 002 SDEF		R1	:method_added	I[0]
    41 006 TDEF		R1	:four	I[1]
    41 010 RETURN	R1	
 
-irep 0x56253f26c0c0 nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=18
+irep 0xADDR nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=18
 local variable names:
   R1:name
 file: /w/singleton_method_hooks.rb
@@ -184,13 +184,13 @@ file: /w/singleton_method_hooks.rb
    40 012 SSEND		R3	:puts	n=1
    40 016 RETURN	R3	
 
-irep 0x56253f270b60 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
 file: /w/singleton_method_hooks.rb
    41 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    41 004 LOADI_4	R2	(4)
    41 006 RETURN	R2	
 
-irep 0x56253f270cc0 nregs=2 nlocals=1 pools=0 syms=2 reps=2 ilen=14
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=2 reps=2 ilen=14
 file: /w/singleton_method_hooks.rb
    46 000 LOADSELF	R1	(R0)
    46 002 SDEF		R1	:singleton_method_added	I[0]
@@ -198,7 +198,7 @@ file: /w/singleton_method_hooks.rb
    47 008 SDEF		R1	:five	I[1]
    47 012 RETURN	R1	
 
-irep 0x56253f26f750 nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=18
+irep 0xADDR nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=18
 local variable names:
   R1:name
 file: /w/singleton_method_hooks.rb
@@ -209,24 +209,24 @@ file: /w/singleton_method_hooks.rb
    46 012 SSEND		R3	:puts	n=1
    46 016 RETURN	R3	
 
-irep 0x56253f26f890 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
 file: /w/singleton_method_hooks.rb
    47 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    47 004 LOADI_5	R2	(5)
    47 006 RETURN	R2	
 
-irep 0x56253f2708b0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/singleton_method_hooks.rb
    52 000 TDEF		R1	:six	I[0]
    52 004 RETURN	R1	
 
-irep 0x56253f271820 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=8
 file: /w/singleton_method_hooks.rb
    52 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    52 004 LOADI_6	R2	(6)
    52 006 RETURN	R2	
 
-irep 0x56253f271c00 nregs=6 nlocals=3 pools=0 syms=3 reps=0 ilen=19
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=3 reps=0 ilen=19
 local variable names:
   R1:m
 file: /w/singleton_method_hooks.rb

@@ -1,4 +1,4 @@
-irep 0x5734d08bc830 nregs=11 nlocals=4 pools=7 syms=27 reps=8 ilen=669
+irep 0xADDR nregs=11 nlocals=4 pools=7 syms=27 reps=8 ilen=669
 local variable names:
   R1:e
   R2:r
@@ -239,7 +239,7 @@ file: /w/errors2.rb
    82 666 RETURN	R4	
    82 668 STOP
 
-irep 0x5734d08bdf60 nregs=7 nlocals=4 pools=1 syms=1 reps=0 ilen=13
+irep 0xADDR nregs=7 nlocals=4 pools=1 syms=1 reps=0 ilen=13
 local variable names:
   R1:a
   R2:b
@@ -249,7 +249,7 @@ file: /w/errors2.rb
     3 007 SSEND		R4	:raise	n=1
     3 011 RETURN	R4	
 
-irep 0x5734d08bee80 nregs=7 nlocals=3 pools=1 syms=2 reps=0 ilen=21
+irep 0xADDR nregs=7 nlocals=3 pools=1 syms=2 reps=0 ilen=21
 local variable names:
   R1:x
 file: /w/errors2.rb
@@ -261,7 +261,7 @@ file: /w/errors2.rb
     8 015 SSEND		R3	:raise	n=2
     8 019 RETURN	R3	
 
-irep 0x5734d08bf1d0 nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=23
+irep 0xADDR nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=23
 local variable names:
   R1:x
 file: /w/errors2.rb
@@ -274,7 +274,7 @@ file: /w/errors2.rb
    12 018 SSEND		R3	:raise	n=1
    12 022 RETTRUE
 
-irep 0x5734d08c0190 nregs=8 nlocals=2 pools=2 syms=2 reps=0 ilen=39
+irep 0xADDR nregs=8 nlocals=2 pools=2 syms=2 reps=0 ilen=39
 catch type: ensure   begin: 0004 end: 0026 target: 0026
 catch type: rescue   begin: 0004 end: 0023 target: 0026
 catch type: ensure   begin: 0004 end: 0012 target: 0012
@@ -295,7 +295,7 @@ file: /w/errors2.rb
    22 035 RAISEIF	R4	
    22 037 RETURN	R2	
 
-irep 0x5734d08c0e10 nregs=7 nlocals=3 pools=1 syms=4 reps=0 ilen=61
+irep 0xADDR nregs=7 nlocals=3 pools=1 syms=4 reps=0 ilen=61
 local variable names:
   R2:e
 catch type: rescue   begin: 0004 end: 0011 target: 0014
@@ -321,7 +321,7 @@ file: /w/errors2.rb
    30 057 RAISEIF	R3	
    30 059 RETURN	R3	
 
-irep 0x5734d08c15b0 nregs=6 nlocals=2 pools=1 syms=2 reps=0 ilen=16
+irep 0xADDR nregs=6 nlocals=2 pools=1 syms=2 reps=0 ilen=16
 file: /w/errors2.rb
    33 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    33 004 GETCONST	R3	IndexError
@@ -329,7 +329,7 @@ file: /w/errors2.rb
    33 010 SSEND		R2	:raise	n=2
    33 014 RETURN	R2	
 
-irep 0x5734d08bea70 nregs=5 nlocals=2 pools=0 syms=1 reps=0 ilen=16
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=1 reps=0 ilen=16
 catch type: ensure   begin: 0004 end: 0010 target: 0010
 catch type: rescue   begin: 0004 end: 0007 target: 0010
 file: /w/errors2.rb
@@ -340,7 +340,7 @@ file: /w/errors2.rb
    53 012 RAISEIF	R4	
    53 014 RETURN	R2	
 
-irep 0x5734d08c2370 nregs=7 nlocals=3 pools=1 syms=2 reps=0 ilen=37
+irep 0xADDR nregs=7 nlocals=3 pools=1 syms=2 reps=0 ilen=37
 local variable names:
   R1:n
 file: /w/errors2.rb

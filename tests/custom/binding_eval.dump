@@ -1,4 +1,4 @@
-irep 0x59f67173d6e0 nregs=6 nlocals=2 pools=3 syms=5 reps=1 ilen=64
+irep 0xADDR nregs=6 nlocals=2 pools=3 syms=5 reps=1 ilen=64
 local variable names:
   R1:b
 file: /w/binding_eval.rb
@@ -23,7 +23,7 @@ file: /w/binding_eval.rb
    13 061 RETURN	R2	
    13 063 STOP
 
-irep 0x59f67173ee30 nregs=5 nlocals=3 pools=0 syms=1 reps=0 ilen=11
+irep 0xADDR nregs=5 nlocals=3 pools=0 syms=1 reps=0 ilen=11
 local variable names:
   R2:x
 file: /w/binding_eval.rb

@@ -1,4 +1,4 @@
-irep 0x61ec6b6dfee0 nregs=8 nlocals=3 pools=1 syms=12 reps=1 ilen=206
+irep 0xADDR nregs=8 nlocals=3 pools=1 syms=12 reps=1 ilen=206
 local variable names:
   R1:e
   R2:x
@@ -79,7 +79,7 @@ file: /w/exception.rb
    28 203 RETURN	R3	
    28 205 STOP
 
-irep 0x61ec6b6e1610 nregs=7 nlocals=3 pools=1 syms=2 reps=0 ilen=39
+irep 0xADDR nregs=7 nlocals=3 pools=1 syms=2 reps=0 ilen=39
 local variable names:
   R1:n
 file: /w/exception.rb

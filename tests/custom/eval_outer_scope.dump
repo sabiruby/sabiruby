@@ -1,4 +1,4 @@
-irep 0x5ab90d12d460 nregs=6 nlocals=3 pools=0 syms=4 reps=1 ilen=55
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=4 reps=1 ilen=55
 local variable names:
   R1:x
   R2:e
@@ -24,7 +24,7 @@ file: /w/eval_outer_scope.rb
    18 052 RETURN	R3	
    18 054 STOP
 
-irep 0x5ab90d12ebd0 nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
 file: /w/eval_outer_scope.rb
    10 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    11 004 STRING	R3	L[0]	; x

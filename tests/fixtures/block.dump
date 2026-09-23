@@ -1,4 +1,4 @@
-irep 0x5bdb50d49c60 nregs=7 nlocals=3 pools=0 syms=7 reps=6 ilen=94
+irep 0xADDR nregs=7 nlocals=3 pools=0 syms=7 reps=6 ilen=94
 local variable names:
   R1:sum
   R2:l
@@ -36,7 +36,7 @@ file: /w/block.rb
    16 091 RETURN	R3	
    16 093 STOP
 
-irep 0x5bdb50d4d550 nregs=5 nlocals=2 pools=0 syms=0 reps=0 ilen=24
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=0 reps=0 ilen=24
 file: /w/block.rb
     1 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
     2 004 LOADI_1	R3	(1)
@@ -47,7 +47,7 @@ file: /w/block.rb
     3 019 BLKCALL		R2	1
     3 022 RETURN	R2	
 
-irep 0x5bdb50d4e040 nregs=7 nlocals=3 pools=0 syms=1 reps=0 ilen=18
+irep 0xADDR nregs=7 nlocals=3 pools=0 syms=1 reps=0 ilen=18
 local variable names:
   R1:x
 file: /w/block.rb
@@ -58,7 +58,7 @@ file: /w/block.rb
     5 012 SSEND		R3	:p	n=1
     5 016 RETURN	R3	
 
-irep 0x5bdb50d4e780 nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=19
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=19
 local variable names:
   R1:i
 file: /w/block.rb
@@ -69,7 +69,7 @@ file: /w/block.rb
     7 013 SETUPVAR	R3	1	0
     7 017 RETURN	R3	
 
-irep 0x5bdb50d4f710 nregs=6 nlocals=3 pools=0 syms=1 reps=0 ilen=13
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=1 reps=0 ilen=13
 local variable names:
   R1:e
 file: /w/block.rb
@@ -78,7 +78,7 @@ file: /w/block.rb
     9 007 SSEND		R3	:p	n=1
     9 011 RETURN	R3	
 
-irep 0x5bdb50d4fe50 nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=13
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=13
 local variable names:
   R1:e
 file: /w/block.rb
@@ -88,7 +88,7 @@ file: /w/block.rb
    10 009 MUL		R3	(R4)
    10 011 RETURN	R3	
 
-irep 0x5bdb50d50dc0 nregs=4 nlocals=3 pools=0 syms=0 reps=1 ilen=11
+irep 0xADDR nregs=4 nlocals=3 pools=0 syms=0 reps=1 ilen=11
 local variable names:
   R2:x
 file: /w/block.rb
@@ -97,7 +97,7 @@ file: /w/block.rb
    13 006 LAMBDA	R3	I[0]
    13 009 RETURN	R3	
 
-irep 0x5bdb50d514c0 nregs=5 nlocals=2 pools=0 syms=0 reps=0 ilen=17
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=0 reps=0 ilen=17
 file: /w/block.rb
    13 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    13 004 GETUPVAR	R2	2	0

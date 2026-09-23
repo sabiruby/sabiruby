@@ -1,4 +1,4 @@
-irep 0x5b4cece37990 nregs=25 nlocals=15 pools=1 syms=21 reps=18 ilen=504
+irep 0xADDR nregs=25 nlocals=15 pools=1 syms=21 reps=18 ilen=504
 local variable names:
   R1:a
   R2:b
@@ -184,7 +184,7 @@ file: /w/args.rb
    46 501 RETURN	R15	
    46 503 STOP
 
-irep 0x5b4cece40720 nregs=10 nlocals=6 pools=0 syms=0 reps=0 ilen=29
+irep 0xADDR nregs=10 nlocals=6 pools=0 syms=0 reps=0 ilen=29
 local variable names:
   R1:a
   R2:b
@@ -202,14 +202,14 @@ file: /w/args.rb
     2 024 ARRAY		R6	4
     2 027 RETURN	R6	
 
-irep 0x5b4cece44cb0 nregs=4 nlocals=3 pools=0 syms=0 reps=0 ilen=6
+irep 0xADDR nregs=4 nlocals=3 pools=0 syms=0 reps=0 ilen=6
 local variable names:
   R1:a
 file: /w/args.rb
     5 000 ENTER		0:0:1:0:0:0:0:0 (0x1000)
     5 004 RETURN	R1		; R1:a
 
-irep 0x5b4cece453f0 nregs=4 nlocals=3 pools=0 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=4 nlocals=3 pools=0 syms=0 reps=0 ilen=9
 local variable names:
   R2:b
 file: /w/args.rb
@@ -217,12 +217,12 @@ file: /w/args.rb
     7 004 MOVE		R2	R1	; R2:b
     7 007 RETURN	R2		; R2:b
 
-irep 0x5b4cece46320 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
 file: /w/args.rb
     8 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
     8 004 RETNIL
 
-irep 0x5b4cece46a80 nregs=7 nlocals=4 pools=0 syms=1 reps=0 ilen=24
+irep 0xADDR nregs=7 nlocals=4 pools=0 syms=1 reps=0 ilen=24
 local variable names:
   R1:a
   R3:b
@@ -236,7 +236,7 @@ file: /w/args.rb
     9 018 SEND		R4	:call	n=*
     9 022 RETURN	R4	
 
-irep 0x5b4cece479d0 nregs=7 nlocals=4 pools=0 syms=0 reps=0 ilen=14
+irep 0xADDR nregs=7 nlocals=4 pools=0 syms=0 reps=0 ilen=14
 local variable names:
   R1:x
   R2:y
@@ -247,7 +247,7 @@ file: /w/args.rb
    10 010 ADD		R4	(R5)
    10 012 RETURN	R4	
 
-irep 0x5b4cece48110 nregs=7 nlocals=4 pools=0 syms=0 reps=0 ilen=14
+irep 0xADDR nregs=7 nlocals=4 pools=0 syms=0 reps=0 ilen=14
 local variable names:
   R1:a
   R2:b
@@ -258,7 +258,7 @@ file: /w/args.rb
    11 010 MUL		R4	(R5)
    11 012 RETURN	R4	
 
-irep 0x5b4cece490a0 nregs=9 nlocals=6 pools=0 syms=0 reps=0 ilen=34
+irep 0xADDR nregs=9 nlocals=6 pools=0 syms=0 reps=0 ilen=34
 local variable names:
   R1:a
   R4:b
@@ -276,7 +276,7 @@ file: /w/args.rb
    12 030 ADD		R6	(R7)
    12 032 RETURN	R6	
 
-irep 0x5b4cece497e0 nregs=8 nlocals=4 pools=0 syms=1 reps=0 ilen=51
+irep 0xADDR nregs=8 nlocals=4 pools=0 syms=1 reps=0 ilen=51
 local variable names:
   R1:a
   R2:b
@@ -299,7 +299,7 @@ file: /w/args.rb
    21 046 ARRAY		R4	2
    21 049 RETURN	R4	
 
-irep 0x5b4cece4a3f0 nregs=7 nlocals=4 pools=0 syms=1 reps=0 ilen=19
+irep 0xADDR nregs=7 nlocals=4 pools=0 syms=1 reps=0 ilen=19
 local variable names:
   R1:q
   R2:r
@@ -311,7 +311,7 @@ file: /w/args.rb
    23 013 SSEND		R4	:p	n=1
    23 017 RETURN	R4	
 
-irep 0x5b4cece4a510 nregs=4 nlocals=2 pools=0 syms=1 reps=1 ilen=20
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=1 ilen=20
 file: /w/args.rb
    24 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    25 004 LOADI_1	R2	(1)
@@ -321,7 +321,7 @@ file: /w/args.rb
    25 014 SENDB		R2	:map	n=0
    25 018 RETURN	R2	
 
-irep 0x5b4cece4a800 nregs=5 nlocals=3 pools=0 syms=1 reps=1 ilen=22
+irep 0xADDR nregs=5 nlocals=3 pools=0 syms=1 reps=1 ilen=22
 local variable names:
   R1:i
 file: /w/args.rb
@@ -333,7 +333,7 @@ file: /w/args.rb
    25 016 SENDB		R3	:map	n=0
    25 020 RETURN	R3	
 
-irep 0x5b4cece4b540 nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=15
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=15
 local variable names:
   R1:j
 file: /w/args.rb
@@ -343,7 +343,7 @@ file: /w/args.rb
    25 011 MUL		R3	(R4)
    25 013 RETURN	R3	
 
-irep 0x5b4cece4d7f0 nregs=6 nlocals=3 pools=0 syms=0 reps=3 ilen=20
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=0 reps=3 ilen=20
 local variable names:
   R2:c
 file: /w/args.rb
@@ -355,7 +355,7 @@ file: /w/args.rb
    30 015 ARRAY		R3	3
    30 018 RETURN	R3	
 
-irep 0x5b4cece4dae0 nregs=5 nlocals=2 pools=0 syms=0 reps=0 ilen=17
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=0 reps=0 ilen=17
 file: /w/args.rb
    30 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    30 004 GETUPVAR	R2	2	0
@@ -363,7 +363,7 @@ file: /w/args.rb
    30 011 SETUPVAR	R2	2	0
    30 015 RETURN	R2	
 
-irep 0x5b4cece4c5e0 nregs=5 nlocals=2 pools=0 syms=0 reps=0 ilen=17
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=0 reps=0 ilen=17
 file: /w/args.rb
    30 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    30 004 GETUPVAR	R2	2	0
@@ -371,13 +371,13 @@ file: /w/args.rb
    30 011 SETUPVAR	R2	2	0
    30 015 RETURN	R2	
 
-irep 0x5b4cece4ad00 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=10
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=10
 file: /w/args.rb
    30 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    30 004 GETUPVAR	R2	2	0
    30 008 RETURN	R2	
 
-irep 0x5b4cece4ae60 nregs=8 nlocals=3 pools=0 syms=1 reps=0 ilen=35
+irep 0xADDR nregs=8 nlocals=3 pools=0 syms=1 reps=0 ilen=35
 local variable names:
   R1:n
 file: /w/args.rb
@@ -395,7 +395,7 @@ file: /w/args.rb
    37 031 ADD		R3	(R4)
    37 033 RETURN	R3	
 
-irep 0x5b4cece4b1c0 nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=12
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=12
 local variable names:
   R1:v
 file: /w/args.rb
@@ -404,7 +404,7 @@ file: /w/args.rb
    40 007 ADDI		R3	1
    40 010 RETURN	R3	
 
-irep 0x5b4cece4e800 nregs=6 nlocals=3 pools=0 syms=1 reps=0 ilen=13
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=1 reps=0 ilen=13
 local variable names:
   R1:v
 file: /w/args.rb
@@ -413,7 +413,7 @@ file: /w/args.rb
    40 007 SSEND		R3	:p	n=1
    40 011 RETURN	R3	
 
-irep 0x5b4cece4e920 nregs=7 nlocals=4 pools=0 syms=0 reps=0 ilen=14
+irep 0xADDR nregs=7 nlocals=4 pools=0 syms=0 reps=0 ilen=14
 local variable names:
   R1:s
   R2:x
@@ -424,7 +424,7 @@ file: /w/args.rb
    41 010 ADD		R4	(R5)
    41 012 RETURN	R4	
 
-irep 0x5b4cece4d620 nregs=9 nlocals=3 pools=0 syms=2 reps=0 ilen=33
+irep 0xADDR nregs=9 nlocals=3 pools=0 syms=2 reps=0 ilen=33
 local variable names:
   R1:ch
 file: /w/args.rb
@@ -439,7 +439,7 @@ file: /w/args.rb
    43 027 SEND		R4	:[]=	n=2
    43 031 RETURN	R3	
 
-irep 0x5b4cece4f080 nregs=10 nlocals=4 pools=0 syms=0 reps=0 ilen=24
+irep 0xADDR nregs=10 nlocals=4 pools=0 syms=0 reps=0 ilen=24
 local variable names:
   R1:hash
   R2:k

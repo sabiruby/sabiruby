@@ -1,4 +1,4 @@
-irep 0x5f1ffc58df20 nregs=8 nlocals=2 pools=2 syms=12 reps=1 ilen=330
+irep 0xADDR nregs=8 nlocals=2 pools=2 syms=12 reps=1 ilen=330
 local variable names:
   R1:e
 catch type: rescue   begin: 0174 end: 0190 target: 0193
@@ -114,12 +114,12 @@ file: /w/numeric_fdiv.rb
    37 327 RETURN	R2	
    37 329 STOP
 
-irep 0x5f1ffc592ca0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/numeric_fdiv.rb
    20 000 TDEF		R1	:to_f	I[0]
    20 004 RETURN	R1	
 
-irep 0x5f1ffc5943f0 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/numeric_fdiv.rb
    20 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    20 004 LOADL		R2	L[0]	; 3.000000

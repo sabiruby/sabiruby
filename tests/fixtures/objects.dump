@@ -1,4 +1,4 @@
-irep 0x5d1872cc3590 nregs=18 nlocals=7 pools=4 syms=80 reps=15 ilen=955
+irep 0xADDR nregs=18 nlocals=7 pools=4 syms=80 reps=15 ilen=955
 local variable names:
   R1:a
   R2:d
@@ -333,7 +333,7 @@ file: /w/objects.rb
    84 952 RETURN	R7	
    84 954 STOP
 
-irep 0x5d1872cc0a70 nregs=5 nlocals=1 pools=0 syms=14 reps=7 ilen=60
+irep 0xADDR nregs=5 nlocals=1 pools=0 syms=14 reps=7 ilen=60
 file: /w/objects.rb
     2 000 GETCONST	R2	Comparable
     2 003 SSEND		R1	:include	n=1
@@ -354,7 +354,7 @@ file: /w/objects.rb
    30 054 TDEF		R1	:respond_to_missing?	I[6]
    30 058 RETURN	R1	
 
-irep 0x5d1872cd3100 nregs=7 nlocals=4 pools=0 syms=3 reps=0 ilen=21
+irep 0xADDR nregs=7 nlocals=4 pools=0 syms=3 reps=0 ilen=21
 local variable names:
   R1:name
   R2:age
@@ -367,13 +367,13 @@ file: /w/objects.rb
     9 016 SETCV		@@count	R4
     9 019 RETURN	R4	
 
-irep 0x5d1872cd3bf0 nregs=3 nlocals=2 pools=0 syms=1 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=1 reps=0 ilen=9
 file: /w/objects.rb
    11 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    12 004 GETCV		R2	@@count
    12 007 RETURN	R2	
 
-irep 0x5d1872cd4350 nregs=6 nlocals=3 pools=0 syms=2 reps=0 ilen=19
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=2 reps=0 ilen=19
 local variable names:
   R1:other
 file: /w/objects.rb
@@ -384,7 +384,7 @@ file: /w/objects.rb
    15 013 SEND		R3	:<=>	n=1
    15 017 RETURN	R3	
 
-irep 0x5d1872cd52c0 nregs=5 nlocals=2 pools=3 syms=3 reps=0 ilen=32
+irep 0xADDR nregs=5 nlocals=2 pools=3 syms=3 reps=0 ilen=32
 file: /w/objects.rb
    17 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    18 004 STRING	R2	L[0]
@@ -399,7 +399,7 @@ file: /w/objects.rb
    18 028 STRCAT	R2	(R3)
    18 030 RETURN	R2	
 
-irep 0x5d1872cd5a80 nregs=4 nlocals=2 pools=2 syms=0 reps=0 ilen=18
+irep 0xADDR nregs=4 nlocals=2 pools=2 syms=0 reps=0 ilen=18
 file: /w/objects.rb
    20 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    21 004 STRING	R2	L[0]	; #<
@@ -409,7 +409,7 @@ file: /w/objects.rb
    21 014 STRCAT	R2	(R3)
    21 016 RETURN	R2	
 
-irep 0x5d1872cd6030 nregs=8 nlocals=4 pools=3 syms=3 reps=0 ilen=62
+irep 0xADDR nregs=8 nlocals=4 pools=3 syms=3 reps=0 ilen=62
 local variable names:
   R1:name
   R2:args
@@ -437,7 +437,7 @@ file: /w/objects.rb
    27 057 SUPER		R4	n=*
    27 060 RETURN	R4	
 
-irep 0x5d1872cd6e10 nregs=8 nlocals=4 pools=1 syms=2 reps=0 ilen=38
+irep 0xADDR nregs=8 nlocals=4 pools=1 syms=2 reps=0 ilen=38
 local variable names:
   R1:name
   R2:priv
@@ -455,14 +455,14 @@ file: /w/objects.rb
    31 033 SUPER		R4	n=*
    31 036 RETURN	R4	
 
-irep 0x5d1872cd71a0 nregs=2 nlocals=1 pools=0 syms=3 reps=3 ilen=14
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=3 reps=3 ilen=14
 file: /w/objects.rb
    35 000 TDEF		R1	:initialize	I[0]
    39 004 TDEF		R1	:learn	I[1]
    43 008 TDEF		R1	:tricks	I[2]
    43 012 RETURN	R1	
 
-irep 0x5d1872cd2f40 nregs=8 nlocals=4 pools=0 syms=1 reps=0 ilen=19
+irep 0xADDR nregs=8 nlocals=4 pools=0 syms=1 reps=0 ilen=19
 local variable names:
   R1:name
   R2:age
@@ -474,7 +474,7 @@ file: /w/objects.rb
    37 014 SETIV		@tricks	R4
    37 017 RETURN	R4	
 
-irep 0x5d1872cd3080 nregs=6 nlocals=3 pools=0 syms=2 reps=0 ilen=15
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=2 reps=0 ilen=15
 local variable names:
   R1:t
 file: /w/objects.rb
@@ -484,19 +484,19 @@ file: /w/objects.rb
    40 010 SEND		R3	:<<	n=1
    41 014 RETSELF
 
-irep 0x5d1872cd85e0 nregs=3 nlocals=2 pools=0 syms=1 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=1 reps=0 ilen=9
 file: /w/objects.rb
    43 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    43 004 GETIV		R2	@tricks
    43 007 RETURN	R2	
 
-irep 0x5d1872cd8c30 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/objects.rb
    58 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    58 004 STRING	R2	L[0]	; singleton
    58 007 RETURN	R2	
 
-irep 0x5d1872cd9010 nregs=2 nlocals=1 pools=1 syms=3 reps=2 ilen=18
+irep 0xADDR nregs=2 nlocals=1 pools=1 syms=3 reps=2 ilen=18
 file: /w/objects.rb
    62 000 LOADL		R1	L[0]	; 6.280000
    62 003 SETCONST	PI2	R1
@@ -505,7 +505,7 @@ file: /w/objects.rb
    64 012 TDEF		R1	:helper	I[1]
    64 016 RETURN	R1	
 
-irep 0x5d1872cd90b0 nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=13
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=13
 local variable names:
   R1:x
 file: /w/objects.rb
@@ -515,7 +515,7 @@ file: /w/objects.rb
    63 009 MUL		R3	(R4)
    63 011 RETURN	R3	
 
-irep 0x5d1872cd27c0 nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=14
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=14
 file: /w/objects.rb
    64 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    64 004 STRING	R2	L[0]	; helper from 
@@ -523,13 +523,13 @@ file: /w/objects.rb
    64 010 STRCAT	R2	(R3)
    64 012 RETURN	R2	
 
-irep 0x5d1872cd2da0 nregs=4 nlocals=1 pools=0 syms=2 reps=0 ilen=9
+irep 0xADDR nregs=4 nlocals=1 pools=0 syms=2 reps=0 ilen=9
 file: /w/objects.rb
    66 000 GETCONST	R2	Util
    66 003 SSEND		R1	:include	n=1
    66 007 RETURN	R1	
 
-irep 0x5d1872cd2ee0 nregs=7 nlocals=4 pools=0 syms=1 reps=0 ilen=19
+irep 0xADDR nregs=7 nlocals=4 pools=0 syms=1 reps=0 ilen=19
 local variable names:
   R1:k
   R2:v
@@ -541,7 +541,7 @@ file: /w/objects.rb
    79 013 SSEND		R4	:p	n=1
    79 017 RETURN	R4	
 
-irep 0x5d1872cd79e0 nregs=8 nlocals=4 pools=0 syms=0 reps=0 ilen=19
+irep 0xADDR nregs=8 nlocals=4 pools=0 syms=0 reps=0 ilen=19
 local variable names:
   R1:k
   R2:v
@@ -554,7 +554,7 @@ file: /w/objects.rb
    80 014 ARRAY		R4	2
    80 017 RETURN	R4	
 
-irep 0x5d1872cda080 nregs=7 nlocals=4 pools=0 syms=0 reps=0 ilen=13
+irep 0xADDR nregs=7 nlocals=4 pools=0 syms=0 reps=0 ilen=13
 local variable names:
   R1:k
   R2:v
@@ -565,7 +565,7 @@ file: /w/objects.rb
    80 009 GT		R4	(R5)
    80 011 RETURN	R4	
 
-irep 0x5d1872cda1a0 nregs=7 nlocals=4 pools=0 syms=0 reps=0 ilen=13
+irep 0xADDR nregs=7 nlocals=4 pools=0 syms=0 reps=0 ilen=13
 local variable names:
   R1:k
   R2:v
@@ -576,7 +576,7 @@ file: /w/objects.rb
    81 009 GT		R4	(R5)
    81 011 RETURN	R4	
 
-irep 0x5d1872cda530 nregs=8 nlocals=4 pools=0 syms=1 reps=0 ilen=24
+irep 0xADDR nregs=8 nlocals=4 pools=0 syms=1 reps=0 ilen=24
 local variable names:
   R1:x
   R2:y
@@ -591,7 +591,7 @@ file: /w/objects.rb
    81 018 SEND		R4	:<=>	n=1
    81 022 RETURN	R4	
 
-irep 0x5d1872cdaca0 nregs=5 nlocals=3 pools=0 syms=1 reps=0 ilen=12
+irep 0xADDR nregs=5 nlocals=3 pools=0 syms=1 reps=0 ilen=12
 local variable names:
   R1:x
 file: /w/objects.rb
@@ -600,7 +600,7 @@ file: /w/objects.rb
    83 007 SEND0		R3	:even?
    83 010 RETURN	R3	
 
-irep 0x5d1872cdadc0 nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=13
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=13
 local variable names:
   R1:x
 file: /w/objects.rb
@@ -610,7 +610,7 @@ file: /w/objects.rb
    84 009 GT		R3	(R4)
    84 011 RETURN	R3	
 
-irep 0x5d1872cd94c0 nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=13
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=13
 local variable names:
   R1:x
 file: /w/objects.rb
@@ -620,7 +620,7 @@ file: /w/objects.rb
    84 009 GT		R3	(R4)
    84 011 RETURN	R3	
 
-irep 0x5d1872cd9840 nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=13
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=13
 local variable names:
   R1:x
 file: /w/objects.rb
@@ -630,7 +630,7 @@ file: /w/objects.rb
    84 009 GT		R3	(R4)
    84 011 RETURN	R3	
 
-irep 0x5d1872cd9960 nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=13
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=13
 local variable names:
   R1:x
 file: /w/objects.rb

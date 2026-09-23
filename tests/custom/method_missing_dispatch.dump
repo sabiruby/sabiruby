@@ -1,4 +1,4 @@
-irep 0x57734e9ffad0 nregs=14 nlocals=7 pools=1 syms=67 reps=20 ilen=967
+irep 0xADDR nregs=14 nlocals=7 pools=1 syms=67 reps=20 ilen=967
 local variable names:
   R1:r
   R2:k
@@ -339,13 +339,13 @@ file: /w/method_missing_dispatch.rb
   194 964 RETURN	R7	
   194 966 STOP
 
-irep 0x57734ea13670 nregs=2 nlocals=1 pools=0 syms=2 reps=2 ilen=10
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=2 reps=2 ilen=10
 file: /w/method_missing_dispatch.rb
    11 000 TDEF		R1	:method_missing	I[0]
    17 004 TDEF		R1	:respond_to_missing?	I[1]
    17 008 RETURN	R1	
 
-irep 0x57734ea14da0 nregs=10 nlocals=6 pools=0 syms=3 reps=0 ilen=46
+irep 0xADDR nregs=10 nlocals=6 pools=0 syms=3 reps=0 ilen=46
 local variable names:
   R1:name
   R2:args
@@ -367,7 +367,7 @@ file: /w/method_missing_dispatch.rb
    13 040 SEND		R6	:<<	n=1
    14 044 RETURN	R5		; R5:r
 
-irep 0x57734ea15890 nregs=7 nlocals=4 pools=1 syms=2 reps=0 ilen=27
+irep 0xADDR nregs=7 nlocals=4 pools=1 syms=2 reps=0 ilen=27
 local variable names:
   R1:name
   R2:include_private
@@ -382,7 +382,7 @@ file: /w/method_missing_dispatch.rb
    18 021 SEND		R4	:start_with?	n=1
    18 025 RETURN	R4	
 
-irep 0x57734ea16030 nregs=5 nlocals=3 pools=1 syms=0 reps=0 ilen=14
+irep 0xADDR nregs=5 nlocals=3 pools=1 syms=0 reps=0 ilen=14
 local variable names:
   R1:n
 file: /w/method_missing_dispatch.rb
@@ -392,7 +392,7 @@ file: /w/method_missing_dispatch.rb
    28 010 STRCAT	R3	(R4)
    28 012 RETURN	R3	
 
-irep 0x57734ea14c50 nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=13
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=13
 local variable names:
   R1:n
 file: /w/method_missing_dispatch.rb
@@ -402,12 +402,12 @@ file: /w/method_missing_dispatch.rb
    29 009 MUL		R3	(R4)
    29 011 RETURN	R3	
 
-irep 0x57734ea14760 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_missing_dispatch.rb
    37 000 TDEF		R1	:method_missing	I[0]
    37 004 RETURN	R1	
 
-irep 0x57734ea14800 nregs=8 nlocals=5 pools=0 syms=0 reps=0 ilen=18
+irep 0xADDR nregs=8 nlocals=5 pools=0 syms=0 reps=0 ilen=18
 local variable names:
   R1:name
   R2:args
@@ -420,12 +420,12 @@ file: /w/method_missing_dispatch.rb
    38 013 ARRAY		R5	3
    38 016 RETURN	R5	
 
-irep 0x57734ea171c0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_missing_dispatch.rb
    52 000 TDEF		R1	:method_missing	I[0]
    52 004 RETURN	R1	
 
-irep 0x57734ea17490 nregs=7 nlocals=4 pools=1 syms=0 reps=0 ilen=18
+irep 0xADDR nregs=7 nlocals=4 pools=1 syms=0 reps=0 ilen=18
 local variable names:
   R1:name
   R2:args
@@ -437,12 +437,12 @@ file: /w/method_missing_dispatch.rb
    53 013 ARRAY		R4	3
    53 016 RETURN	R4	
 
-irep 0x57734ea196f0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_missing_dispatch.rb
    57 000 TDEF		R1	:method_missing	I[0]
    57 004 RETURN	R1	
 
-irep 0x57734ea199a0 nregs=9 nlocals=4 pools=1 syms=0 reps=0 ilen=21
+irep 0xADDR nregs=9 nlocals=4 pools=1 syms=0 reps=0 ilen=21
 local variable names:
   R1:name
   R2:args
@@ -455,12 +455,12 @@ file: /w/method_missing_dispatch.rb
    58 017 ADD		R4	(R5)
    58 019 RETURN	R4	
 
-irep 0x57734ea17ad0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_missing_dispatch.rb
    62 000 TDEF		R1	:method_missing	I[0]
    62 004 RETURN	R1	
 
-irep 0x57734ea1aef0 nregs=9 nlocals=4 pools=1 syms=0 reps=0 ilen=21
+irep 0xADDR nregs=9 nlocals=4 pools=1 syms=0 reps=0 ilen=21
 local variable names:
   R1:name
   R2:args
@@ -473,14 +473,14 @@ file: /w/method_missing_dispatch.rb
    63 017 ADD		R4	(R5)
    63 019 RETURN	R4	
 
-irep 0x57734ea1b050 nregs=4 nlocals=1 pools=0 syms=2 reps=1 ilen=13
+irep 0xADDR nregs=4 nlocals=1 pools=0 syms=2 reps=1 ilen=13
 file: /w/method_missing_dispatch.rb
    70 000 TDEF		R1	:method_missing	I[0]
    73 004 LOADSYM	R2	:method_missing
    73 007 SSEND		R1	:private	n=1
    73 011 RETURN	R1	
 
-irep 0x57734ea1a6f0 nregs=6 nlocals=4 pools=0 syms=1 reps=0 ilen=15
+irep 0xADDR nregs=6 nlocals=4 pools=0 syms=1 reps=0 ilen=15
 local variable names:
   R1:name
   R2:args
@@ -491,12 +491,12 @@ file: /w/method_missing_dispatch.rb
    71 010 ARRAY		R4	2
    71 013 RETURN	R4	
 
-irep 0x57734ea18650 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_missing_dispatch.rb
    95 000 TDEF		R1	:method_missing	I[0]
    95 004 RETURN	R1	
 
-irep 0x57734ea18750 nregs=8 nlocals=4 pools=1 syms=2 reps=0 ilen=21
+irep 0xADDR nregs=8 nlocals=4 pools=1 syms=2 reps=0 ilen=21
 local variable names:
   R1:name
   R2:args
@@ -509,7 +509,7 @@ file: /w/method_missing_dispatch.rb
    96 015 SSEND		R4	:raise	n=2
    96 019 RETURN	R4	
 
-irep 0x57734ea19560 nregs=6 nlocals=3 pools=1 syms=2 reps=0 ilen=19
+irep 0xADDR nregs=6 nlocals=3 pools=1 syms=2 reps=0 ilen=19
 local variable names:
   R1:l
 file: /w/method_missing_dispatch.rb
@@ -520,12 +520,12 @@ file: /w/method_missing_dispatch.rb
   103 014 SEND0		R3	:last
   103 017 RETURN	R3	
 
-irep 0x57734ea1c7f0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_missing_dispatch.rb
   108 000 TDEF		R1	:method_missing	I[0]
   108 004 RETURN	R1	
 
-irep 0x57734ea1c8b0 nregs=7 nlocals=5 pools=0 syms=1 reps=0 ilen=15
+irep 0xADDR nregs=7 nlocals=5 pools=0 syms=1 reps=0 ilen=15
 local variable names:
   R1:name
   R2:args
@@ -537,14 +537,14 @@ file: /w/method_missing_dispatch.rb
   109 010 SEND0		R5	:call
   109 013 RETURN	R5	
 
-irep 0x57734ea1bc70 nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
 file: /w/method_missing_dispatch.rb
   113 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
   113 004 STRING	R3	L[0]	; from the block
   113 007 SSEND		R2	:raise	n=1
   113 011 RETURN	R2	
 
-irep 0x57734ea1d840 nregs=7 nlocals=3 pools=0 syms=4 reps=1 ilen=33
+irep 0xADDR nregs=7 nlocals=3 pools=0 syms=4 reps=1 ilen=33
 local variable names:
   R2:o
 file: /w/method_missing_dispatch.rb
@@ -560,7 +560,7 @@ file: /w/method_missing_dispatch.rb
   125 027 SEND		R3	:question	n=2
   125 031 RETURN	R3	
 
-irep 0x57734ea1d900 nregs=9 nlocals=5 pools=0 syms=4 reps=0 ilen=37
+irep 0xADDR nregs=9 nlocals=5 pools=0 syms=4 reps=0 ilen=37
 local variable names:
   R1:name
   R2:args
@@ -579,7 +579,7 @@ file: /w/method_missing_dispatch.rb
   123 032 ARRAY		R5	2
   123 035 RETURN	R5	
 
-irep 0x57734ea1cc80 nregs=5 nlocals=3 pools=0 syms=4 reps=1 ilen=28
+irep 0xADDR nregs=5 nlocals=3 pools=0 syms=4 reps=1 ilen=28
 local variable names:
   R2:a
 file: /w/method_missing_dispatch.rb
@@ -593,7 +593,7 @@ file: /w/method_missing_dispatch.rb
   142 023 SEND0		R3	:first
   142 026 RETURN	R3	
 
-irep 0x57734ea1aac0 nregs=8 nlocals=5 pools=0 syms=8 reps=1 ilen=50
+irep 0xADDR nregs=8 nlocals=5 pools=0 syms=8 reps=1 ilen=50
 local variable names:
   R1:name
   R2:args
@@ -616,7 +616,7 @@ file: /w/method_missing_dispatch.rb
   140 045 ARRAY		R5	2
   140 048 RETURN	R5	
 
-irep 0x57734ea1ab80 nregs=7 nlocals=4 pools=0 syms=4 reps=0 ilen=25
+irep 0xADDR nregs=7 nlocals=4 pools=0 syms=4 reps=0 ilen=25
 local variable names:
   R1:n2
   R2:a2
@@ -630,12 +630,12 @@ file: /w/method_missing_dispatch.rb
   138 020 LOADSYM	R4	:inner_done
   138 023 RETURN	R4	
 
-irep 0x57734ea1a350 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_missing_dispatch.rb
   150 000 TDEF		R1	:method_missing	I[0]
   150 004 RETURN	R1	
 
-irep 0x57734ea1a3f0 nregs=6 nlocals=4 pools=0 syms=3 reps=0 ilen=24
+irep 0xADDR nregs=6 nlocals=4 pools=0 syms=3 reps=0 ilen=24
 local variable names:
   R1:name
   R2:args
@@ -649,7 +649,7 @@ file: /w/method_missing_dispatch.rb
   152 019 LOADSYM	R4	:late
   152 022 RETURN	R4	
 
-irep 0x57734ea1f960 nregs=6 nlocals=4 pools=0 syms=2 reps=0 ilen=24
+irep 0xADDR nregs=6 nlocals=4 pools=0 syms=2 reps=0 ilen=24
 local variable names:
   R1:o
   R3:v
@@ -663,12 +663,12 @@ file: /w/method_missing_dispatch.rb
   157 019 ARRAY		R4	2
   157 022 RETURN	R4	
 
-irep 0x57734ea1b710 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_missing_dispatch.rb
   164 000 TDEF		R1	:method_missing	I[0]
   164 004 RETURN	R1	
 
-irep 0x57734ea186a0 nregs=8 nlocals=5 pools=0 syms=2 reps=1 ilen=28
+irep 0xADDR nregs=8 nlocals=5 pools=0 syms=2 reps=1 ilen=28
 local variable names:
   R1:name
   R2:args
@@ -685,7 +685,7 @@ file: /w/method_missing_dispatch.rb
   166 023 LOADSYM	R5	:not_broken
   166 026 RETURN	R5	
 
-irep 0x57734ea18280 nregs=6 nlocals=3 pools=0 syms=1 reps=0 ilen=17
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=1 reps=0 ilen=17
 local variable names:
   R1:i
 file: /w/method_missing_dispatch.rb
@@ -695,7 +695,7 @@ file: /w/method_missing_dispatch.rb
   165 011 SEND		R3	:call	n=1
   165 015 RETURN	R3	
 
-irep 0x57734ea17e40 nregs=5 nlocals=3 pools=0 syms=1 reps=1 ilen=16
+irep 0xADDR nregs=5 nlocals=3 pools=0 syms=1 reps=1 ilen=16
 local variable names:
   R1:o
 file: /w/method_missing_dispatch.rb
@@ -705,7 +705,7 @@ file: /w/method_missing_dispatch.rb
   170 010 SENDB		R3	:loopy	n=0
   170 014 RETURN	R3	
 
-irep 0x57734ea17ee0 nregs=6 nlocals=3 pools=0 syms=1 reps=0 ilen=27
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=1 reps=0 ilen=27
 local variable names:
   R1:i
 file: /w/method_missing_dispatch.rb
@@ -720,12 +720,12 @@ file: /w/method_missing_dispatch.rb
   170 023 LOADNIL	R3	(nil)
   170 025 RETURN	R3	
 
-irep 0x57734ea215c0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_missing_dispatch.rb
   176 000 TDEF		R1	:method_missing	I[0]
   176 004 RETURN	R1	
 
-irep 0x57734ea21660 nregs=6 nlocals=4 pools=0 syms=1 reps=0 ilen=15
+irep 0xADDR nregs=6 nlocals=4 pools=0 syms=1 reps=0 ilen=15
 local variable names:
   R1:name
   R2:args
@@ -736,12 +736,12 @@ file: /w/method_missing_dispatch.rb
   177 010 ARRAY		R4	2
   177 013 RETURN	R4	
 
-irep 0x57734ea23f40 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_missing_dispatch.rb
   185 000 TDEF		R1	:method_missing	I[0]
   185 004 RETURN	R1	
 
-irep 0x57734ea23fe0 nregs=7 nlocals=4 pools=2 syms=1 reps=0 ilen=25
+irep 0xADDR nregs=7 nlocals=4 pools=2 syms=1 reps=0 ilen=25
 local variable names:
   R1:name
   R2:args

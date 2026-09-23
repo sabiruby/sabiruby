@@ -1,6 +1,8 @@
 #!/bin/bash
 # Compile tests/fixtures/*.rb with the reference mruby (Docker image kishima/mruby:4.1.0-rc2)
 # into .mrb and record the reference output (.out) and the verbose dump (.dump).
+# The dump's pointers (`irep 0x...`) change on every run (ASLR) and are written as 0xADDR,
+# inside the container because the files it writes are root's (as the book's tools/build_kit.rb).
 #   tools/fixtures.sh            # all fixtures
 #   tools/fixtures.sh hello      # one fixture
 # Also builds the Ruby part of mruby's core library into src/mrblib/core.mrb, and
@@ -26,6 +28,7 @@ for rb in tests/fixtures/${1:-*}.rb; do
   docker run --rm -v "$PWD/tests/fixtures:/w" $IMG /bin/sh -c "
     mrbc -o /w/$(basename $base).mrb /w/$(basename $rb) &&
     mrbc --verbose /w/$(basename $rb) > /w/$(basename $base).dump 2>&1 &&
+    sed -i -E 's/0x[0-9a-f]{6,}/0xADDR/g' /w/$(basename $base).dump &&
     mruby /w/$(basename $rb) > /w/$(basename $base).out 2>&1 || true"
   # a fixture read both ways records the byte-string answer beside the UTF-8 one
   if [ -e "$base-bytes.out" ] || [ "$(basename $base)" = utf8 ]; then

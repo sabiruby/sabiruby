@@ -1,4 +1,4 @@
-irep 0x58c7be9b4bb0 nregs=7 nlocals=2 pools=0 syms=25 reps=5 ilen=226
+irep 0xADDR nregs=7 nlocals=2 pools=0 syms=25 reps=5 ilen=226
 local variable names:
   R1:e
 catch type: rescue   begin: 0138 end: 0147 target: 0150
@@ -79,7 +79,7 @@ file: /w/module_const_added_and_method_undefined.rb
    61 223 RETURN	R2	
    61 225 STOP
 
-irep 0x58c7be9b9bd0 nregs=3 nlocals=1 pools=0 syms=4 reps=2 ilen=29
+irep 0xADDR nregs=3 nlocals=1 pools=0 syms=4 reps=2 ilen=29
 file: /w/module_const_added_and_method_undefined.rb
     9 000 LOADSELF	R1	(R0)
     9 002 SDEF		R1	:const_added	I[0]
@@ -93,7 +93,7 @@ file: /w/module_const_added_and_method_undefined.rb
    17 024 SETCONST	B	R1
    17 027 RETURN	R1	
 
-irep 0x58c7be9bb300 nregs=8 nlocals=3 pools=2 syms=3 reps=0 ilen=35
+irep 0xADDR nregs=8 nlocals=3 pools=2 syms=3 reps=0 ilen=35
 local variable names:
   R1:name
 file: /w/module_const_added_and_method_undefined.rb
@@ -110,7 +110,7 @@ file: /w/module_const_added_and_method_undefined.rb
    10 029 SSEND		R3	:puts	n=1
    10 033 RETURN	R3	
 
-irep 0x58c7be9bbdf0 nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=18
+irep 0xADDR nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=18
 local variable names:
   R1:name
 file: /w/module_const_added_and_method_undefined.rb
@@ -121,7 +121,7 @@ file: /w/module_const_added_and_method_undefined.rb
    13 012 SSEND		R3	:puts	n=1
    13 016 RETURN	R3	
 
-irep 0x58c7be9bc590 nregs=3 nlocals=1 pools=0 syms=2 reps=0 ilen=15
+irep 0xADDR nregs=3 nlocals=1 pools=0 syms=2 reps=0 ilen=15
 file: /w/module_const_added_and_method_undefined.rb
    26 000 LOADNIL	R1	(nil)
    26 002 LOADNIL	R2	(nil)
@@ -131,7 +131,7 @@ file: /w/module_const_added_and_method_undefined.rb
    27 011 MODULE	R1	:Deeper
    27 014 RETNIL
 
-irep 0x58c7be9bb190 nregs=4 nlocals=1 pools=0 syms=3 reps=2 ilen=19
+irep 0xADDR nregs=4 nlocals=1 pools=0 syms=3 reps=2 ilen=19
 file: /w/module_const_added_and_method_undefined.rb
    36 000 LOADSELF	R1	(R0)
    36 002 SDEF		R1	:m1	I[0]
@@ -140,24 +140,24 @@ file: /w/module_const_added_and_method_undefined.rb
    38 013 SSEND		R1	:undef_method	n=1
    38 017 RETURN	R1	
 
-irep 0x58c7be9bb270 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
 file: /w/module_const_added_and_method_undefined.rb
    36 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    36 004 RETNIL
 
-irep 0x58c7be9bad70 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
 file: /w/module_const_added_and_method_undefined.rb
    37 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    37 004 RETNIL
 
-irep 0x58c7be9bedd0 nregs=2 nlocals=1 pools=0 syms=2 reps=2 ilen=12
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=2 reps=2 ilen=12
 file: /w/module_const_added_and_method_undefined.rb
    45 000 LOADSELF	R1	(R0)
    45 002 SDEF		R1	:method_undefined	I[0]
    46 006 TDEF		R1	:gone	I[1]
    46 010 RETURN	R1	
 
-irep 0x58c7be9bf0a0 nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=18
+irep 0xADDR nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=18
 local variable names:
   R1:name
 file: /w/module_const_added_and_method_undefined.rb
@@ -168,12 +168,12 @@ file: /w/module_const_added_and_method_undefined.rb
    45 012 SSEND		R3	:puts	n=1
    45 016 RETURN	R3	
 
-irep 0x58c7be9bd190 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
 file: /w/module_const_added_and_method_undefined.rb
    46 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    46 004 RETNIL
 
-irep 0x58c7be9bfe20 nregs=4 nlocals=1 pools=0 syms=3 reps=1 ilen=15
+irep 0xADDR nregs=4 nlocals=1 pools=0 syms=3 reps=1 ilen=15
 file: /w/module_const_added_and_method_undefined.rb
    49 000 LOADSELF	R1	(R0)
    49 002 SDEF		R1	:method_undefined	I[0]
@@ -181,7 +181,7 @@ file: /w/module_const_added_and_method_undefined.rb
    50 009 SSEND		R1	:undef_method	n=1
    50 013 RETURN	R1	
 
-irep 0x58c7be9bfec0 nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=18
+irep 0xADDR nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=18
 local variable names:
   R1:name
 file: /w/module_const_added_and_method_undefined.rb

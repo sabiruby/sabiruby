@@ -1,4 +1,4 @@
-irep 0x5eeb37d3e9a0 nregs=8 nlocals=3 pools=0 syms=20 reps=9 ilen=489
+irep 0xADDR nregs=8 nlocals=3 pools=0 syms=20 reps=9 ilen=489
 local variable names:
   R1:empty
   R2:e
@@ -170,7 +170,7 @@ file: /w/empty_keyword_hash.rb
    71 486 RETURN	R3	
    71 488 STOP
 
-irep 0x5eeb37d46fa0 nregs=6 nlocals=3 pools=0 syms=1 reps=0 ilen=13
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=1 reps=0 ilen=13
 local variable names:
   R1:x
 file: /w/empty_keyword_hash.rb
@@ -179,7 +179,7 @@ file: /w/empty_keyword_hash.rb
     9 007 SSEND		R3	:p	n=1
     9 011 RETURN	R3	
 
-irep 0x5eeb37d47a90 nregs=7 nlocals=4 pools=0 syms=1 reps=0 ilen=19
+irep 0xADDR nregs=7 nlocals=4 pools=0 syms=1 reps=0 ilen=19
 local variable names:
   R1:a
   R2:b
@@ -191,7 +191,7 @@ file: /w/empty_keyword_hash.rb
    10 013 SSEND		R4	:p	n=1
    10 017 RETURN	R4	
 
-irep 0x5eeb37d481d0 nregs=6 nlocals=3 pools=0 syms=1 reps=0 ilen=13
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=1 reps=0 ilen=13
 local variable names:
   R1:a
 file: /w/empty_keyword_hash.rb
@@ -200,7 +200,7 @@ file: /w/empty_keyword_hash.rb
    11 007 SSEND		R3	:p	n=1
    11 011 RETURN	R3	
 
-irep 0x5eeb37d49160 nregs=7 nlocals=4 pools=0 syms=2 reps=0 ilen=28
+irep 0xADDR nregs=7 nlocals=4 pools=0 syms=2 reps=0 ilen=28
 local variable names:
   R1:x
   R2:k
@@ -215,7 +215,7 @@ file: /w/empty_keyword_hash.rb
    12 022 SSEND		R4	:p	n=1
    12 026 RETURN	R4	
 
-irep 0x5eeb37d498a0 nregs=7 nlocals=4 pools=0 syms=3 reps=0 ilen=30
+irep 0xADDR nregs=7 nlocals=4 pools=0 syms=3 reps=0 ilen=30
 local variable names:
   R1:**
   R3:k
@@ -231,18 +231,18 @@ file: /w/empty_keyword_hash.rb
    13 024 SSEND		R4	:p	n=1
    13 028 RETURN	R4	
 
-irep 0x5eeb37d4a480 nregs=3 nlocals=2 pools=0 syms=1 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=1 reps=0 ilen=9
 file: /w/empty_keyword_hash.rb
    24 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    24 004 LOADSYM	R2	:block_too
    24 007 RETURN	R2	
 
-irep 0x5eeb37d4a5c0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/empty_keyword_hash.rb
    43 000 TDEF		R1	:method_missing	I[0]
    43 004 RETURN	R1	
 
-irep 0x5eeb37d4a890 nregs=9 nlocals=5 pools=0 syms=1 reps=0 ilen=22
+irep 0xADDR nregs=9 nlocals=5 pools=0 syms=1 reps=0 ilen=22
 local variable names:
   R1:name
   R2:a
@@ -256,12 +256,12 @@ file: /w/empty_keyword_hash.rb
    43 016 SSEND		R5	:p	n=1
    43 020 RETURN	R5	
 
-irep 0x5eeb37d4ae50 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/empty_keyword_hash.rb
    53 000 TDEF		R1	:method_missing	I[0]
    53 004 RETURN	R1	
 
-irep 0x5eeb37d4b5b0 nregs=7 nlocals=4 pools=0 syms=1 reps=0 ilen=19
+irep 0xADDR nregs=7 nlocals=4 pools=0 syms=1 reps=0 ilen=19
 local variable names:
   R1:name
   R2:x
@@ -273,7 +273,7 @@ file: /w/empty_keyword_hash.rb
    53 013 SSEND		R4	:p	n=1
    53 017 RETURN	R4	
 
-irep 0x5eeb37d4b720 nregs=6 nlocals=3 pools=0 syms=1 reps=0 ilen=13
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=1 reps=0 ilen=13
 local variable names:
   R1:a
 file: /w/empty_keyword_hash.rb

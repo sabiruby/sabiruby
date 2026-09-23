@@ -1,4 +1,4 @@
-irep 0x5eb8c754dcd0 nregs=21 nlocals=17 pools=5 syms=44 reps=34 ilen=1173
+irep 0xADDR nregs=21 nlocals=17 pools=5 syms=44 reps=34 ilen=1173
 local variable names:
   R1:a
   R2:b
@@ -417,7 +417,7 @@ file: /w/method_cache.rb
   150 1170 RETURN	R17	
   150 1172 STOP
 
-irep 0x5eb8c7560790 nregs=7 nlocals=5 pools=0 syms=1 reps=1 ilen=25
+irep 0xADDR nregs=7 nlocals=5 pools=0 syms=1 reps=1 ilen=25
 local variable names:
   R1:o
   R2:m
@@ -432,7 +432,7 @@ file: /w/method_cache.rb
     6 019 SENDB		R5	:times	n=0
     6 023 RETURN	R5	
 
-irep 0x5eb8c7561ee0 nregs=5 nlocals=2 pools=0 syms=2 reps=0 ilen=37
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=2 reps=0 ilen=37
 catch type: rescue   begin: 0004 end: 0016 target: 0019
 file: /w/method_cache.rb
     6 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
@@ -448,74 +448,74 @@ file: /w/method_cache.rb
     6 033 LOADNIL	R2	(nil)
     6 035 RETURN	R2	
 
-irep 0x5eb8c7561af0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_cache.rb
    10 000 TDEF		R1	:x	I[0]
    10 004 RETURN	R1	
 
-irep 0x5eb8c7561de0 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/method_cache.rb
    10 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    10 004 STRING	R2	L[0]	; A#x
    10 007 RETURN	R2	
 
-irep 0x5eb8c7563090 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_cache.rb
    18 000 TDEF		R1	:x	I[0]
    18 004 RETURN	R1	
 
-irep 0x5eb8c7563170 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/method_cache.rb
    18 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    18 004 STRING	R2	L[0]	; B#x
    18 007 RETURN	R2	
 
-irep 0x5eb8c75619b0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_cache.rb
    22 000 TDEF		R1	:x	I[0]
    22 004 RETURN	R1	
 
-irep 0x5eb8c7565110 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/method_cache.rb
    22 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    22 004 STRING	R2	L[0]	; B#x2
    22 007 RETURN	R2	
 
-irep 0x5eb8c75652b0 nregs=4 nlocals=1 pools=0 syms=2 reps=0 ilen=9
+irep 0xADDR nregs=4 nlocals=1 pools=0 syms=2 reps=0 ilen=9
 file: /w/method_cache.rb
    26 000 LOADSYM	R2	:x
    26 003 SSEND		R1	:remove_method	n=1
    26 007 RETURN	R1	
 
-irep 0x5eb8c7566860 nregs=4 nlocals=1 pools=0 syms=2 reps=0 ilen=9
+irep 0xADDR nregs=4 nlocals=1 pools=0 syms=2 reps=0 ilen=9
 file: /w/method_cache.rb
    30 000 LOADSYM	R2	:x
    30 003 SSEND		R1	:undef_method	n=1
    30 007 RETURN	R1	
 
-irep 0x5eb8c7564970 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_cache.rb
    34 000 TDEF		R1	:y	I[0]
    34 004 RETURN	R1	
 
-irep 0x5eb8c7564a50 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/method_cache.rb
    34 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    34 004 STRING	R2	L[0]	; M#y
    34 007 RETURN	R2	
 
-irep 0x5eb8c75664f0 nregs=4 nlocals=1 pools=0 syms=2 reps=0 ilen=9
+irep 0xADDR nregs=4 nlocals=1 pools=0 syms=2 reps=0 ilen=9
 file: /w/method_cache.rb
    39 000 GETCONST	R2	M
    39 003 SSEND		R1	:include	n=1
    39 007 RETURN	R1	
 
-irep 0x5eb8c7564fc0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_cache.rb
    43 000 TDEF		R1	:y	I[0]
    43 004 RETURN	R1	
 
-irep 0x5eb8c7565b50 nregs=5 nlocals=2 pools=1 syms=0 reps=0 ilen=17
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=0 reps=0 ilen=17
 file: /w/method_cache.rb
    43 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    43 004 STRING	R2	L[0]	; P#y then 
@@ -524,132 +524,132 @@ file: /w/method_cache.rb
    43 013 ADD		R2	(R3)
    43 015 RETURN	R2	
 
-irep 0x5eb8c7567e30 nregs=4 nlocals=1 pools=0 syms=2 reps=0 ilen=9
+irep 0xADDR nregs=4 nlocals=1 pools=0 syms=2 reps=0 ilen=9
 file: /w/method_cache.rb
    45 000 GETCONST	R2	P
    45 003 SSEND		R1	:prepend	n=1
    45 007 RETURN	R1	
 
-irep 0x5eb8c7567f30 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_cache.rb
    49 000 TDEF		R1	:z	I[0]
    49 004 RETURN	R1	
 
-irep 0x5eb8c7568250 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/method_cache.rb
    49 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    49 004 STRING	R2	L[0]	; D#z
    49 007 RETURN	R2	
 
-irep 0x5eb8c7565fa0 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/method_cache.rb
    52 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    52 004 STRING	R2	L[0]	; d1#z
    52 007 RETURN	R2	
 
-irep 0x5eb8c75660c0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_cache.rb
    57 000 TDEF		R1	:w	I[0]
    57 004 RETURN	R1	
 
-irep 0x5eb8c75692b0 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/method_cache.rb
    57 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    57 004 STRING	R2	L[0]	; E#w
    57 007 RETURN	R2	
 
-irep 0x5eb8c7567200 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_cache.rb
    64 000 TDEF		R1	:v	I[0]
    64 004 RETURN	R1	
 
-irep 0x5eb8c75672a0 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/method_cache.rb
    64 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    64 004 STRING	R2	L[0]	; F#v
    64 007 RETURN	R2	
 
-irep 0x5eb8c7567ae0 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/method_cache.rb
    67 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    67 004 STRING	R2	L[0]	; F#v redefined
    67 007 RETURN	R2	
 
-irep 0x5eb8c7569690 nregs=2 nlocals=1 pools=0 syms=2 reps=2 ilen=10
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=2 reps=2 ilen=10
 file: /w/method_cache.rb
    71 000 TDEF		R1	:g1	I[0]
    71 004 TDEF		R1	:g2	I[1]
    71 008 RETURN	R1	
 
-irep 0x5eb8c7569730 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/method_cache.rb
    71 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    71 004 STRING	R2	L[0]	; G#g1
    71 007 RETURN	R2	
 
-irep 0x5eb8c756ab60 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/method_cache.rb
    71 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    71 004 STRING	R2	L[0]	; G#g2
    71 007 RETURN	R2	
 
-irep 0x5eb8c7567670 nregs=2 nlocals=1 pools=0 syms=2 reps=0 ilen=4
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=2 reps=0 ilen=4
 file: /w/method_cache.rb
    74 000 ALIAS		:g1	g2
    74 003 RETNIL
 
-irep 0x5eb8c756bf80 nregs=5 nlocals=1 pools=0 syms=3 reps=0 ilen=12
+irep 0xADDR nregs=5 nlocals=1 pools=0 syms=3 reps=0 ilen=12
 file: /w/method_cache.rb
    78 000 LOADSYM	R2	:g1
    78 003 LOADSYM	R3	:g2
    78 006 SSEND		R1	:alias_method	n=2
    78 010 RETURN	R1	
 
-irep 0x5eb8c756c080 nregs=4 nlocals=1 pools=0 syms=2 reps=0 ilen=9
+irep 0xADDR nregs=4 nlocals=1 pools=0 syms=2 reps=0 ilen=9
 file: /w/method_cache.rb
    83 000 GETCONST	R2	M2
    83 003 SSEND		R1	:include	n=1
    83 007 RETURN	R1	
 
-irep 0x5eb8c7568ae0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_cache.rb
    86 000 TDEF		R1	:m2	I[0]
    86 004 RETURN	R1	
 
-irep 0x5eb8c7568bc0 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/method_cache.rb
    86 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    86 004 STRING	R2	L[0]	; M2#m2
    86 007 RETURN	R2	
 
-irep 0x5eb8c756e570 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_cache.rb
    93 000 TDEF		R1	:top	I[0]
    93 004 RETURN	R1	
 
-irep 0x5eb8c756af50 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/method_cache.rb
    93 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    93 004 STRING	R2	L[0]	; Object#top
    93 007 RETURN	R2	
 
-irep 0x5eb8c7568f00 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_cache.rb
    95 000 TDEF		R1	:top	I[0]
    95 004 RETURN	R1	
 
-irep 0x5eb8c7568fa0 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/method_cache.rb
    95 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    95 004 STRING	R2	L[0]	; I2#top
    95 007 RETURN	R2	
 
-irep 0x5eb8c756c460 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_cache.rb
   103 000 TDEF		R1	:method_missing	I[0]
   103 004 RETURN	R1	
 
-irep 0x5eb8c7570920 nregs=6 nlocals=4 pools=1 syms=0 reps=0 ilen=14
+irep 0xADDR nregs=6 nlocals=4 pools=1 syms=0 reps=0 ilen=14
 local variable names:
   R1:n
   R2:a
@@ -660,72 +660,72 @@ file: /w/method_cache.rb
   103 010 STRCAT	R4	(R5)
   103 012 RETURN	R4	
 
-irep 0x5eb8c7570a60 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=8
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=8
 file: /w/method_cache.rb
   107 000 LOADSELF	R1	(R0)
   107 002 SDEF		R1	:cm	I[0]
   107 006 RETURN	R1	
 
-irep 0x5eb8c756a350 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/method_cache.rb
   107 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
   107 004 STRING	R2	L[0]	; K.cm
   107 007 RETURN	R2	
 
-irep 0x5eb8c75723d0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=8
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=8
 file: /w/method_cache.rb
   109 000 LOADSELF	R1	(R0)
   109 002 SDEF		R1	:cm	I[0]
   109 006 RETURN	R1	
 
-irep 0x5eb8c7572680 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/method_cache.rb
   109 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
   109 004 STRING	R2	L[0]	; K.cm2
   109 007 RETURN	R2	
 
-irep 0x5eb8c7573ac0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_cache.rb
   113 000 TDEF		R1	:pub	I[0]
   113 004 RETURN	R1	
 
-irep 0x5eb8c756cfb0 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/method_cache.rb
   113 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
   113 004 STRING	R2	L[0]	; L#pub
   113 007 RETURN	R2	
 
-irep 0x5eb8c75737d0 nregs=4 nlocals=1 pools=0 syms=2 reps=0 ilen=9
+irep 0xADDR nregs=4 nlocals=1 pools=0 syms=2 reps=0 ilen=9
 file: /w/method_cache.rb
   116 000 LOADSYM	R2	:pub
   116 003 SSEND		R1	:private	n=1
   116 007 RETURN	R1	
 
-irep 0x5eb8c75738f0 nregs=3 nlocals=2 pools=0 syms=1 reps=1 ilen=10
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=1 reps=1 ilen=10
 file: /w/method_cache.rb
   122 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
   122 004 TDEF		R2	:x	I[0]
   122 008 RETURN	R2	
 
-irep 0x5eb8c7575270 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/method_cache.rb
   122 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
   122 004 STRING	R2	L[0]	; A#x2
   122 007 RETURN	R2	
 
-irep 0x5eb8c756a750 nregs=3 nlocals=2 pools=0 syms=1 reps=1 ilen=10
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=1 reps=1 ilen=10
 file: /w/method_cache.rb
   128 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
   128 004 TDEF		R2	:ie	I[0]
   128 008 RETURN	R2	
 
-irep 0x5eb8c756a830 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/method_cache.rb
   128 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
   128 004 STRING	R2	L[0]	; o#ie
   128 007 RETURN	R2	
 
-irep 0x5eb8c7576790 nregs=4 nlocals=1 pools=0 syms=6 reps=2 ilen=24
+irep 0xADDR nregs=4 nlocals=1 pools=0 syms=6 reps=2 ilen=24
 file: /w/method_cache.rb
   133 000 GETCONST	R2	Comparable
   133 003 SSEND		R1	:include	n=1
@@ -735,7 +735,7 @@ file: /w/method_cache.rb
   136 018 TDEF		R1	:<=>	I[1]
   136 022 RETURN	R1	
 
-irep 0x5eb8c756cba0 nregs=4 nlocals=3 pools=0 syms=1 reps=0 ilen=12
+irep 0xADDR nregs=4 nlocals=3 pools=0 syms=1 reps=0 ilen=12
 local variable names:
   R1:n
 file: /w/method_cache.rb
@@ -744,7 +744,7 @@ file: /w/method_cache.rb
   135 007 SETIV		@n	R3
   135 010 RETURN	R3	
 
-irep 0x5eb8c756cce0 nregs=6 nlocals=3 pools=0 syms=2 reps=0 ilen=19
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=2 reps=0 ilen=19
 local variable names:
   R1:x
 file: /w/method_cache.rb
@@ -755,7 +755,7 @@ file: /w/method_cache.rb
   136 013 SEND		R3	:<=>	n=1
   136 017 RETURN	R3	
 
-irep 0x5eb8c75773a0 nregs=5 nlocals=2 pools=0 syms=0 reps=0 ilen=16
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=0 reps=0 ilen=16
 file: /w/method_cache.rb
   139 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
   139 004 GETUPVAR	R2	14	0
@@ -763,12 +763,12 @@ file: /w/method_cache.rb
   139 012 LT		R2	(R3)
   139 014 RETURN	R2	
 
-irep 0x5eb8c756e880 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_cache.rb
   141 000 TDEF		R1	:<=>	I[0]
   141 004 RETURN	R1	
 
-irep 0x5eb8c756e940 nregs=6 nlocals=3 pools=0 syms=2 reps=0 ilen=19
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=2 reps=0 ilen=19
 local variable names:
   R1:x
 file: /w/method_cache.rb
@@ -779,19 +779,19 @@ file: /w/method_cache.rb
   141 013 SEND		R3	:<=>	n=1
   141 017 RETURN	R3	
 
-irep 0x5eb8c756f100 nregs=4 nlocals=2 pools=0 syms=1 reps=0 ilen=13
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=0 ilen=13
 file: /w/method_cache.rb
   147 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
   147 004 GETUPVAR	R2	16	0
   147 008 SEND0		R2	:aa
   147 011 RETURN	R2	
 
-irep 0x5eb8c756f1d0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/method_cache.rb
   149 000 TDEF		R1	:aa	I[0]
   149 004 RETURN	R1	
 
-irep 0x5eb8c756dd00 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/method_cache.rb
   149 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
   149 004 STRING	R2	L[0]	; overridden

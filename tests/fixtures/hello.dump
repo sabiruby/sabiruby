@@ -1,4 +1,4 @@
-irep 0x5f34d40a87b0 nregs=5 nlocals=1 pools=1 syms=2 reps=0 ilen=16
+irep 0xADDR nregs=5 nlocals=1 pools=1 syms=2 reps=0 ilen=16
 file: /w/hello.rb
     1 000 STRING	R2	L[0]	; hello
     1 003 SSEND		R1	:puts	n=1

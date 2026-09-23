@@ -1,4 +1,4 @@
-irep 0x650d2a52a090 nregs=5 nlocals=2 pools=2 syms=9 reps=1 ilen=89
+irep 0xADDR nregs=5 nlocals=2 pools=2 syms=9 reps=1 ilen=89
 local variable names:
   R1:e
 catch type: rescue   begin: 0043 end: 0050 target: 0053
@@ -34,7 +34,7 @@ file: /w/eval_locals.rb
    22 086 RETURN	R2	
    22 088 STOP
 
-irep 0x650d2a52b7c0 nregs=9 nlocals=4 pools=3 syms=3 reps=0 ilen=51
+irep 0xADDR nregs=9 nlocals=4 pools=3 syms=3 reps=0 ilen=51
 local variable names:
   R2:a
   R3:b

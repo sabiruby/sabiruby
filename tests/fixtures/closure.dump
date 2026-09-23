@@ -1,4 +1,4 @@
-irep 0x652c0e7c0f10 nregs=15 nlocals=8 pools=4 syms=24 reps=15 ilen=434
+irep 0xADDR nregs=15 nlocals=8 pools=4 syms=24 reps=15 ilen=434
 local variable names:
   R1:inc
   R2:get
@@ -159,7 +159,7 @@ file: /w/closure.rb
    40 431 RETURN	R8	
    40 433 STOP
 
-irep 0x652c0e7cb030 nregs=7 nlocals=5 pools=0 syms=0 reps=2 ilen=23
+irep 0xADDR nregs=7 nlocals=5 pools=0 syms=0 reps=2 ilen=23
 local variable names:
   R2:n
   R3:inc
@@ -174,7 +174,7 @@ file: /w/closure.rb
     5 018 ARRAY		R5	2
     5 021 RETURN	R5	
 
-irep 0x652c0e7cc7a0 nregs=5 nlocals=2 pools=0 syms=0 reps=0 ilen=17
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=0 reps=0 ilen=17
 file: /w/closure.rb
     3 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
     3 004 GETUPVAR	R2	2	0
@@ -182,13 +182,13 @@ file: /w/closure.rb
     3 011 SETUPVAR	R2	2	0
     3 015 RETURN	R2	
 
-irep 0x652c0e7cd290 nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=10
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=10
 file: /w/closure.rb
     4 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
     4 004 GETUPVAR	R2	2	0
     4 008 RETURN	R2	
 
-irep 0x652c0e7cda30 nregs=5 nlocals=3 pools=0 syms=1 reps=1 ilen=15
+irep 0xADDR nregs=5 nlocals=3 pools=0 syms=1 reps=1 ilen=15
 local variable names:
   R1:a
 file: /w/closure.rb
@@ -198,7 +198,7 @@ file: /w/closure.rb
    11 010 SENDB		R3	:each	n=0
    12 014 RETNIL
 
-irep 0x652c0e7cc5d0 nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=24
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=24
 local variable names:
   R1:x
 file: /w/closure.rb
@@ -212,7 +212,7 @@ file: /w/closure.rb
    11 020 LOADNIL	R3	(nil)
    11 022 RETURN	R3	
 
-irep 0x652c0e7cc750 nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=32
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=32
 local variable names:
   R1:x
 file: /w/closure.rb
@@ -229,7 +229,7 @@ file: /w/closure.rb
    15 028 LOADNIL	R3	(nil)
    15 030 RETURN	R3	
 
-irep 0x652c0e7cc210 nregs=7 nlocals=4 pools=0 syms=1 reps=0 ilen=16
+irep 0xADDR nregs=7 nlocals=4 pools=0 syms=1 reps=0 ilen=16
 local variable names:
   R1:a
   R2:b
@@ -240,7 +240,7 @@ file: /w/closure.rb
    17 010 SEND		R4	:<=>	n=1
    17 014 RETURN	R4	
 
-irep 0x652c0e7cfbd0 nregs=5 nlocals=3 pools=0 syms=1 reps=0 ilen=12
+irep 0xADDR nregs=5 nlocals=3 pools=0 syms=1 reps=0 ilen=12
 local variable names:
   R1:x
 file: /w/closure.rb
@@ -249,7 +249,7 @@ file: /w/closure.rb
    18 007 SEND0		R3	:even?
    18 010 RETURN	R3	
 
-irep 0x652c0e7cfcf0 nregs=7 nlocals=4 pools=0 syms=0 reps=0 ilen=14
+irep 0xADDR nregs=7 nlocals=4 pools=0 syms=0 reps=0 ilen=14
 local variable names:
   R1:s
   R2:x
@@ -260,7 +260,7 @@ file: /w/closure.rb
    18 010 MUL		R4	(R5)
    18 012 RETURN	R4	
 
-irep 0x652c0e7d0020 nregs=7 nlocals=4 pools=0 syms=1 reps=0 ilen=19
+irep 0xADDR nregs=7 nlocals=4 pools=0 syms=1 reps=0 ilen=19
 local variable names:
   R1:x
   R2:i
@@ -272,14 +272,14 @@ file: /w/closure.rb
    19 013 SSEND		R4	:p	n=1
    19 017 RETURN	R4	
 
-irep 0x652c0e7d0df0 nregs=4 nlocals=3 pools=0 syms=0 reps=0 ilen=6
+irep 0xADDR nregs=4 nlocals=3 pools=0 syms=0 reps=0 ilen=6
 local variable names:
   R1:s
 file: /w/closure.rb
    20 000 ENTER		1:0:0:0:0:0:0:0 (0x40000)
    20 004 RETURN	R1		; R1:s
 
-irep 0x652c0e7d0560 nregs=5 nlocals=3 pools=0 syms=1 reps=0 ilen=12
+irep 0xADDR nregs=5 nlocals=3 pools=0 syms=1 reps=0 ilen=12
 local variable names:
   R1:x
 file: /w/closure.rb
@@ -288,7 +288,7 @@ file: /w/closure.rb
    21 007 SEND0		R3	:to_s
    21 010 RETURN	R3	
 
-irep 0x652c0e7d1120 nregs=5 nlocals=2 pools=0 syms=0 reps=0 ilen=34
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=0 reps=0 ilen=34
 file: /w/closure.rb
    23 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    24 004 GETUPVAR	R2	4	0
@@ -303,7 +303,7 @@ file: /w/closure.rb
    25 030 LOADNIL	R2	(nil)
    25 032 RETURN	R2	
 
-irep 0x652c0e7d1260 nregs=6 nlocals=2 pools=0 syms=0 reps=0 ilen=17
+irep 0xADDR nregs=6 nlocals=2 pools=0 syms=0 reps=0 ilen=17
 file: /w/closure.rb
    28 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    29 004 LOADI_1	R3	(1)
@@ -312,7 +312,7 @@ file: /w/closure.rb
    29 012 BLKCALL		R2	2
    29 015 RETURN	R2	
 
-irep 0x652c0e7d1600 nregs=7 nlocals=4 pools=0 syms=1 reps=0 ilen=19
+irep 0xADDR nregs=7 nlocals=4 pools=0 syms=1 reps=0 ilen=19
 local variable names:
   R1:a
   R2:b
@@ -324,7 +324,7 @@ file: /w/closure.rb
    31 013 SSEND		R4	:p	n=1
    31 017 RETURN	R4	
 
-irep 0x652c0e7d1d70 nregs=6 nlocals=3 pools=0 syms=1 reps=0 ilen=13
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=1 reps=0 ilen=13
 local variable names:
   R1:a
 file: /w/closure.rb
@@ -333,7 +333,7 @@ file: /w/closure.rb
    32 007 SSEND		R3	:p	n=1
    32 011 RETURN	R3	
 
-irep 0x652c0e7d1e90 nregs=6 nlocals=4 pools=0 syms=0 reps=0 ilen=15
+irep 0xADDR nregs=6 nlocals=4 pools=0 syms=0 reps=0 ilen=15
 local variable names:
   R1:a
   R2:b
@@ -344,7 +344,7 @@ file: /w/closure.rb
    33 010 ARRAY		R4	2
    33 013 RETURN	R4	
 
-irep 0x652c0e7d2a20 nregs=6 nlocals=4 pools=0 syms=0 reps=0 ilen=15
+irep 0xADDR nregs=6 nlocals=4 pools=0 syms=0 reps=0 ilen=15
 local variable names:
   R1:a
   R2:b

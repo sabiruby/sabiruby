@@ -1,4 +1,4 @@
-irep 0x57212494d1f0 nregs=13 nlocals=7 pools=2 syms=21 reps=7 ilen=457
+irep 0xADDR nregs=13 nlocals=7 pools=2 syms=21 reps=7 ilen=457
 local variable names:
   R1:h
   R2:g
@@ -159,7 +159,7 @@ file: /w/hash_default_proc_set.rb
    57 454 RETURN	R7	
    57 456 STOP
 
-irep 0x5721249550e0 nregs=10 nlocals=4 pools=0 syms=1 reps=0 ilen=27
+irep 0xADDR nregs=10 nlocals=4 pools=0 syms=1 reps=0 ilen=27
 local variable names:
   R1:hash
   R2:key
@@ -175,7 +175,7 @@ file: /w/hash_default_proc_set.rb
     9 023 SETIDX	R5	(R6)	(R7)
     9 025 RETURN	R4	
 
-irep 0x572124955bb0 nregs=6 nlocals=4 pools=0 syms=1 reps=0 ilen=15
+irep 0xADDR nregs=6 nlocals=4 pools=0 syms=1 reps=0 ilen=15
 local variable names:
   R1:_
   R2:k
@@ -186,14 +186,14 @@ file: /w/hash_default_proc_set.rb
    18 010 ARRAY		R4	2
    18 013 RETURN	R4	
 
-irep 0x572124956330 nregs=4 nlocals=3 pools=0 syms=0 reps=0 ilen=6
+irep 0xADDR nregs=4 nlocals=3 pools=0 syms=0 reps=0 ilen=6
 local variable names:
   R1:k
 file: /w/hash_default_proc_set.rb
    29 000 ENTER		1:0:0:0:0:0:0:0 (0x40000)
    29 004 RETURN	R1		; R1:k
 
-irep 0x572124957290 nregs=6 nlocals=4 pools=0 syms=1 reps=0 ilen=15
+irep 0xADDR nregs=6 nlocals=4 pools=0 syms=1 reps=0 ilen=15
 local variable names:
   R1:hash
   R2:key
@@ -204,7 +204,7 @@ file: /w/hash_default_proc_set.rb
    33 010 ARRAY		R4	2
    33 013 RETURN	R4	
 
-irep 0x5721249579d0 nregs=6 nlocals=3 pools=0 syms=2 reps=0 ilen=18
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=2 reps=0 ilen=18
 local variable names:
   R1:a
 file: /w/hash_default_proc_set.rb
@@ -215,7 +215,7 @@ file: /w/hash_default_proc_set.rb
    35 013 ARRAY		R3	2
    35 016 RETURN	R3	
 
-irep 0x572124954ce0 nregs=5 nlocals=4 pools=0 syms=0 reps=0 ilen=8
+irep 0xADDR nregs=5 nlocals=4 pools=0 syms=0 reps=0 ilen=8
 local variable names:
   R1:_
   R2:_
@@ -224,7 +224,7 @@ file: /w/hash_default_proc_set.rb
    48 004 LOADI_1	R4	(1)
    48 006 RETURN	R4	
 
-irep 0x572124954ff0 nregs=6 nlocals=4 pools=0 syms=1 reps=0 ilen=15
+irep 0xADDR nregs=6 nlocals=4 pools=0 syms=1 reps=0 ilen=15
 local variable names:
   R1:_
   R2:k

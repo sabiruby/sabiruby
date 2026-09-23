@@ -235,11 +235,11 @@ pub fn init(vm: &mut Vm) {
     // SABIRUBY_VERSION (this crate's version), which the reference does not define at all —
     // `defined?(SABIRUBY_VERSION)` is the one-line "am I on SabiRuby?" (docs/design/gems.md).
     for (name, v) in [("RUBY_VERSION", "4.1"), ("RUBY_ENGINE", "mruby"), ("RUBY_ENGINE_VERSION", "4.1.0"), ("MRUBY_VERSION", "4.1.0"),
-                      ("MRUBY_PLATFORM", "rust-sabiruby"), ("SABIRUBY_VERSION", env!("CARGO_PKG_VERSION")), ("MRUBY_RELEASE_DATE", "2026-09-04"),
+                      ("MRUBY_PLATFORM", "rust-sabiruby"), ("SABIRUBY_VERSION", env!("CARGO_PKG_VERSION")), ("MRUBY_RELEASE_DATE", "2026-09-11"),
                       // the commit this VM was built from (`build.rs`); `HEAD` where there was no git,
                       // which is the reference's own default too
                       ("MRUBY_REVISION", crate::REVISION),
-                      ("MRUBY_DESCRIPTION", "mruby 4.1.0RC (2026-09-04)"), ("MRUBY_COPYRIGHT", "mruby - Copyright (c) 2010-2026 mruby developers")] {
+                      ("MRUBY_DESCRIPTION", "mruby 4.1.0RC2 (2026-09-11)"), ("MRUBY_COPYRIGHT", "mruby - Copyright (c) 2010-2026 mruby developers")] {
         let s = vm.str_new(v.as_bytes());
         if let Some(o) = s.obj() { vm.heap.get_mut(o).frozen = true; }
         let n = vm.intern(name);

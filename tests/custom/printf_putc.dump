@@ -1,4 +1,4 @@
-irep 0x5eb1a2ea8120 nregs=9 nlocals=2 pools=8 syms=12 reps=1 ilen=472
+irep 0xADDR nregs=9 nlocals=2 pools=8 syms=12 reps=1 ilen=472
 local variable names:
   R1:e
 catch type: rescue   begin: 0317 end: 0320 target: 0323
@@ -157,12 +157,12 @@ file: /w/printf_putc.rb
    55 469 RETURN	R2	
    55 471 STOP
 
-irep 0x5eb1a2eae8d0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/printf_putc.rb
    33 000 TDEF		R1	:to_s	I[0]
    33 004 RETURN	R1	
 
-irep 0x5eb1a2eb0020 nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
+irep 0xADDR nregs=3 nlocals=2 pools=1 syms=0 reps=0 ilen=9
 file: /w/printf_putc.rb
    33 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    34 004 STRING	R2	L[0]	; zebra

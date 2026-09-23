@@ -1,4 +1,4 @@
-irep 0x56b387f43ec0 nregs=37 nlocals=27 pools=12 syms=43 reps=19 ilen=1801
+irep 0xADDR nregs=37 nlocals=27 pools=12 syms=43 reps=19 ilen=1801
 local variable names:
   R1:f
   R2:a2
@@ -678,21 +678,21 @@ file: /w/getidx_dispatch.rb
   149 1798 RETURN	R27	
   149 1800 STOP
 
-irep 0x56b387f59110 nregs=2 nlocals=1 pools=0 syms=3 reps=3 ilen=14
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=3 reps=3 ilen=14
 file: /w/getidx_dispatch.rb
     7 000 TDEF		R1	:initialize	I[0]
     8 004 TDEF		R1	:[]	I[1]
     9 008 TDEF		R1	:[]=	I[2]
     9 012 RETURN	R1	
 
-irep 0x56b387f5fdf0 nregs=3 nlocals=2 pools=0 syms=1 reps=0 ilen=12
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=1 reps=0 ilen=12
 file: /w/getidx_dispatch.rb
     7 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
     7 004 HASH		R2	0
     7 007 SETIV		@h	R2
     7 010 RETURN	R2	
 
-irep 0x56b387f608e0 nregs=6 nlocals=3 pools=0 syms=4 reps=0 ilen=30
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=4 reps=0 ilen=30
 local variable names:
   R1:k
 file: /w/getidx_dispatch.rb
@@ -707,7 +707,7 @@ file: /w/getidx_dispatch.rb
     8 026 GETIDX	R3	(R4)
     8 028 RETURN	R3	
 
-irep 0x56b387f61020 nregs=9 nlocals=4 pools=0 syms=4 reps=0 ilen=39
+irep 0xADDR nregs=9 nlocals=4 pools=0 syms=4 reps=0 ilen=39
 local variable names:
   R1:k
   R2:v
@@ -726,7 +726,7 @@ file: /w/getidx_dispatch.rb
     9 035 SETIDX	R5	(R6)	(R7)
     9 037 RETURN	R4	
 
-irep 0x56b387f5fa00 nregs=7 nlocals=3 pools=0 syms=3 reps=0 ilen=39
+irep 0xADDR nregs=7 nlocals=3 pools=0 syms=3 reps=0 ilen=39
 local variable names:
   R2:b
 file: /w/getidx_dispatch.rb
@@ -745,13 +745,13 @@ file: /w/getidx_dispatch.rb
    14 034 ARRAY		R3	2
    14 037 RETURN	R3	
 
-irep 0x56b387f5fd30 nregs=2 nlocals=1 pools=0 syms=2 reps=2 ilen=10
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=2 reps=2 ilen=10
 file: /w/getidx_dispatch.rb
    23 000 TDEF		R1	:[]	I[0]
    24 004 TDEF		R1	:[]=	I[1]
    24 008 RETURN	R1	
 
-irep 0x56b387f625d0 nregs=8 nlocals=3 pools=1 syms=0 reps=0 ilen=19
+irep 0xADDR nregs=8 nlocals=3 pools=1 syms=0 reps=0 ilen=19
 local variable names:
   R1:i
 file: /w/getidx_dispatch.rb
@@ -762,7 +762,7 @@ file: /w/getidx_dispatch.rb
    23 014 ARRAY		R3	2
    23 017 RETURN	R3	
 
-irep 0x56b387f62730 nregs=8 nlocals=4 pools=0 syms=1 reps=0 ilen=21
+irep 0xADDR nregs=8 nlocals=4 pools=0 syms=1 reps=0 ilen=21
 local variable names:
   R1:i
   R2:v
@@ -775,13 +775,13 @@ file: /w/getidx_dispatch.rb
    24 016 SUPER		R4	n=2
    24 019 RETURN	R4	
 
-irep 0x56b387f5f860 nregs=2 nlocals=1 pools=0 syms=2 reps=2 ilen=10
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=2 reps=2 ilen=10
 file: /w/getidx_dispatch.rb
    34 000 TDEF		R1	:[]	I[0]
    35 004 TDEF		R1	:[]=	I[1]
    35 008 RETURN	R1	
 
-irep 0x56b387f5f920 nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=18
+irep 0xADDR nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=18
 local variable names:
   R1:i
 file: /w/getidx_dispatch.rb
@@ -792,7 +792,7 @@ file: /w/getidx_dispatch.rb
    34 012 SSEND		R3	:raise	n=1
    34 016 RETURN	R3	
 
-irep 0x56b387f63fc0 nregs=8 nlocals=4 pools=1 syms=2 reps=0 ilen=21
+irep 0xADDR nregs=8 nlocals=4 pools=1 syms=2 reps=0 ilen=21
 local variable names:
   R1:i
   R2:v
@@ -805,12 +805,12 @@ file: /w/getidx_dispatch.rb
    35 015 SSEND		R4	:raise	n=2
    35 019 RETURN	R4	
 
-irep 0x56b387f647c0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/getidx_dispatch.rb
    43 000 TDEF		R1	:[]	I[0]
    43 004 RETURN	R1	
 
-irep 0x56b387f64860 nregs=5 nlocals=3 pools=1 syms=0 reps=0 ilen=14
+irep 0xADDR nregs=5 nlocals=3 pools=1 syms=0 reps=0 ilen=14
 local variable names:
   R1:i
 file: /w/getidx_dispatch.rb
@@ -820,12 +820,12 @@ file: /w/getidx_dispatch.rb
    43 010 STRCAT	R3	(R4)
    43 012 RETURN	R3	
 
-irep 0x56b387f62ba0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/getidx_dispatch.rb
    44 000 TDEF		R1	:[]	I[0]
    44 004 RETURN	R1	
 
-irep 0x56b387f63b20 nregs=5 nlocals=3 pools=1 syms=0 reps=0 ilen=14
+irep 0xADDR nregs=5 nlocals=3 pools=1 syms=0 reps=0 ilen=14
 local variable names:
   R1:k
 file: /w/getidx_dispatch.rb
@@ -835,12 +835,12 @@ file: /w/getidx_dispatch.rb
    44 010 STRCAT	R3	(R4)
    44 012 RETURN	R3	
 
-irep 0x56b387f64f50 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/getidx_dispatch.rb
    45 000 TDEF		R1	:[]	I[0]
    45 004 RETURN	R1	
 
-irep 0x56b387f64ff0 nregs=5 nlocals=3 pools=1 syms=0 reps=0 ilen=14
+irep 0xADDR nregs=5 nlocals=3 pools=1 syms=0 reps=0 ilen=14
 local variable names:
   R1:i
 file: /w/getidx_dispatch.rb
@@ -850,7 +850,7 @@ file: /w/getidx_dispatch.rb
    45 010 STRCAT	R3	(R4)
    45 012 RETURN	R3	
 
-irep 0x56b387f65c20 nregs=5 nlocals=3 pools=1 syms=0 reps=0 ilen=14
+irep 0xADDR nregs=5 nlocals=3 pools=1 syms=0 reps=0 ilen=14
 local variable names:
   R1:i
 file: /w/getidx_dispatch.rb
@@ -860,7 +860,7 @@ file: /w/getidx_dispatch.rb
    53 010 STRCAT	R3	(R4)
    53 012 RETURN	R3	
 
-irep 0x56b387f65360 nregs=5 nlocals=4 pools=0 syms=1 reps=0 ilen=9
+irep 0xADDR nregs=5 nlocals=4 pools=0 syms=1 reps=0 ilen=9
 local variable names:
   R1:k
   R2:v
@@ -869,7 +869,7 @@ file: /w/getidx_dispatch.rb
    57 004 LOADSYM	R4	:ignored
    57 007 RETURN	R4	
 
-irep 0x56b387f654c0 nregs=5 nlocals=3 pools=1 syms=0 reps=0 ilen=14
+irep 0xADDR nregs=5 nlocals=3 pools=1 syms=0 reps=0 ilen=14
 local variable names:
   R1:i
 file: /w/getidx_dispatch.rb
@@ -879,7 +879,7 @@ file: /w/getidx_dispatch.rb
    61 010 STRCAT	R3	(R4)
    61 012 RETURN	R3	
 
-irep 0x56b387f67110 nregs=9 nlocals=4 pools=1 syms=0 reps=0 ilen=25
+irep 0xADDR nregs=9 nlocals=4 pools=1 syms=0 reps=0 ilen=25
 local variable names:
   R1:hh
   R2:k
@@ -894,12 +894,12 @@ file: /w/getidx_dispatch.rb
    75 021 SETIDX	R5	(R6)	(R7)
    75 023 RETURN	R4	
 
-irep 0x56b387f633d0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/getidx_dispatch.rb
    83 000 TDEF		R1	:[]=	I[0]
    83 004 RETURN	R1	
 
-irep 0x56b387f62e80 nregs=5 nlocals=4 pools=0 syms=1 reps=0 ilen=9
+irep 0xADDR nregs=5 nlocals=4 pools=0 syms=1 reps=0 ilen=9
 local variable names:
   R1:i
   R2:v
@@ -908,7 +908,7 @@ file: /w/getidx_dispatch.rb
    83 004 LOADSYM	R4	:not_the_value
    83 007 RETURN	R4	
 
-irep 0x56b387f65fa0 nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=13
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=13
 local variable names:
   R1:i
 file: /w/getidx_dispatch.rb
@@ -918,12 +918,12 @@ file: /w/getidx_dispatch.rb
    89 009 MUL		R3	(R4)
    89 011 RETURN	R3	
 
-irep 0x56b387f660a0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/getidx_dispatch.rb
    98 000 TDEF		R1	:method_missing	I[0]
    98 004 RETURN	R1	
 
-irep 0x56b387f5e550 nregs=6 nlocals=4 pools=0 syms=0 reps=0 ilen=15
+irep 0xADDR nregs=6 nlocals=4 pools=0 syms=0 reps=0 ilen=15
 local variable names:
   R1:n
   R2:args
@@ -934,13 +934,13 @@ file: /w/getidx_dispatch.rb
    98 010 ARRAY		R4	2
    98 013 RETURN	R4	
 
-irep 0x56b387f62fe0 nregs=2 nlocals=1 pools=0 syms=2 reps=1 ilen=9
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=2 reps=1 ilen=9
 file: /w/getidx_dispatch.rb
   127 000 ALIAS		:__orig_aref	[]
   128 003 TDEF		R1	:[]	I[0]
   128 007 RETURN	R1	
 
-irep 0x56b387f637f0 nregs=5 nlocals=3 pools=1 syms=0 reps=0 ilen=14
+irep 0xADDR nregs=5 nlocals=3 pools=1 syms=0 reps=0 ilen=14
 local variable names:
   R1:i
 file: /w/getidx_dispatch.rb
@@ -950,17 +950,17 @@ file: /w/getidx_dispatch.rb
   128 010 STRCAT	R3	(R4)
   128 012 RETURN	R3	
 
-irep 0x56b387f67d20 nregs=2 nlocals=1 pools=0 syms=2 reps=0 ilen=4
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=2 reps=0 ilen=4
 file: /w/getidx_dispatch.rb
   134 000 ALIAS		:[]	__orig_aref
   134 003 RETNIL
 
-irep 0x56b387f6a940 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/getidx_dispatch.rb
   140 000 TDEF		R1	:default	I[0]
   140 004 RETURN	R1	
 
-irep 0x56b387f653d0 nregs=5 nlocals=3 pools=1 syms=0 reps=0 ilen=22
+irep 0xADDR nregs=5 nlocals=3 pools=1 syms=0 reps=0 ilen=22
 local variable names:
   R1:k
 file: /w/getidx_dispatch.rb
@@ -973,12 +973,12 @@ file: /w/getidx_dispatch.rb
   140 018 STRCAT	R3	(R4)
   140 020 RETURN	R3	
 
-irep 0x56b387f658e0 nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
 file: /w/getidx_dispatch.rb
   145 000 TDEF		R1	:[]	I[0]
   145 004 RETURN	R1	
 
-irep 0x56b387f5d550 nregs=8 nlocals=3 pools=1 syms=1 reps=0 ilen=21
+irep 0xADDR nregs=8 nlocals=3 pools=1 syms=1 reps=0 ilen=21
 local variable names:
   R1:i
 file: /w/getidx_dispatch.rb
@@ -990,7 +990,7 @@ file: /w/getidx_dispatch.rb
   145 017 ADD		R3	(R4)
   145 019 RETURN	R3	
 
-irep 0x56b387f67810 nregs=4 nlocals=1 pools=0 syms=2 reps=0 ilen=9
+irep 0xADDR nregs=4 nlocals=1 pools=0 syms=2 reps=0 ilen=9
 file: /w/getidx_dispatch.rb
   146 000 GETCONST	R2	Loud
   146 003 SSEND		R1	:prepend	n=1

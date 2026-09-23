@@ -1,4 +1,4 @@
-irep 0x5ef35a924910 nregs=5 nlocals=1 pools=3 syms=8 reps=0 ilen=123
+irep 0xADDR nregs=5 nlocals=1 pools=3 syms=8 reps=0 ilen=123
 file: /w/bigint_reference_bugs.rb
    15 000 LOADI_2	R2	(2)
    15 002 LOADI8	R3	64
