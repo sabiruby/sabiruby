@@ -1,5 +1,5 @@
-//! Byte-for-byte comparison with the reference `mrbc` (mruby 4.1.0-rc, Docker image
-//! `kishima/mruby:4.1.0-rc`): every `.rb` of the repository that has a `.mrb` made by it
+//! Byte-for-byte comparison with the reference `mrbc` (mruby 4.1.0-rc2, Docker image
+//! `kishima/mruby:4.1.0-rc2`): every `.rb` of the repository that has a `.mrb` made by it
 //! must compile to exactly that `.mrb`. The file name matters when `-g` puts it into the
 //! DBG section, so each set uses the name the generating script passed to `mrbc`.
 

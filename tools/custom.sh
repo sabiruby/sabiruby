@@ -1,17 +1,17 @@
 #!/bin/bash
 # SabiRuby's own tests (tests/custom, runner tests/custom.rs). For each
 # tests/custom/*.rb: compile it with the reference mrbc (Docker image
-# kishima/mruby:4.1.0-rc, with -g) into .mrb and record the reference mruby's
+# kishima/mruby:4.1.0-rc2, with -g) into .mrb and record the reference mruby's
 # output as .rc.out and the reference listing (with line numbers) as .dump. The expected output (.expected) is decided by hand and is
 # not touched if it exists; when missing it is created from .rc.out.
 #   tools/custom.sh              # all cases
 #   tools/custom.sh eval_locals  # one case
 set -eu
 cd "$(dirname "$0")/.."
-IMG=kishima/mruby:4.1.0-rc
+IMG=kishima/mruby:4.1.0-rc2
 # a case marked `# utf8-only:` is about strings as characters, so its reference output comes
 # from the image built with MRB_UTF8_STRING (`docs/design/utf8.md`)
-IMG_UTF8=kishima/mruby:4.1.0-rc-utf8
+IMG_UTF8=kishima/mruby:4.1.0-rc2-utf8
 for rb in tests/custom/${1:-*}.rb; do
   base=${rb%.rb}; name=$(basename "$base")
   img=$IMG

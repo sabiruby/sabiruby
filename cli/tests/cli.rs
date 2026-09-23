@@ -1,4 +1,4 @@
-//! The command line, checked against the behaviour of the reference `mruby` (4.1.0-rc):
+//! The command line, checked against the behaviour of the reference `mruby` (4.1.0-rc2):
 //! `sabiruby [switches] [programfile] [arguments]`, plus the extra subcommands.
 
 use std::io::Write;
@@ -100,7 +100,7 @@ fn errors_look_like_mrubys() {
 #[test]
 fn version_copyright_and_verbose() {
     let v = out(&sabiruby(&["--version"]));
-    assert!(v.starts_with(&format!("sabiruby {}", env!("CARGO_PKG_VERSION"))) && v.contains("compiler: mruby 4.1.0-rc"), "{v}");
+    assert!(v.starts_with(&format!("sabiruby {}", env!("CARGO_PKG_VERSION"))) && v.contains("compiler: mruby 4.1.0-rc2"), "{v}");
     assert!(out(&sabiruby(&["--copyright"])).contains("mruby developers"));
     // -v prints the version, then the listing, then runs (as mruby -v)
     let o = out(&sabiruby(&["-v", "-e", "p 1"]));

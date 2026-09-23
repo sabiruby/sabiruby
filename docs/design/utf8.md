@@ -90,9 +90,10 @@ mruby-encoding, which is not ported (and is absent from the reference build too)
 
 ## How it is checked
 
-* Two reference images: `kishima/mruby:4.1.0-rc` (bytes, the reference's own build) and
-  `kishima/mruby:4.1.0-rc-utf8` (the same tree with `MRB_UTF8_STRING`), both built by
-  `../ref/mruby_containers/build_image.sh`.
+* Two reference images: `kishima/mruby:4.1.0-rc2` (bytes, the reference's own build, from
+  `../ref/mruby_containers/build_image.sh`) and `kishima/mruby:4.1.0-rc2-utf8` (the same tree
+  with `MRB_UTF8_STRING`, from `tools/utf8-image/build.sh`). Until 2026-09-23 they were the
+  `4.1.0-rc` ones.
 * mruby's own test suite runs in both builds and each has its own floor:
   `tools/mrbtest.sh [--update]` writes `docs/verification/mrbtest.md` and `tests/mrbtest/baseline.txt`,
   `tools/mrbtest.sh --bytes [--update]` writes `docs/verification/mrbtest-bytes.md` and

@@ -527,5 +527,5 @@ sabiruby_mrc_free(void *p)
 const char *
 sabiruby_mrc_version(void)
 {
-  return "mruby 4.1.0-rc (3cf73ee), Prism " PRISM_VERSION;
+  return "mruby 4.1.0-rc2 (c17ffcc24), Prism " PRISM_VERSION;
 }

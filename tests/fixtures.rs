@@ -1,4 +1,4 @@
-//! Runs every `tests/fixtures/*.mrb` (compiled by the reference mruby 4.1.0-rc
+//! Runs every `tests/fixtures/*.mrb` (compiled by the reference mruby 4.1.0-rc2
 //! `mrbc`, see `tools/fixtures.sh`) and compares stdout with the `.out` file
 //! recorded from the reference `mruby` binary.
 

@@ -30,7 +30,7 @@ sabiruby --version / --copyright
 program called `compile`, run `./compile` or `sabiruby run compile`. `require`/`load` search
 the program's own directory and the working directory (`$LOAD_PATH`).
 
-The bytecode is byte-identical to what the reference `mrbc` (mruby 4.1.0-rc) writes; compile
+The bytecode is byte-identical to what the reference `mrbc` (mruby 4.1.0-rc2) writes; compile
 errors are printed as `FILE:LINE:COL: message`, as `mrbc` does. `SABIRUBY_GC_STRESS=1` makes
 the VM collect garbage after every allocation (for testing).
 

@@ -3,7 +3,7 @@
 Hand-written companion of the generated [`mrbtest.md`](mrbtest.md) (the default build, strings as
 characters) and [`mrbtest-bytes.md`](mrbtest-bytes.md) (without the feature `utf8`). Every
 assertion of mruby's `test/t` and of the ported gems that SabiRuby does not pass is listed here
-with its reason, and with what the reference `mruby` (4.1.0-rc, default gembox, run through the
+with its reason, and with what the reference `mruby` (4.1.0-rc; 4.1.0-rc2 from 2026-09-23, default gembox, run through the
 kit's `reference_runner.rb`) does on the same file. Update this file whenever the table
 changes; `tests/mrbtest/notes.tsv` holds the one-line version that fills the `note` column.
 
@@ -20,6 +20,7 @@ Categories:
   differences.
 * **deviation** — a difference SabiRuby keeps on purpose (see README).
 * **build** — depends on how the reference binary was built.
+* **undecided** — a difference nobody has decided to keep or remove yet.
 
 | file | not passing | category | reason |
 |---|---|---|---|
@@ -36,6 +37,7 @@ Categories:
 | gem_array | 1 KO (4 assertions) | deviation | `Array#uniq, Array#- and Array#include? with a NaN`: the reference treats every NaN made as its own object (identity), SabiRuby's Floats are immediates. |
 | gem_enum | 1 KO (2 assertions) | deviation | `Array#count with a NaN`: same NaN identity. |
 | gem_enum_chain | 1 KO | reference too | `Enumerator::Chain#size`: `[1,2,3].chain(3..4).size` is 5 once mruby-range-ext gives `Range#size`, and the test expects nil. The reference `mruby` (default gembox) fails the same assertion (6/7). |
+| hash | 1 KO (the 4 `assert_raise` of 9 assertions; 4.1.0-rc2) | undecided | `Hash lookup with entries deleted by an eql? callback` (new in 4.1.0-rc2, GHSA-2778-fvwg-5m8w) expects `RuntimeError: hash modified` when the key's `eql?` deletes entries mid-lookup. Its key answers `hash` 0, and the reference's small ("array") hash calls `eql?` on every entry whatever the codes are, so the delete happens. SabiRuby compares the cached hash codes first (`HashData::first_candidate`, `src/object.rs`; as CRuby does), no entry hashes to 0, `eql?` never runs and the lookup answers nil (`[]`, `key?`, `[]=` and the 20-entry form alike). Even with a key whose code does match, the lookup finishes (bounded, no out-of-range read) instead of raising: `Vm::hash_get`/`hash_delete` return `Option` and drop the error. `docs/worklog/2026-09-23-rc2.md` has the options. |
 | gem_set | 1 KO | deviation | `Set#include? with an element that changes the Set`: the reference raises RuntimeError from the khash rebuild guard (GHSA-4jw6-mq65-g3c8); the Hash-shaped Set here has no such state and finishes the lookup. |
 | gem_binding_binding | 1 KO, 2 crash | C fixture | `binding_in_c` and the `__binding_env_*` helpers are `mruby-binding/test/binding.c`; the reference `mruby` command fails them too. |
 | gem_proc_binding | 1 crash | C fixture | `proc_in_c` of `mruby-proc-binding/test/binding.c`. |
@@ -57,6 +59,10 @@ Categories:
 | gem_backtracking_stack | 0 assertions | — | The file carries the helper the other gem test files call; `tools/mrbtest.sh` extracts it into `prelude.rb` and loads it after `assert.rb` for every file, the reference's driver getting it by linking all the files into one program. |
 | gem_gc_task | 2 KO | deviation | `GC.scheduler_driven` is there and the scheduler collects from its idle points, but `GC.generational_mode` is always false (the collector marks and sweeps in one go, `docs/design/gc.md`) and both assertions turn on it being on. |
 | gem_proc_set_stack | 0 assertions | — | Both tests ask `TaskTest.respond_to?` first and skip themselves: they probe how mruby sizes a task's stack allocation, which a growable vector has no equivalent of. |
+
+4.1.0-rc2 (2026-09-23): the reference's `test/t/hash.rb` gained one assertion (`hash` above) and
+nothing else in the suite changed, so the default build is 2344 of 2508, the byte-string one 2267 of
+2453 and the one without mruby-regexp 1979 of 2012; every file's `ok` is what it was.
 
 Summary (2026-09-13, after mruby-regexp, mruby-task, the source-location/backtrace work and
 mruby-sleep/mruby-strftime): 2507 assertions in the default build, 2344 pass (2452 and 2267

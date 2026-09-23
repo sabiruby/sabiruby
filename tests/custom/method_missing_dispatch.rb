@@ -5,7 +5,7 @@
 # arguments, keywords, a block), who answers (a private `method_missing`, `super` to the one
 # above, `respond_to_missing?`), and what escapes it (an exception, its backtrace, and a
 # `Fiber.yield` — which only a frame without a native boundary around it can do).
-# expected-from: mruby 4.1.0-rc
+# expected-from: mruby 4.1.0-rc2
 
 class Recorder
   def method_missing(name, *args, &blk)

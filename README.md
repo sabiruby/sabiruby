@@ -3,15 +3,15 @@
 A Rust implementation of the [mruby](https://github.com/mruby/mruby) virtual machine.
 It executes RITE bytecode (`.mrb` files produced by `mrbc`) and aims at behavioural
 compatibility with mruby 4.1. mruby 4.1.0 itself is not released yet: the reference everything
-here is checked against is the release candidate **4.1.0-rc** (tag `4.1.0-rc`, commit
-`3cf73ee`), and verification is against that binary rather than against a spec.
+here is checked against is the release candidate **4.1.0-rc2** (tag `4.1.0-rc2`, commit
+`c17ffcc24`), and verification is against that binary rather than against a spec.
 
 The VM runs bytecode only and is pure Rust (`no_std`). Five crates live in this repository:
 
 | crate | what | |
 |---|---|---|
 | [`sabiruby`](https://crates.io/crates/sabiruby) | the VM library | pure Rust, `no_std` + `alloc`, wasm |
-| [`sabiruby-compiler`](https://crates.io/crates/sabiruby-compiler) | the reference compiler (mruby 4.1.0-rc's `mruby-compiler`: Prism as its parser, mruby's code generator) built as C; output byte-identical to `mrbc`, plus `highlight()` for an editor's colours | needs a C compiler |
+| [`sabiruby-compiler`](https://crates.io/crates/sabiruby-compiler) | the reference compiler (mruby 4.1.0-rc2's `mruby-compiler`: Prism as its parser, mruby's code generator) built as C; output byte-identical to `mrbc`, plus `highlight()` for an editor's colours | needs a C compiler |
 | [`sabiruby-cli`](https://crates.io/crates/sabiruby-cli) | the `sabiruby` command: `sabiruby foo.rb`, `-e`, `-r`, `compile`, `dump`, with the switches of the reference `mruby` | depends on both |
 | [`sabiruby-macros`](https://crates.io/crates/sabiruby-macros) | `#[derive(RubyClass)]` and `#[ruby_methods]`: a Rust struct and its `impl` block as a Ruby class ([`docs/design/macros.md`](https://github.com/sabiruby/sabiruby/blob/main/docs/design/macros.md)) | depends on neither; reached through `sabiruby`'s feature `macros` |
 | [`sabiruby-serde`](https://crates.io/crates/sabiruby-serde) | serde and a `JSON` class on top of the VM, and `declare`: data *written* in Ruby collected into a Rust table ([`docs/design/serde.md`](https://github.com/sabiruby/sabiruby/blob/main/docs/design/serde.md)) | the VM itself never depends on serde |
@@ -115,18 +115,18 @@ than where the reference's own byte-for-character slip cuts ([`docs/design/utf8.
   (default) only adds `std::error::Error` for `VmError`. The C compiler and the command line
   tool are the separate crates `sabiruby-compiler` and `sabiruby-cli`.
 * **Behaviour is checked against the reference, not against memory.** Every claim about
-  mruby semantics is verified with the 4.1.0-rc binary (fixtures, test suite below).
+  mruby semantics is verified with the 4.1.0-rc2 binary (fixtures, test suite below).
 
 ## Verification
 
-`tests/fixtures/*.rb` are compiled and run by the reference mruby 4.1.0-rc
-(Docker image `kishima/mruby:4.1.0-rc`, see `tools/fixtures.sh`); `.out` holds the
+`tests/fixtures/*.rb` are compiled and run by the reference mruby 4.1.0-rc2
+(Docker image `kishima/mruby:4.1.0-rc2`, see `tools/fixtures.sh`); `.out` holds the
 reference stdout, `.dump` the `mrbc --verbose` listing. `cargo test` runs every `.mrb`
 on SabiRuby and compares stdout byte for byte. All 18 fixtures pass (`gc.rb` also under `SABIRUBY_GC_STRESS=1`); `utf8.rb` is compared with
-the image of the build's own reading (`kishima/mruby:4.1.0-rc-utf8` by default).
+the image of the build's own reading (`kishima/mruby:4.1.0-rc2-utf8` by default, built by `tools/utf8-image/build.sh`).
 
 mruby's own test suite (`test/t`) plus the tests of the ported gems (`gem_*`) passes 2344 of
-2507 in the default build and 2267 of 2452 in a byte-string one — each build runs the
+2508 in the default build and 2267 of 2453 in a byte-string one — each build runs the
 assertions written for it and has its own floor (see [`docs/verification/mrbtest.md`](https://github.com/sabiruby/sabiruby/blob/main/docs/verification/mrbtest.md)
 and [`docs/verification/mrbtest-bytes.md`](https://github.com/sabiruby/sabiruby/blob/main/docs/verification/mrbtest-bytes.md), reasons for the rest in
 [`docs/verification/mrbtest-notes.md`](https://github.com/sabiruby/sabiruby/blob/main/docs/verification/mrbtest-notes.md)).
@@ -134,7 +134,8 @@ Most of what does not pass is mruby-regexp's engine: 82 crashes are patterns usi
 finite automaton has none of, and 39 KO are what the two engines answer differently. The rest:
 11 need the C test fixtures of mruby-test (`env.c`, `vformat.c`, `sysfail.c`,
 `ary_shared.c`), a handful are the deviations above, 1 is `(1..).last`, where the core test and
-mruby-range-ext disagree (the reference `mruby` crashes on it too), and the remaining ones are
+mruby-range-ext disagree (the reference `mruby` crashes on it too), 1 is 4.1.0-rc2's new `hash`
+assertion about an `eql?` that deletes entries mid-lookup (not decided yet; see the notes), and the remaining ones are
 skips the reference makes too (build-dependent).
 `tools/mrbtest.sh` compiles the gem tests and gem mrblibs too (`GEMS` in the script).
 
@@ -145,7 +146,7 @@ is provided, natively.
 ### SabiRuby's own tests
 
 `tests/custom/<case>.rb` are tests written for SabiRuby itself: behaviour the
-reference `mruby` gets wrong in 4.1.0-rc (with the upstream fix named), things
+reference `mruby` gets wrong in 4.1.0-rc2 (with the upstream fix named), things
 the reference test suite does not cover, and features planned but not built
 yet. Each case has a hand-decided `.expected` (its header says from what:
 CRuby, an mruby master commit, or the reference), the reference output

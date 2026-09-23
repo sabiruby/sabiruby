@@ -26,7 +26,7 @@
 set -eu
 cd "$(dirname "$0")/.."
 
-IMG=kishima/mruby:4.1.0-rc
+IMG=kishima/mruby:4.1.0-rc2
 MRUBY=${MRUBY_SRC:-../../ref/mruby}
 DIR=bench
 RUNS=${RUNS:-5}

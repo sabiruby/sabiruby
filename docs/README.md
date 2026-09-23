@@ -202,6 +202,12 @@ dropped rather than re-measured); and why `2026-09-22-release-0.6.md` §10-1 is 
 `CHANGELOG.md` has shipped inside the `sabiruby` tarball since `861b133`, and what crates.io
 does not render is not what `include` decides.
 
+[2026-09-23-rc2](worklog/2026-09-23-rc2.md) moves the reference from mruby 4.1.0-rc to 4.1.0-rc2
+(Japanese): the recipe of the UTF-8 reference image written down (`tools/utf8-image/`), every
+`.mrb` byte-identical under rc2's `mrbc` except `hash.mrb`, and why rc2's one new assertion
+(an `eql?` that deletes entries mid-lookup must raise) does not pass here — the reference's small
+hash calls `eql?` on every entry, SabiRuby compares hash codes first — with the options left open.
+
 ## Where things were (before 2026-09-15)
 
 Every document above sat directly under `docs/`; references in older commits, in the book's notes

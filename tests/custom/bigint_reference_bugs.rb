@@ -1,4 +1,4 @@
-# Wide integers where mruby 4.1.0-rc answers something it does not answer for a
+# Wide integers where mruby 4.1.0-rc2 (and -rc) answers something it does not answer for a
 # plain Integer. Each one is a slip in mruby-bigint, not a decision, so SabiRuby
 # keeps the meaning the same at both widths (docs/design/gems.md, "Deviations kept"):
 #   ~x      `mrb_bint_rev` negates and then takes one off the MAGNITUDE

@@ -1,5 +1,5 @@
 # utf8-only: strings as characters (the feature `utf8`)
-# Character-indexed strings where mruby 4.1.0-rc built with MRB_UTF8_STRING answers
+# Character-indexed strings where mruby 4.1.0-rc2 (and -rc) built with MRB_UTF8_STRING answers
 # something it does not answer for an ASCII string. Each one hands a BYTE offset to
 # `mrb_str_substr`, which counts CHARACTERS in that build, so the answer is cut at the
 # wrong place — a slip, not a decision, so SabiRuby cuts where the offset was measured

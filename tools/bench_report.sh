@@ -37,7 +37,7 @@ function medall(   i, j, k, m, v) {
 function ratio(a, b) { return (b + 0 > 0 && a + 0 > 0) ? sprintf("%.2fx", a / b) : "" }
 END {
   printf "# Benchmarks by category: %s\n\n", label
-  printf "SabiRuby against mruby 4.1.0-rc, best and median of the runs `tools/bench.sh` made.\n"
+  printf "SabiRuby against mruby 4.1.0-rc2, best and median of the runs `tools/bench.sh` made.\n"
   printf "The reference runs inside the Docker image on the same machine, so read the ratio and not\n"
   printf "the milliseconds. Empty reference columns mean Docker was not there when this was measured.\n"
   printf "Source: `%s`.\n\n", tsv

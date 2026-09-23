@@ -11,6 +11,10 @@ adapt in `compiler/csrc/shim.c` and `compiler/build.rs` instead.
 | `prism/generated/{include,src}` | `build/prism/` of a reference build | generated from Prism 1.9.0's ERB templates by the reference `rake` | as Prism |
 | `mrbconf.h` | `include/mrbconf.h` of mruby | 4.1.0-rc | MIT, mruby developers (`../../LICENSE-mruby`) |
 
+4.1.0-rc2 (commit `c17ffcc24`)'s `mrbgems/mruby-compiler` (with the Prism submodule at the same `c0e3781`) and
+`include/mrbconf.h` are identical to these (`git diff 4.1.0-rc 4.1.0-rc2 -- mrbgems/mruby-compiler include/mrbconf.h`
+is empty; checked 2026-09-23), so nothing here was copied again for rc2.
+
 `prism/generated/` holds the files Prism generates from `templates/*.erb`
 (`include/prism/ast.h`, `include/prism/diagnostic.h`, `src/{diagnostic,node,prettyprint,serialize,token_type}.c`).
 They are taken from the reference build instead of being regenerated (no Ruby needed to build

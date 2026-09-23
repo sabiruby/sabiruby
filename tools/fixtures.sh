@@ -1,5 +1,5 @@
 #!/bin/bash
-# Compile tests/fixtures/*.rb with the reference mruby (Docker image kishima/mruby:4.1.0-rc)
+# Compile tests/fixtures/*.rb with the reference mruby (Docker image kishima/mruby:4.1.0-rc2)
 # into .mrb and record the reference output (.out) and the verbose dump (.dump).
 #   tools/fixtures.sh            # all fixtures
 #   tools/fixtures.sh hello      # one fixture
@@ -7,10 +7,10 @@
 # src/mrblib/require.rb (SabiRuby's own require/load) into src/mrblib/require.mrb.
 set -eu
 cd "$(dirname "$0")/.."
-IMG=kishima/mruby:4.1.0-rc
+IMG=kishima/mruby:4.1.0-rc2
 # the same mruby built with MRB_UTF8_STRING, for the fixtures whose answer depends on how a
 # string is read (`docs/design/utf8.md`)
-IMG_UTF8=kishima/mruby:4.1.0-rc-utf8
+IMG_UTF8=kishima/mruby:4.1.0-rc2-utf8
 MRUBY=${MRUBY_SRC:-../../ref/mruby}
 if [ -d "$MRUBY/mrblib" ]; then
   mkdir -p target/mrblib

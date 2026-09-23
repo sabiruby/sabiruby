@@ -4,7 +4,7 @@
 # Semantics shared by CRuby 3.2 and the reference mruby. (Numbered parameters
 # seen from eval are mruby-only -- CRuby raises NameError -- and are covered by
 # mruby's own mruby-eval/test/eval.rb.)
-# expected-from: reference mruby 4.1.0-rc (same as CRuby 3.2)
+# expected-from: reference mruby 4.1.0-rc2 (same as CRuby 3.2)
 def f
   a = 10
   eval "a += 1"

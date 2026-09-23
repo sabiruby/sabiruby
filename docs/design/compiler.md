@@ -1,7 +1,7 @@
 # Compiler
 
 `sabiruby run foo.rb`, `sabiruby -e CODE` and `sabiruby compile` compile Ruby source with the
-**reference compiler itself**: mruby 4.1.0-rc's `mrbgems/mruby-compiler` (Prism 1.9.0 as the
+**reference compiler itself**: mruby 4.1.0-rc's `mrbgems/mruby-compiler` (unchanged in 4.1.0-rc2) (Prism 1.9.0 as the
 parser, mruby's code generator), built as C and linked into the command. The compiler is not
 the subject of this project (nor of the book), so it is not ported to Rust; what matters is
 that the bytecode is exactly the reference's. The plan this follows is
@@ -89,7 +89,7 @@ feature on as well. The browser playground uses it for its AST pane.
 ## Verification
 
 `compiler/tests/golden.rs` compiles every `.rb` of the repository that has a `.mrb` made by the
-reference `mrbc` (Docker image `kishima/mruby:4.1.0-rc`) and requires identical bytes, with the
+reference `mrbc` (Docker image `kishima/mruby:4.1.0-rc2`) and requires identical bytes, with the
 file name the generating script passed to `mrbc` (it ends up in the DBG section under `-g`):
 
 | set | files | options | result |

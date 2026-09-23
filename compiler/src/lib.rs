@@ -1,6 +1,6 @@
-//! The reference mruby 4.1.0-rc compiler as a Rust library: Ruby source in, RITE bytecode out.
+//! The reference mruby 4.1.0-rc2 compiler as a Rust library: Ruby source in, RITE bytecode out.
 //!
-//! This crate does not reimplement the compiler. It builds mruby 4.1.0-rc's own
+//! This crate does not reimplement the compiler. It builds mruby 4.1.0-rc2's own
 //! `mruby-compiler` (the Prism parser plus mruby's code generator) as C, standalone like
 //! the reference `mrbc`, and calls it through a small C shim. The output is byte-for-byte
 //! what `mrbc` writes for the same source and options (checked by the golden tests of the
@@ -267,7 +267,7 @@ pub fn highlight(src: &[u8]) -> Vec<u8> {
     ffi::highlight(src)
 }
 
-/// The compiler this crate embeds, e.g. `"mruby 4.1.0-rc (3cf73ee), Prism 1.9.0"`.
+/// The compiler this crate embeds, e.g. `"mruby 4.1.0-rc2 (c17ffcc24), Prism 1.9.0"`.
 pub fn version() -> &'static str {
     ffi::version()
 }

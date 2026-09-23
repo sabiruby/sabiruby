@@ -4,7 +4,7 @@
 # table at the same size). This walks the two sides of that boundary and the ways an index
 # can go stale: deleting below it again, rehash, replacing every entry, and keys that answer
 # the same `hash` but are not `eql?`.
-# expected-from: mruby 4.1.0-rc (this is about a representation Ruby cannot see)
+# expected-from: mruby 4.1.0-rc2 (this is about a representation Ruby cannot see)
 
 def build(n)
   h = {}

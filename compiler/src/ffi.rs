@@ -91,5 +91,5 @@ pub fn highlight(src: &[u8]) -> Vec<u8> {
 
 pub fn version() -> &'static str {
     // SAFETY: the shim returns a pointer to a static NUL-terminated ASCII literal.
-    unsafe { CStr::from_ptr(sabiruby_mrc_version()).to_str().unwrap_or("mruby 4.1.0-rc") }
+    unsafe { CStr::from_ptr(sabiruby_mrc_version()).to_str().unwrap_or("mruby 4.1.0-rc2") }
 }

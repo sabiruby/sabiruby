@@ -30,3 +30,4 @@ gem_ascii_case	/i is Rust's folding, which carries the Unicode table in either b
 gem_backtracking_stack	0 assertions: the file carries the helper the other gem test files call, which `tools/mrbtest.sh` extracts into `prelude.rb`
 gem_gc_task	2 ko: `GC.generational_mode` is always false here (the collector marks and sweeps in one go, `docs/design/gc.md`), and both assertions turn on it being on
 gem_proc_set_stack	0 assertions: both tests ask `TaskTest.respond_to?` first and skip themselves — they probe how mruby sizes a task's stack allocation, which a growable vector has no equivalent of
+hash	undecided: the eql? assertion (rc2) assumes every key of a small hash is compared with eql?; here the hash codes are compared first, so eql? never runs

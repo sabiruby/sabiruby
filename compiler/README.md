@@ -1,6 +1,6 @@
 # sabiruby-compiler
 
-The reference mruby 4.1.0-rc compiler as a Rust library: Ruby source in, RITE bytecode
+The reference mruby 4.1.0-rc2 compiler as a Rust library: Ruby source in, RITE bytecode
 (`.mrb`) out, **byte for byte what the reference `mrbc` writes**.
 
 It is not a port. The crate builds mruby's own `mruby-compiler` (the Prism parser plus
@@ -21,7 +21,8 @@ column; `Display` prints the errors as `FILE:LINE:COL: message`, as `mrbc` does.
 
 ## What is vendored
 
-`vendor/` holds unmodified copies from mruby 4.1.0-rc (commit `3cf73ee`), listed with their
+`vendor/` holds unmodified copies from mruby 4.1.0-rc (commit `3cf73ee`; `mruby-compiler` and
+`mrbconf.h` are the same in 4.1.0-rc2, commit `c17ffcc24`), listed with their
 licences in [`vendor/VENDOR.md`](https://github.com/sabiruby/sabiruby/blob/main/compiler/vendor/VENDOR.md):
 
 * `mrbgems/mruby-compiler` (`include/`, `src/`): MIT, Copyright (c) HASUMI Hitoshi
@@ -45,7 +46,7 @@ licences in [`vendor/VENDOR.md`](https://github.com/sabiruby/sabiruby/blob/main/
   expressions, `%w[]` and heredocs are told apart the way the parser tells them apart) and
   then with its syntax tree (method names, whole symbols). A source with syntax errors still
   gets a map, and a run of one category never cuts a UTF-8 character in half.
-* `version()`: `"mruby 4.1.0-rc (3cf73ee), Prism 1.9.0"`
+* `version()`: `"mruby 4.1.0-rc2 (c17ffcc24), Prism 1.9.0"`
 * feature `ast`: `ast(src, filename) -> Option<String>`, Prism's syntax tree pretty-printed by
   `pm_prettyprint`, the format a debug build of `mrbc --verbose` prints (and the book's listings).
   Off by default: the default build keeps the reference's `PRISM_BUILD_MINIMAL`; the feature
@@ -74,7 +75,7 @@ browser playground runs. `wasm32-unknown-unknown` (no libc) is not supported.
 ## Verification
 
 The repository's golden tests (`compiler/tests/golden.rs`) compile every `.rb` that has a
-`.mrb` produced by the reference `mrbc` (Docker image `kishima/mruby:4.1.0-rc`): the VM
+`.mrb` produced by the reference `mrbc` (Docker image `kishima/mruby:4.1.0-rc2`): the VM
 fixtures, mruby's own test suite (with `-g`, so DBG and LVAR are compared too) and the
 benchmarks — 157 files as this is written. All are byte-identical. The error messages and exit
 codes of `sabiruby compile` match `mrbc`'s.
