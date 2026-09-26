@@ -32,6 +32,15 @@ pub fn init(vm: &mut Vm) {
         ("instance_variable_names", |vm, s, _a, _b| { let names: Vec<Value> = match s { Value::Obj(o) => vm.heap.get(o).ivars.iter().map(|(k, _)| Value::Sym(*k)).collect(), _ => vec![] }; Ok(vm.ary_new(names)) }),
         // the encoding the build has (`MRB_UTF8_STRING` in the reference, the feature `utf8` here)
         ("__ENCODING__", |vm, _s, _a, _b| Ok(vm.str_new(if cfg!(feature = "utf8") { b"UTF-8".as_slice() } else { b"ASCII-8BIT".as_slice() }))),
+        // `mrb_obj_method_recursive_p` (src/kernel.c): whether a frame further out than the
+        // method asking is running `mid` on this receiver (and, given a second argument, with
+        // it as the first argument). `Enumerable#hash` (mrblib/enum.rb) asks it.
+        ("__method_recursive?", |vm, s, a, _b| {
+            argc!(vm, a, 1, 2);
+            let mid = super::object::sym_arg(vm, a[0])?;
+            let arg2 = a.get(1).copied().unwrap_or(Value::Nil);
+            Ok(Value::bool(vm.method_recursive(s, mid, arg2)))
+        }),
         // `case`/`when` with a splat: `when *list` compiles to `__case_eqq`
         ("__case_eqq", |vm, s, a, _b| {
             argc!(vm, a, 1);
@@ -70,6 +79,19 @@ pub fn init(vm: &mut Vm) {
     for name in ["raise", "block_given?", "iterator?", "p", "print", "printf", "putc", "puts", "lambda", "proc", "__printstr__"] {
         let _ = vm.make_module_function(k, name);
     }
+    // `enum_update_hash` (src/enum.c), the step of `Enumerable#hash` (mrblib/enum.rb):
+    // `hash ^= (uint32_t)hv << (index % 16)`, the shift done in 32 bits
+    let e = vm.core.enumerable;
+    vm.define_module_function(e, "__update_hash", |vm, _s, a, _b| {
+        argc!(vm, a, 3);
+        // `mrb_get_args` "i": an Integer, a Float truncated, anything else a TypeError
+        let mut n = [0i64; 3];
+        for (slot, v) in n.iter_mut().zip(a) {
+            *slot = match *v { Value::Int(x) => x, Value::Float(f) => f as i64, v => { let d = vm.describe_for_type_error(v); return Err(vm.raise_type(&alloc::format!("{d} cannot be converted to Integer"))); } };
+        }
+        let [h, i, hv] = n;
+        Ok(Value::Int(h ^ (((hv as u32) << (i % 16) as u32) as i64)))
+    }).expect("Enumerable singleton");
 }
 
 fn puts_value(vm: &mut Vm, v: Value, depth: usize) -> VmResult<()> {

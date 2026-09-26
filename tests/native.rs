@@ -311,3 +311,11 @@ fn a_block_that_is_not_a_proc_is_refused_as_the_reference_refuses_it() {
     let e = vm.call_block_with_self(Value::Int(1), Value::Nil, &[]).expect_err("not a block");
     assert_eq!(vm.describe_error(&e), "not a block (TypeError)");
 }
+
+#[test]
+fn a_nil_block_is_an_argument_error_as_check_block_says() {
+    // mruby's `check_block` (src/vm.c), which `mrb_yield` and its relatives go through
+    let mut vm = Vm::with_mrblib().expect("vm");
+    let e = vm.call_block(Value::Nil, &[]).expect_err("no block");
+    assert_eq!(vm.describe_error(&e), "no block given (ArgumentError)");
+}

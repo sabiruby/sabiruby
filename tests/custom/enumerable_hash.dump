@@ -1,0 +1,224 @@
+irep 0xADDR nregs=9 nlocals=3 pools=1 syms=22 reps=4 ilen=468
+local variable names:
+  R1:t
+  R2:e
+catch type: rescue   begin: 0318 end: 0332 target: 0335
+file: /w/enumerable_hash.rb
+    9 000 GETCONST	R3	Struct
+    9 003 LOADSYM	R4	:a
+    9 006 LOADSYM	R5	:b
+    9 009 SEND		R3	:new	n=2
+    9 013 SETCONST	S	R3
+   10 016 GETCONST	R4	S
+   10 019 LOADI_1	R5	(1)
+   10 021 LOADI_2	R6	(2)
+   10 023 SEND		R4	:new	n=2
+   10 027 SEND0		R4	:hash
+   10 030 SEND0		R4	:class
+   10 033 SSEND		R3	:p	n=1
+   11 037 GETCONST	R4	S
+   11 040 LOADI_1	R5	(1)
+   11 042 LOADI_2	R6	(2)
+   11 044 SEND		R4	:new	n=2
+   11 048 SEND0		R4	:hash
+   11 051 GETCONST	R5	S
+   11 054 LOADI_1	R6	(1)
+   11 056 LOADI_2	R7	(2)
+   11 058 SEND		R5	:new	n=2
+   11 062 SEND0		R5	:hash
+   11 065 EQ		R4	(R5)
+   11 067 SSEND		R3	:p	n=1
+   12 071 GETCONST	R4	S
+   12 074 LOADI_1	R5	(1)
+   12 076 LOADI_2	R6	(2)
+   12 078 SEND		R4	:new	n=2
+   12 082 SEND0		R4	:hash
+   12 085 GETCONST	R5	S
+   12 088 LOADI_2	R6	(2)
+   12 090 LOADI_1	R7	(1)
+   12 092 SEND		R5	:new	n=2
+   12 096 SEND0		R5	:hash
+   12 099 EQ		R4	(R5)
+   12 101 SSEND		R3	:p	n=1
+   13 105 GETCONST	R3	S
+   13 108 LOADNIL	R4	(nil)
+   13 110 LOADI_1	R5	(1)
+   13 112 SEND		R3	:new	n=2
+   13 116 MOVE		R1	R3	; R1:t
+   13 119 MOVE		R3	R1	; R1:t
+   13 122 MOVE		R4	R1	; R1:t
+   13 125 SEND		R3	:a=	n=1
+   14 129 MOVE		R4	R1	; R1:t
+   14 132 SEND0		R4	:hash
+   14 135 SEND0		R4	:class
+   14 138 SSEND		R3	:p	n=1
+   15 142 LOADNIL	R3	(nil)
+   15 144 LOADNIL	R4	(nil)
+   15 146 CLASS		R3	:E
+   15 149 EXEC		R3	I[0]
+   16 152 GETCONST	R4	E
+   16 155 SEND0		R4	:new
+   16 158 SEND0		R4	:hash
+   16 161 SEND0		R4	:class
+   16 164 GETCONST	R5	E
+   16 167 SEND0		R5	:new
+   16 170 SEND0		R5	:hash
+   16 173 GETCONST	R6	E
+   16 176 SEND0		R6	:new
+   16 179 SEND0		R6	:hash
+   16 182 EQ		R5	(R6)
+   16 184 SSEND		R3	:p	n=2
+   17 188 GETCONST	R4	S
+   17 191 LOADI_1	R5	(1)
+   17 193 LOADI_2	R6	(2)
+   17 195 SEND		R4	:new	n=2
+   17 199 LOADSYM	R5	:x
+   17 202 HASH		R4	1
+   17 205 GETCONST	R5	S
+   17 208 LOADI_1	R6	(1)
+   17 210 LOADI_2	R7	(2)
+   17 212 SEND		R5	:new	n=2
+   17 216 GETIDX	R4	(R5)
+   17 218 SSEND		R3	:p	n=1
+   18 222 GETCONST	R4	Set
+   18 225 GETCONST	R5	S
+   18 228 LOADI_1	R6	(1)
+   18 230 LOADI_2	R7	(2)
+   18 232 SEND		R5	:new	n=2
+   18 236 GETIDX	R4	(R5)
+   18 238 GETCONST	R5	S
+   18 241 LOADI_1	R6	(1)
+   18 243 LOADI_2	R7	(2)
+   18 245 SEND		R5	:new	n=2
+   18 249 SEND		R4	:include?	n=1
+   18 253 SSEND		R3	:p	n=1
+   19 257 GETCONST	R4	Enumerable
+   19 260 LOADI16	R5	12347
+   19 264 LOADI_0	R6	(0)
+   19 266 LOADI_5	R7	(5)
+   19 268 SEND		R4	:__update_hash	n=3
+   19 272 LOADI16	R5	12350
+   19 276 EQ		R4	(R5)
+   19 278 SSEND		R3	:p	n=1
+   20 282 GETCONST	R4	Enumerable
+   20 285 LOADI_0	R5	(0)
+   20 287 LOADI8	R6	17
+   20 290 LOADI_1	R7	(1)
+   20 292 SEND		R4	:__update_hash	n=3
+   20 296 SSEND		R3	:p	n=1
+   21 300 GETCONST	R4	Enumerable
+   21 303 LOADI_0	R5	(0)
+   21 305 LOADI8	R6	15
+   21 308 LOADI__1	R7	(-1)
+   21 310 SEND		R4	:__update_hash	n=3
+   21 314 SSEND		R3	:p	n=1
+   22 318 GETCONST	R3	Enumerable
+   22 321 LOADI_0	R4	(0)
+   22 323 LOADI_0	R5	(0)
+   22 325 STRING	R6	L[0]	; x
+   22 328 SEND		R3	:__update_hash	n=3
+   22 332 JMP		368
+   22 335 EXCEPT	R3	
+   22 337 GETCONST	R4	TypeError
+   22 340 RESCUE	R3	R4
+   22 343 JMPIF		R4	350
+   22 347 JMP		366
+   22 350 MOVE		R2	R3	; R2:e
+   22 353 MOVE		R4	R2	; R2:e
+   22 356 SEND0		R4	:message
+   22 359 SSEND		R3	:p	n=1
+   22 363 JMP		368
+   22 366 RAISEIF	R3	
+   23 368 LOADI_1	R4	(1)
+   23 370 LOADSYM	R5	:hash
+   23 373 SEND		R4	:__method_recursive?	n=1
+   23 377 SSEND		R3	:p	n=1
+   24 381 LOADNIL	R3	(nil)
+   24 383 LOADNIL	R4	(nil)
+   24 385 CLASS		R3	:R
+   24 388 EXEC		R3	I[1]
+   25 391 GETCONST	R4	R
+   25 394 SEND0		R4	:new
+   25 397 SEND0		R4	:hash
+   25 400 SEND0		R4	:class
+   25 403 SSEND		R3	:p	n=1
+   26 407 LOADI_3	R3	(3)
+   26 409 LOADI_1	R4	(1)
+   26 411 LOADI_3	R5	(3)
+   26 413 ARRAY		R3	3
+   26 416 SEND0		R3	:index
+   26 419 MOVE		R2	R3	; R2:e
+   27 422 MOVE		R4	R2	; R2:e
+   27 425 SEND0		R4	:class
+   27 428 MOVE		R5	R2	; R2:e
+   27 431 BLOCK		R6	I[2]
+   27 434 SENDB		R5	:each	n=0
+   27 438 SSEND		R3	:p	n=2
+   28 442 LOADI_3	R4	(3)
+   28 444 LOADI_1	R5	(1)
+   28 446 LOADI_3	R6	(3)
+   28 448 ARRAY		R4	3
+   28 451 SEND0		R4	:rindex
+   28 454 BLOCK		R5	I[3]
+   28 457 SENDB		R4	:each	n=0
+   28 461 SSEND		R3	:p	n=1
+   28 465 RETURN	R3	
+   28 467 STOP
+
+irep 0xADDR nregs=4 nlocals=1 pools=0 syms=3 reps=1 ilen=13
+file: /w/enumerable_hash.rb
+   15 000 GETCONST	R2	Enumerable
+   15 003 SSEND		R1	:include	n=1
+   15 007 TDEF		R1	:each	I[0]
+   15 011 RETURN	R1	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=0 reps=0 ilen=24
+file: /w/enumerable_hash.rb
+   15 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   15 004 LOADI_1	R3	(1)
+   15 006 BLKPUSH	R2	0:0:0:0 (0)
+   15 010 BLKCALL		R2	1
+   15 013 LOADI_2	R3	(2)
+   15 015 BLKPUSH	R2	0:0:0:0 (0)
+   15 019 BLKCALL		R2	1
+   15 022 RETURN	R2	
+
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+file: /w/enumerable_hash.rb
+   24 000 TDEF		R1	:hash	I[0]
+   24 004 RETURN	R1	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=2 reps=0 ilen=33
+file: /w/enumerable_hash.rb
+   24 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   24 004 LOADSYM	R3	:hash
+   24 007 SSEND		R2	:__method_recursive?	n=1
+   24 011 JMPNOT	R2	020
+   24 015 LOADI_0	R2	(0)
+   24 017 JMP		031
+   24 020 LOADSELF	R2	(R0)
+   24 022 ARRAY		R2	1
+   24 025 SEND0		R2	:hash
+   24 028 ADDI		R2	1
+   24 031 RETURN	R2	
+
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=13
+local variable names:
+  R1:x
+file: /w/enumerable_hash.rb
+   27 000 ENTER		1:0:0:0:0:0:0:0 (0x40000)
+   27 004 MOVE		R3	R1	; R1:x
+   27 007 LOADI_1	R4	(1)
+   27 009 EQ		R3	(R4)
+   27 011 RETURN	R3	
+
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=0 reps=0 ilen=13
+local variable names:
+  R1:x
+file: /w/enumerable_hash.rb
+   28 000 ENTER		1:0:0:0:0:0:0:0 (0x40000)
+   28 004 MOVE		R3	R1	; R1:x
+   28 007 LOADI_3	R4	(3)
+   28 009 EQ		R3	(R4)
+   28 011 RETURN	R3	
+

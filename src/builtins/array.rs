@@ -283,8 +283,11 @@ pub fn init(vm: &mut Vm) {
         ("rotate", |vm, s, a, _b| { argc!(vm, a, 0, 1); let n = if a.is_empty() { 1 } else { vm.expect_int(a[0], "count")? }; let mut v = items(vm, s); if !v.is_empty() { let k = n.rem_euclid(v.len() as i64) as usize; v.rotate_left(k); } Ok(vm.ary_new(v)) }),
         // with a block and called by a SEND, the loop is a native loop frame (`loop_step`), so
         // the block runs in an ordinary frame (`docs/design/wait-anywhere.md`)
-        ("index", |vm, s, a, b| { if a.is_empty() && !b.is_nil() && vm.in_frame() { return vm.push_loop_frame(LOOP_INDEX, s, b, &[Value::Int(0)]); } let mut i = 0; loop { let it = match vm.ary(s).and_then(|v| v.get(i).map(|x| x.get())) { Some(v) => v, None => return Ok(Value::Nil) }; let hit = if let Some(x) = a.first() { vm.equal(it, *x)? } else { vm.call_block(b, &[it])?.truthy() }; if hit { return Ok(Value::Int(i as i64)); } i += 1; } }),
+        // `mrb_ary_index_m`: no argument and no block is `to_enum(:index)`
+        ("index", |vm, s, a, b| { if a.is_empty() && b.is_nil() { let (te, n) = (vm.intern("to_enum"), vm.intern("index")); return vm.funcall(s, te, &[Value::Sym(n)], Value::Nil); } if a.is_empty() && !b.is_nil() && vm.in_frame() { return vm.push_loop_frame(LOOP_INDEX, s, b, &[Value::Int(0)]); } let mut i = 0; loop { let it = match vm.ary(s).and_then(|v| v.get(i).map(|x| x.get())) { Some(v) => v, None => return Ok(Value::Nil) }; let hit = if let Some(x) = a.first() { vm.equal(it, *x)? } else { vm.call_block(b, &[it])?.truthy() }; if hit { return Ok(Value::Int(i as i64)); } i += 1; } }),
         ("rindex", |vm, s, a, b| {
+            // `mrb_ary_rindex_m`: no argument and no block is `to_enum(:rindex)`
+            if a.is_empty() && b.is_nil() { let (te, n) = (vm.intern("to_enum"), vm.intern("rindex")); return vm.funcall(s, te, &[Value::Sym(n)], Value::Nil); }
             if a.is_empty() && !b.is_nil() && vm.in_frame() { let n = ary_len(vm, s) as i64; return vm.push_loop_frame(LOOP_RINDEX, s, b, &[Value::Int(n)]); }
             // the array is re-read every step: `==` or the block may shrink or replace it
             let mut i = vm.ary(s).map(|v| v.len()).unwrap_or(0);

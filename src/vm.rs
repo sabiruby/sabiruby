@@ -2164,7 +2164,8 @@ impl Vm {
     pub fn call_block(&mut self, blk: Value, args: &[Value]) -> VmResult<Value> {
         let p = match blk {
             Value::Obj(o) if matches!(self.heap.get(o).kind, ObjKind::Proc(_)) => o,
-            Value::Nil => return Err(self.raise(self.core.local_jump_error, "no block given (yield)")),
+            // mruby `check_block` (src/vm.c): nil is an ArgumentError
+            Value::Nil => return Err(self.raise_arg("no block given")),
             // mruby `check_block` in mrb_yield / mrb_yield_argv (src/vm.c)
             _ => return Err(self.raise_type("not a block")),
         };
@@ -2225,7 +2226,8 @@ impl Vm {
     pub(crate) fn exec_block(&mut self, blk: Value, args: &[Value]) -> VmResult<Value> {
         let p = match blk {
             Value::Obj(o) if matches!(self.heap.get(o).kind, ObjKind::Proc(_)) => o,
-            Value::Nil => return Err(self.raise(self.core.local_jump_error, "no block given (yield)")),
+            // mruby `check_block` (src/vm.c): nil is an ArgumentError
+            Value::Nil => return Err(self.raise_arg("no block given")),
             // mruby `check_block` in mrb_yield (src/vm.c)
             _ => return Err(self.raise_type("not a block")),
         };

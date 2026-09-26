@@ -137,6 +137,19 @@ impl Vm {
         let below = if g.last() == Some(&o) { &g[..g.len() - 1] } else { &g[..] };
         below.contains(&o)
     }
+    /// `mrb_obj_method_recursive_p`: the reference walks from `ci[-2]` down, `ci[0]` being the
+    /// C function's own frame and `ci[-1]` the method that called it. A native called by a SEND
+    /// has no frame of its own here, so the frame on top is the caller, and the walk starts
+    /// below it.
+    pub(crate) fn method_recursive(&self, recv: Value, mid: crate::symbol::Sym, arg2: Value) -> bool {
+        let n = self.ci.len();
+        if n < 2 { return false; }
+        self.ci[..n - 1].iter().rev().any(|ci| {
+            ci.mid == Some(mid)
+                && self.stack.get(ci.base).map(|s| s.get()) == Some(recv)
+                && (arg2.is_nil() || self.stack.get(ci.base + 1).map(|s| s.get()) == Some(arg2))
+        })
+    }
     pub fn inspect_str(&mut self, v: Value) -> VmResult<String> {
         Ok(String::from_utf8_lossy(&self.inspect(v)?).into_owned())
     }
