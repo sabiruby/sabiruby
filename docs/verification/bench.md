@@ -472,6 +472,17 @@ All 27 together: +0.9% and −0.7% in the two rounds (A/A: +0.3%, −0.1%, −0.
 - Faster: a Hash's default proc −25.6%, a Hash miss −20.9% (`Class#new` and `Hash#[]` look methods up through the
   method cache now), `index { }` −13.2%, `Object.new` −8.8%, `instance_exec` −8.6%, `mem_short_lived` −11.1%.
 
+**After the author's decisions (2026-09-26, `fcbda97`).** `sort { }` / `sort! { }` went back to the native nested
+loop (the author chose to keep `sort`'s comparator a named boundary rather than pay +8.1% on it; waiting inside a
+comparison is not something a script needs). Re-measured against `3170b63` with the fixed `bench_ab.sh` (A and B
+alternate inside a round): `m_sort_block` **+5.4%** (rounds +3.0 +5.4 +5.4) with an **identical instruction count**
+(12,162,140 before and after). Five builds of the same source path scattered from +1.0% to +6.6%, and paths the
+change does not touch (`m_sort_plain`, `bm_so_lists`) moved by as much between builds, so the remainder is read as
+code placement in `exec_frames` plus at most one extra compare in `unwind_return`. The 2.7% line was set from A/A
+runs of one binary and does not cover build-to-build placement; **the author accepted the +5.4% on that reading**
+(2026-09-26). Integer-only `sort` without a block now uses `sort_unstable` (equal Integers are one value, so the
+order cannot differ): `m_sort_plain` −36.9%. Rounds: `bench/results/wait-anywhere/{sortfin,fin5}-*.tsv`.
+
 ## Earlier measurements (the five reference benchmarks, best of 3)
 
 
