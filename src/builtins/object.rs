@@ -35,7 +35,7 @@ pub fn init(vm: &mut Vm) {
         ("!=", |vm, s, a, _b| { argc!(vm, a, 1); let r = vm.equal(s, a[0])?; Ok(Value::bool(!r)) }),
         ("__id__", |vm, s, a, _b| { argc!(vm, a, 0); Ok(object_id(s)) }),
         ("__send__", send),
-        ("instance_eval", |vm, s, _a, b| { if b.is_nil() { return Err(vm.raise_arg("no block given")); } vm.call_block_with_self(b, s, &[s]) }),
+        ("instance_eval", |vm, s, _a, b| { if b.is_nil() { return Err(vm.raise_arg("no block given")); } vm.exec_block_with_self(b, s, &[s], None) }),
     ]);
     vm.mark_private(c.basic_object, &["initialize"]);
     vm.define_methods(c.object, &[
@@ -61,7 +61,7 @@ pub fn init(vm: &mut Vm) {
         ("respond_to_missing?", |_vm, _s, _a, _b| Ok(Value::False)),
         ("remove_instance_variable", |vm, s, a, _b| { argc!(vm, a, 1); let n = sym_arg(vm, a[0])?; match s { Value::Obj(o) => { if vm.heap.get(o).frozen { return Err(vm.frozen_error(s)); } let pos = vm.heap.get(o).ivars.iter().position(|(k, _)| *k == n); match pos { Some(i) => Ok(vm.heap.get_mut(o).ivars.remove(i).1.get()), None => { let nn = vm.sym_name(n); Err(vm.raise(vm.core.name_error, &format!("instance variable {nn} not defined"))) } } } _ => { let nn = vm.sym_name(n); Err(vm.raise(vm.core.name_error, &format!("instance variable {nn} not defined"))) } } }),
         ("send", send),
-        ("public_send", |vm, s, a, b| { if a.is_empty() { return Err(vm.raise_arg("no method name given")); } let m = sym_arg(vm, a[0])?; if let Some((_, owner)) = vm.find_method(vm.class_of(s), m) { if vm.method_vis(owner, m) != Vis::Public { let name = vm.sym_name(m); let d = vm.describe_for_error(s); let v = if vm.method_vis(owner, m) == Vis::Private { "private" } else { "protected" }; return Err(vm.no_method_error(m, s, &format!("{v} method '{name}' called for {d}"))); } } vm.funcall(s, m, &a[1..], b) }),
+        ("public_send", |vm, s, a, b| { if a.is_empty() { return Err(vm.raise_arg("no method name given")); } let m = sym_arg(vm, a[0])?; if let Some((_, owner)) = vm.find_method(vm.class_of(s), m) { if vm.method_vis(owner, m) != Vis::Public { let name = vm.sym_name(m); let d = vm.describe_for_error(s); let v = if vm.method_vis(owner, m) == Vis::Private { "private" } else { "protected" }; return Err(vm.no_method_error(m, s, &format!("{v} method '{name}' called for {d}"))); } } let kw = match (vm.pending_kw, a.last()) { (Some(k), Some(l)) if a.len() > 1 && !k.is_nil() && k == *l => Some(k), _ => None }; vm.send_in_frame(s, m, &a[1..], kw, b) }),
         ("methods", |vm, s, a, _b| { let all = a.first().map(|v| v.truthy()).unwrap_or(true); let list = method_list(vm, vm.class_of(s), Some(Vis::Public), all); Ok(vm.ary_new(list)) }),
         ("public_methods", |vm, s, _a, _b| { let list = method_list(vm, vm.class_of(s), Some(Vis::Public), true); Ok(vm.ary_new(list)) }),
         ("private_methods", |vm, s, _a, _b| { let list = method_list(vm, vm.class_of(s), Some(Vis::Private), true); Ok(vm.ary_new(list)) }),
@@ -143,8 +143,8 @@ pub fn init(vm: &mut Vm) {
         ("constants", |vm, s, _a, _b| { let list: Vec<Value> = vm.heap.class(s.obj().unwrap()).consts.keys().map(|k| Value::Sym(*k)).collect(); Ok(vm.ary_new(list)) }),
         ("class_variable_get", |vm, s, a, _b| { argc!(vm, a, 1); let n = sym_arg(vm, a[0])?; Ok(vm.heap.class(s.obj().unwrap()).cvars.get(&n).map(|s| s.get()).unwrap_or(Value::Nil)) }),
         ("class_variable_set", |vm, s, a, _b| { argc!(vm, a, 2); let n = sym_arg(vm, a[0])?; vm.heap.class_mut(s.obj().unwrap()).cvars.insert(n, Slot::from(a[1])); Ok(a[1]) }),
-        ("module_eval", |vm, s, _a, b| { if b.is_nil() { return Err(vm.raise_arg("no block given")); } vm.call_block_with_self(b, s, &[s]) }),
-        ("class_eval", |vm, s, _a, b| { if b.is_nil() { return Err(vm.raise_arg("no block given")); } vm.call_block_with_self(b, s, &[s]) }),
+        ("module_eval", |vm, s, _a, b| { if b.is_nil() { return Err(vm.raise_arg("no block given")); } vm.exec_block_with_self(b, s, &[s], None) }),
+        ("class_eval", |vm, s, _a, b| { if b.is_nil() { return Err(vm.raise_arg("no block given")); } vm.exec_block_with_self(b, s, &[s], None) }),
     ]);
     // The `MRB_MT_PRIVATE` half of `mod_rom_entries` (src/class.c). `method_removed` is *not*
     // among them here although the core table marks it private: mruby-metaprog defines it a
@@ -190,6 +190,19 @@ pub fn init(vm: &mut Vm) {
                 None => vm.instance_alloc(c)?,
             };
             let init = vm.s.initialize;
+            // Called by a SEND, an `initialize` written in Ruby runs in a frame of its own above
+            // one that answers the object, which is what the reference's bytecode `new` is
+            // (`new_iseq`: `SSENDB :initialize` then `RETURN R0`), so it is no native boundary
+            if vm.in_frame() {
+                if let Some((p, owner)) = vm.ruby_method(obj, init) {
+                    let kw = match (vm.pending_kw, a.last()) { (Some(k), Some(l)) if !k.is_nil() && k == *l => Some(k), _ => None };
+                    let pos = if kw.is_some() { &a[..a.len() - 1] } else { a };
+                    let name = vm.native_mid.unwrap_or(init);
+                    vm.push_return_frame(obj, name)?;
+                    vm.push_method_frame(p, owner, obj, init, pos.to_vec(), kw, b, false)?;
+                    return Ok(obj);
+                }
+            }
             if vm.respond_to(obj, init) {
                 vm.funcall(obj, init, a, b)?;
             } else if !a.is_empty() {

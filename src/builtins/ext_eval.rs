@@ -104,7 +104,8 @@ pub(crate) fn top_load(vm: &mut Vm, src: &[u8], self_: Value) -> VmResult<Value>
         irep, upper: None, env: None, target_class: Some(vm.core.object),
         strict: false, scope: false, orphan: false, mid: None,
     }));
-    vm.run_eval(p, self_, None)
+    // a host's load is a nested run (`mrb_load_string` from C), not a frame of the caller's
+    vm.run_eval_nested(p, self_, None)
 }
 
 /// The `line` and `file` arguments of `eval`/`instance_eval`, with the reference's checks.
@@ -195,7 +196,7 @@ fn instance_eval(vm: &mut Vm, s: Value, a: &[Value], b: Value) -> VmResult<Value
     // `object_eval`: with a block the form takes no argument at all
     if !b.is_nil() {
         argc!(vm, a, 0);
-        return vm.call_block_with_self(b, s, &[s]);
+        return vm.exec_block_with_self(b, s, &[s], None);
     }
     if a.is_empty() { return Err(vm.raise_arg("no block given")); }
     argc!(vm, a, 1, 3);
@@ -213,7 +214,7 @@ fn instance_eval(vm: &mut Vm, s: Value, a: &[Value], b: Value) -> VmResult<Value
 fn class_eval(vm: &mut Vm, s: Value, a: &[Value], b: Value) -> VmResult<Value> {
     if !b.is_nil() {
         argc!(vm, a, 0);
-        return vm.call_block_with_self(b, s, &[s]);
+        return vm.exec_block_with_self(b, s, &[s], None);
     }
     if a.is_empty() { return Err(vm.raise_arg("no block given")); }
     argc!(vm, a, 1, 3);

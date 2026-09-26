@@ -23,6 +23,7 @@ pub fn init(vm: &mut Vm) {
         // the caller's keywords stay keywords (the trailing Hash is the pending kdict)
         let kw = match (vm.pending_kw, a.last()) { (Some(k), Some(l)) if !k.is_nil() && k == *l => Some(k), _ => None };
         let pos = if kw.is_some() { &a[..a.len() - 1] } else { a };
-        vm.call_block_with_self_kw(b, s, pos, kw)
+        // called by a SEND the block becomes the frame (`mrb_object_exec` → `mrb_exec_irep`)
+        vm.exec_block_with_self(b, s, pos, kw)
     });
 }

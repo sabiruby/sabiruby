@@ -698,9 +698,7 @@ fn task_pass(vm: &mut Vm, _s: Value, a: &[Value], _b: Value) -> VmResult<Value> 
         if vm.cur == ROOT && !vm.task.loop_running { scheduler_step(vm); }
         return Ok(Value::Nil);
     };
-    if vm.fiber_check_native(vm.cur) {
-        return Err(vm.raise(vm.core.runtime_error, "can't switch task across C function boundary"));
-    }
+    if vm.fiber_check_native(vm.cur) { return Err(boundary_error(vm, "Task.pass")); }
     set_status(vm, t, READY);
     park(vm);
     Ok(Value::Nil)
@@ -930,9 +928,7 @@ fn queue_pop_try(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Valu
     let Some(me) = current_task(vm) else {
         return Err(vm.raise(vm.core.runtime_error, "blocking pop can only be called from within a task"));
     };
-    if vm.fiber_check_native(vm.cur) {
-        return Err(vm.raise(vm.core.runtime_error, "blocking pop cannot be called from within a C function boundary"));
-    }
+    if vm.fiber_check_native(vm.cur) { return Err(boundary_error(vm, "Task::Queue#pop")); }
     {
         let t = td_mut(vm, me);
         t.reason = REASON_QUEUE;
@@ -1105,7 +1101,7 @@ pub fn init(vm: &mut Vm) {
             argc!(vm, a, 1);
             let ms = vm.expect_int(a[0], "ms")?;
             if ms < 0 { return Err(vm.raise_arg("time interval must be positive")); }
-            sleep_us(vm, (ms as u64).saturating_mul(1000))?;
+            sleep_us(vm, (ms as u64).saturating_mul(1000), "sleep_ms")?;
             Ok(Value::Nil)
         }),
         ("usleep", |vm, _s, a, _b| {
@@ -1113,7 +1109,7 @@ pub fn init(vm: &mut Vm) {
             let us = vm.expect_int(a[0], "usec")?;
             if us < 0 { return Err(vm.raise_arg("time interval must be positive")); }
             let before = wall_micros(vm);
-            sleep_us(vm, us as u64)?;
+            sleep_us(vm, us as u64, "usleep")?;
             // mruby-sleep answers the microseconds actually waited, mruby-task the ones asked for
             Ok(Value::Int(match (before, wall_micros(vm)) {
                 (Some(b), Some(e)) if e >= b => (e - b) as i64,
@@ -1131,6 +1127,14 @@ pub fn init(vm: &mut Vm) {
     }
 }
 
+/// The error a wait raises where the task has a native frame on the host stack and so cannot be
+/// parked: it names the native and what it was calling (`can't wait inside Array#sort's call
+/// to a block (Task::Queue#pop)`), where the reference says only "C function boundary".
+fn boundary_error(vm: &mut Vm, what: &str) -> crate::error::VmError {
+    let at = vm.boundary_name();
+    vm.raise(vm.core.runtime_error, &format!("can't wait inside {at} ({what})"))
+}
+
 /// `Kernel#sleep` (`mrb_f_sleep` of mruby-task, `f_sleep` of mruby-sleep). Both gems define this
 /// name; the reference lets mruby-task's win where both are there (its README), and what
 /// mruby-sleep adds is what happens *outside* a task — a real wait rather than a yield. The two
@@ -1139,9 +1143,7 @@ fn kernel_sleep(vm: &mut Vm, _s: Value, a: &[Value], _b: Value) -> VmResult<Valu
     argc!(vm, a, 0, 1);
     if a.is_empty() {
         let Some(t) = current_task(vm) else { return Ok(Value::Nil) };
-        if vm.fiber_check_native(vm.cur) {
-            return Err(vm.raise(vm.core.runtime_error, "can't sleep across C function boundary"));
-        }
+        if vm.fiber_check_native(vm.cur) { return Err(boundary_error(vm, "sleep")); }
         set_status(vm, t, SUSPENDED);
         park(vm);
         return Ok(Value::Nil);
@@ -1154,7 +1156,7 @@ fn kernel_sleep(vm: &mut Vm, _s: Value, a: &[Value], _b: Value) -> VmResult<Valu
     if secs < 0.0 { return Err(vm.raise_arg("time interval must be positive")); }
     let micros = (secs * 1_000_000.0).clamp(0.0, u32::MAX as f64) as u64;
     let before = wall_micros(vm);
-    sleep_us(vm, micros)?;
+    sleep_us(vm, micros, "sleep")?;
     // the seconds actually waited, which is what mruby-sleep answers; a task that was parked
     // answers the seconds it asked for, since the wait is the scheduler's to measure
     Ok(Value::Int(match (before, wall_micros(vm)) {
@@ -1170,10 +1172,17 @@ fn wall_micros(vm: &Vm) -> Option<u64> {
 }
 
 /// The wait itself (`sleep_us_impl`). A task is parked until the tick reaches its deadline and
-/// the scheduler takes over; anywhere else — the root context, or a task with a native frame on
-/// the host stack — the host is asked to wait for real, and the clock moves on.
-fn sleep_us(vm: &mut Vm, micros: u64) -> VmResult<Value> {
-    let in_task = current_task(vm).filter(|_| !vm.fiber_check_native(vm.cur));
+/// the scheduler takes over; outside a task (the root context) the host is asked to wait for
+/// real, and the clock moves on.
+///
+/// A task with a native frame on the host stack cannot be parked, and there this raises, as
+/// `sleep` with no argument and `Task::Queue#pop` do. The reference waits on the wall clock
+/// instead (`sleep_us_impl`, "fall back to blocking sleep without context switch"), which
+/// stops every task, and SabiRuby used to return at once without waiting; both look like a
+/// wait to a program that runs one task (`docs/design/wait-anywhere.md`).
+fn sleep_us(vm: &mut Vm, micros: u64, what: &str) -> VmResult<Value> {
+    let in_task = current_task(vm);
+    if in_task.is_some() && vm.fiber_check_native(vm.cur) { return Err(boundary_error(vm, what)); }
     let ticks = (micros.div_ceil(1000) as u32).div_ceil(TICK_UNIT_MS);
     let Some(t) = in_task else {
         if let Some(f) = vm.sleep_hook { f(micros); }

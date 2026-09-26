@@ -404,6 +404,9 @@ pub struct Vm {
     /// method body of `Proc#call`, so calling a block does not re-enter the VM.
     #[doc(hidden)]
     pub call_proc: ObjId,
+    /// The Proc whose body is a single `OP_RETURN R0`: the frame [`Vm::push_return_frame`]
+    /// leaves under a call whose value a native drops for one of its own.
+    ret_proc: ObjId,
     pub instructions: u64,
     /// Executions per opcode (index = opcode number), filled only while
     /// [`Vm::set_op_counting`] is on; the test runner reports which opcodes a workload never
@@ -657,8 +660,11 @@ impl Vm {
         let top_self = heap.alloc(object, ObjKind::Object);
         let call_irep = VmIrep { nlocals: 1, nregs: 4, iseq: vec![Op::Call as u8], catch: vec![], pool: vec![], syms: vec![], reps: vec![], lv: vec![], lines: vec![], filename: None };
         let call_proc = heap.alloc(core.proc_, ObjKind::Proc(ProcData { irep: 0, upper: None, env: None, target_class: Some(core.proc_), strict: true, scope: true, orphan: false, mid: None }));
+        // `OP_RETURN R0`; R1 is where the call made above it answers (`Vm::push_return_frame`)
+        let ret_irep = VmIrep { nlocals: 1, nregs: 2, iseq: vec![Op::Return as u8, 0], catch: vec![], pool: vec![], syms: vec![], reps: vec![], lv: vec![], lines: vec![], filename: None };
+        let ret_proc = heap.alloc(core.proc_, ObjKind::Proc(ProcData { irep: 1, upper: None, env: None, target_class: Some(object), strict: true, scope: true, orphan: false, mid: None }));
         let mut vm = Vm {
-            heap, syms, ireps: vec![call_irep], stack: Vec::new(), ci: Vec::new(), globals: HashMap::new(),
+            heap, syms, ireps: vec![call_irep, ret_irep], ret_proc, stack: Vec::new(), ci: Vec::new(), globals: HashMap::new(),
             exc: None, out: Vec::new(), core, s, top_self, step_left: None, instructions: 0, op_counts: [0; crate::opcode::OP_COUNT], count_ops: false, method_cache: alloc::boxed::Box::new([MethodCacheLine::default(); METHOD_CACHE_LEN]), idx_builtin: [None; IDX_SLOTS], idx_class: [None; IDX_SLOTS], idx_serial: 0, native_depth: 0, inspect_guard: Vec::new(), pending_kw: None, eq_guard: Vec::new(), gc_disabled: false, pending_vis_break: false, notimpl_fns: Vec::new(), gc_step_limit: 0, gc_interval_ratio: 200, gc_stress: false, native_active: 0, gc_registered: Vec::new(), catch_tags: Vec::new(), native_mid: None, live_after_gc: 0, gc_count: 0, gc_time_ns: 0, gc_clock: None, wall_clock: None, sleep_hook: None, host: None, trace: None, call_proc,
             contexts: vec![Context::new(FiberState::Running)], cur: ROOT, direct_send: false, native_ret_reg: 0, loop_exit: None, native_arity: Vec::new(),
             task: TaskState { wakeup_tick: u32::MAX, tick_every: TASK_TICK_INSTRUCTIONS, tick_left: TASK_TICK_INSTRUCTIONS, clock_from_instructions: true, native_every: TASK_NATIVE_SAMPLE, native_left: TASK_NATIVE_SAMPLE, ..Default::default() },
@@ -2171,6 +2177,29 @@ impl Vm {
         r
     }
 
+    /// [`Vm::call_block_with_self_kw`] for a native that returns the block's value as it is
+    /// (`instance_exec`, `class_eval`): called by a SEND, the block runs in a frame of its own
+    /// instead of a nested loop ([`Vm::exec_proc`]).
+    pub(crate) fn exec_block_with_self(&mut self, blk: Value, self_: Value, args: &[Value], kw: Option<Value>) -> VmResult<Value> {
+        let p = match blk {
+            Value::Obj(o) if matches!(self.heap.get(o).kind, ObjKind::Proc(_)) => o,
+            _ => return Err(self.raise_type("wrong type (expected Proc)")),
+        };
+        let tc = match self_ {
+            Value::Obj(o) if self.heap.is_class(o) => Some(o),
+            Value::Int(_) | Value::Float(_) | Value::Sym(_) => None,
+            _ => Some(self.singleton_class(self_)?),
+        };
+        self.exec_proc(p, self_, args, kw, Value::Nil, None, tc, true)
+    }
+
+    /// [`Vm::call_method_proc`] for `Method#call` (mruby `mcall` → `mrb_exec_irep`).
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn exec_method_proc(&mut self, proc_: ObjId, self_: Value, args: &[Value], kw: Option<Value>, blk: Value, mid: Option<Sym>, target_class: ObjId) -> VmResult<Value> {
+        let tc = if self.heap.proc_data(proc_).env.is_some() { None } else { Some(target_class) };
+        self.exec_proc(proc_, self_, args, kw, blk, mid, tc, false)
+    }
+
     /// Pushes a frame for `proc_` and runs it to completion (re-entrant
     /// execution; native code waits for the result).
     /// Runs a method body proc with keywords (`mrb_exec_irep` for `Method#call`).
@@ -2231,6 +2260,209 @@ impl Vm {
         let r = self.run_loop(depth);
         self.stack.truncate(base);
         r
+    }
+
+    // ------------------------------------------------------------------ calls that stay in the frame
+
+    /// Whether the native that is running was called by a SEND of the running frame (mruby: the
+    /// frame's `cci == CINFO_NONE`). Such a native can leave the rest of its work to a frame of
+    /// its own instead of running it in a nested loop: what it returns lands in
+    /// `native_ret_reg`, and the instruction loop carries on at whatever frame is on top when it
+    /// does. A frame pushed that way is an ordinary one — no native boundary — so a task can be
+    /// parked in it (`docs/design/fibers.md`, "Native boundaries").
+    #[inline]
+    pub(crate) fn in_frame(&self) -> bool { self.direct_send }
+
+    /// mruby `mrb_exec_irep` (src/vm.c): runs `proc_` for the native that is running. Called by a
+    /// SEND ([`Vm::in_frame`]), the proc becomes a frame of its own where the SEND's result goes
+    /// and this returns `self_` (that frame's R0, which is what the SEND then writes there): the
+    /// native must return this value as it is and do nothing after. From anywhere else it runs
+    /// nested, as [`Vm::call_proc_with`] always did (mruby: `cci != CINFO_NONE`).
+    ///
+    /// `override_tc` and the frame's `mid` are chosen as [`Vm::call_proc_inner`] chooses them, so
+    /// the two ways of running the proc differ in nothing but the boundary.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn exec_proc(&mut self, proc_: ObjId, self_: Value, args: &[Value], kw: Option<Value>, blk: Value, mid: Option<Sym>, override_tc: Option<ObjId>, vis_break: bool) -> VmResult<Value> {
+        if !self.direct_send {
+            self.pending_vis_break = vis_break;
+            let r = self.call_proc_with(proc_, self_, args, kw, blk, mid, override_tc);
+            self.pending_vis_break = false;
+            return r;
+        }
+        if self.ci.len() >= CALL_LEVEL_MAX { return Err(self.raise(self.core.system_stack_error, "stack level too deep")); }
+        let env = self.heap.proc_data(proc_).env;
+        let tc = match (override_tc, env) {
+            (Some(tc), _) => tc,
+            (None, Some(e)) => self.heap.env(e).target_class.unwrap_or(self.core.object),
+            (None, None) => self.heap.proc_data(proc_).target_class.unwrap_or(self.core.object),
+        };
+        let mid = self.heap.proc_data(proc_).mid.or(mid);
+        let nbase = self.native_ret_reg;
+        self.push_frame_at(nbase, proc_, self_, args.to_vec(), kw, blk, mid, tc, vis_break, false);
+        // one frame per native: a second call from the same native would land on this one
+        self.direct_send = false;
+        Ok(self_)
+    }
+
+    /// Lays out a frame for `proc_` at `nbase` (R0 = `self_`, then the arguments as
+    /// [`Vm::relay_args`] writes them) and pushes it as an ordinary frame.
+    #[allow(clippy::too_many_arguments)]
+    fn push_frame_at(&mut self, nbase: usize, proc_: ObjId, self_: Value, args: Vec<Value>, kw: Option<Value>, blk: Value, mid: Option<Sym>, tc: ObjId, vis_break: bool, pack: bool) {
+        let irep = self.heap.proc_data(proc_).irep;
+        let c = self.relay_args(nbase, args, kw, blk, pack);
+        let n = c & 0xf;
+        let kwf = (c >> 4) == 15;
+        let used = (if n == 15 { 1 } else { n }) + (kwf as usize) + 2;
+        let nregs = self.ireps[irep].nregs.max(used).max(4);
+        if self.stack.len() < nbase + nregs { self.stack.resize(nbase + nregs, Slot::NIL); }
+        for i in used..nregs { self.stack[nbase + i] = Slot::NIL; }
+        self.stack[nbase] = Slot::from(self_);
+        self.ci.push(CallInfo { base: nbase, pc: 0, irep, proc_, n: n as u8, kw: kwf, mid, target_class: tc, env: None, cci: Cci::None, vis: Vis::Public, modfunc: false, vis_break });
+    }
+
+    /// The Ruby method `recv.mid` resolves to, as `(body, owner)`; `None` for anything else.
+    pub(crate) fn ruby_method(&mut self, recv: Value, mid: Sym) -> Option<(ObjId, ObjId)> {
+        let cls = self.class_of(recv);
+        match self.find_method_cached(cls, mid) { Some((MethodRef::Ruby(p), owner)) => Some((p, owner)), _ => None }
+    }
+
+    /// Pushes the frame a SEND of `mid` would push for the Ruby method `p` found on `owner`
+    /// (`op_send_vis`), where the running native's result goes. The native returns `recv`.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn push_method_frame(&mut self, p: ObjId, owner: ObjId, recv: Value, mid: Sym, args: Vec<Value>, kw: Option<Value>, blk: Value, pack: bool) -> VmResult<()> {
+        if self.ci.len() >= CALL_LEVEL_MAX { return Err(self.raise(self.core.system_stack_error, "stack level too deep")); }
+        let mid = self.heap.proc_data(p).mid.unwrap_or(mid);
+        let nbase = self.native_ret_reg;
+        self.push_frame_at(nbase, p, recv, args, kw, blk, Some(mid), owner, false, pack);
+        self.direct_send = false;
+        Ok(())
+    }
+
+    /// Pushes a frame that answers `value` when the frame pushed above it returns, and moves the
+    /// running native's result register into it: what the native pushes next runs there, and
+    /// its value is dropped for `value` (`Class#new` answers the object whatever `initialize`
+    /// returns). mruby does this with a method written in bytecode (`new_iseq` of src/class.c);
+    /// the frame here is the tail of such a method, one `OP_RETURN R0`.
+    pub(crate) fn push_return_frame(&mut self, value: Value, mid: Sym) -> VmResult<()> {
+        if self.ci.len() + 1 >= CALL_LEVEL_MAX { return Err(self.raise(self.core.system_stack_error, "stack level too deep")); }
+        let p = self.ret_proc;
+        let nbase = self.native_ret_reg;
+        let tc = self.ci.last().map(|c| c.target_class).unwrap_or(self.core.object);
+        self.push_frame_at(nbase, p, value, Vec::new(), None, Value::Nil, Some(mid), tc, false, false);
+        self.native_ret_reg = nbase + 1;
+        Ok(())
+    }
+
+    /// `recv.mid(*args, **kw, &blk)` as the SEND that called the running native would make it
+    /// (mruby `send_method`): a Ruby method or a Ruby `method_missing` gets a frame where the
+    /// native's result goes, and a native is called with the frame left as it is. From anywhere
+    /// else it is [`Vm::funcall`]. `args` carries the keyword Hash last, as a native's own
+    /// arguments do; `kw` says whether it is one.
+    pub(crate) fn send_in_frame(&mut self, recv: Value, mid: Sym, args: &[Value], kw: Option<Value>, blk: Value) -> VmResult<Value> {
+        if !self.direct_send { return self.funcall(recv, mid, args, blk); }
+        let pos = if kw.is_some() { &args[..args.len() - 1] } else { args };
+        let cls = self.class_of(recv);
+        match self.find_method_cached(cls, mid) {
+            Some((MethodRef::Ruby(p), owner)) => {
+                self.push_method_frame(p, owner, recv, mid, pos.to_vec(), kw, blk, false)?;
+                Ok(recv)
+            }
+            Some((MethodRef::Native(f), _)) => {
+                if self.native_depth >= NATIVE_DEPTH_MAX { return Err(self.raise(self.core.system_stack_error, "stack level too deep")); }
+                self.native_mid = Some(mid);
+                self.native_depth += 1;
+                let r = self.call_native(f, recv, args, blk);
+                self.native_depth -= 1;
+                r
+            }
+            None => {
+                let mm = self.s.method_missing;
+                if let Some((MethodRef::Ruby(p), owner)) = self.find_method_cached(cls, mm) {
+                    let mut nargs = vec![Value::Sym(mid)];
+                    nargs.extend_from_slice(pos);
+                    self.push_method_frame(p, owner, recv, mm, nargs, kw, blk, true)?;
+                    return Ok(recv);
+                }
+                self.funcall(recv, mid, args, blk)
+            }
+            _ => self.funcall(recv, mid, args, blk),
+        }
+    }
+
+    /// What the native boundary nearest the running code is, for the error a wait raises there
+    /// (`can't wait inside Array#sort's call to a block`). A boundary is a frame a native
+    /// started (`Cci::Skip`); the frame below it made the call that reached that native, and
+    /// its `pc` still points past that instruction, whose receiver is still in its register.
+    pub(crate) fn boundary_name(&mut self) -> String {
+        let i = match (1..self.ci.len()).rev().find(|&i| self.ci[i].cci == Cci::Skip) { Some(i) => i, None => return "a native method".into() };
+        let callee = {
+            let ci = &self.ci[i];
+            let pd = self.heap.proc_data(ci.proc_);
+            match (pd.scope || pd.mid.is_some(), ci.mid) {
+                (true, Some(m)) => format!("#{}", self.sym_name(m)),
+                _ => "a block".into(),
+            }
+        };
+        let caller = self.ci[i - 1];
+        let who = match self.send_before(caller.irep, caller.pc) {
+            Some((a, mid)) => {
+                let recv = self.stack.get(caller.base + a).map(|s| s.get()).unwrap_or(Value::Nil);
+                let name = self.sym_name(mid);
+                match recv {
+                    Value::Obj(o) if self.heap.is_class(o) => format!("{}.{name}", self.class_name(o)),
+                    _ => {
+                        // the method's own class or module (`Kernel#catch`, not `Object#catch`)
+                        let cls = self.class_of(recv);
+                        let owner = match self.find_method(cls, mid) { Some((_, o)) => self.heap.class(o).iclass_of.unwrap_or(o), None => self.real_class_of(recv) };
+                        format!("{}#{name}", self.class_name(owner))
+                    }
+                }
+            }
+            None => "a native method".into(),
+        };
+        format!("{who}'s call to {callee}")
+    }
+
+    /// The call instruction that ends right before `pc` in `irep`, as (register, method name):
+    /// a SEND of any kind, `super`, or one of the index opcodes.
+    fn send_before(&self, irep: IrepId, pc: usize) -> Option<(usize, Sym)> {
+        let code = &self.ireps.get(irep)?.iseq;
+        let mut at = 0usize;
+        let mut ext = 0u8;
+        while at < pc {
+            let start = at;
+            let op = Op::from_u8(*code.get(at)?)?;
+            at += 1;
+            let (aw, bw) = (ext == 1 || ext == 3, ext == 2 || ext == 3);
+            let rd = |at: &mut usize, wide: bool| -> Option<usize> {
+                let v = if wide { ((*code.get(*at)? as usize) << 8) | *code.get(*at + 1)? as usize } else { *code.get(*at)? as usize };
+                *at += if wide { 2 } else { 1 };
+                Some(v)
+            };
+            let (mut a, mut b) = (0, 0);
+            match op.operands() {
+                Operands::Z => {}
+                Operands::B => a = rd(&mut at, aw)?,
+                Operands::BB => { a = rd(&mut at, aw)?; b = rd(&mut at, bw)?; }
+                Operands::BBB => { a = rd(&mut at, aw)?; b = rd(&mut at, bw)?; at += 1; }
+                Operands::BS => { a = rd(&mut at, aw)?; at += 2; }
+                Operands::BSS => { a = rd(&mut at, aw)?; at += 4; }
+                Operands::S => at += 2,
+                Operands::W => at += 3,
+            }
+            ext = match op { Op::Ext1 => 1, Op::Ext2 => 2, Op::Ext3 => 3, _ => 0 };
+            if at == pc && start < pc {
+                let syms = &self.ireps[irep].syms;
+                return match op {
+                    Op::Send | Op::Send0 | Op::Sendb | Op::Ssend | Op::Ssend0 | Op::Ssendb => Some((a, *syms.get(b)?)),
+                    Op::Getidx | Op::Getidx0 => Some((a, self.s.aref)),
+                    Op::Setidx => Some((a, self.s.aset)),
+                    Op::Super => None,
+                    _ => None,
+                };
+            }
+        }
+        None
     }
 
 
@@ -2816,6 +3048,7 @@ impl Vm {
         for id in self.core.ids() { h.mark_id(id, work); }
         h.mark_id(self.top_self, work);
         h.mark_id(self.call_proc, work);
+        h.mark_id(self.ret_proc, work);
         for id in &self.inspect_guard { h.mark_id(*id, work); }
         for (x, y) in &self.eq_guard { h.mark_id(*x, work); h.mark_id(*y, work); }
         for id in &self.gc_registered { h.mark_id(*id, work); }
@@ -3128,11 +3361,22 @@ impl Vm {
     /// Runs an `eval` string's Proc in the caller's scope (`eval_irep`): no arguments, no
     /// block, visibility back to the default, and the target class the caller's unless the
     /// form says otherwise (`instance_eval`, `class_eval`).
+    ///
+    /// Called by a SEND the string runs in a frame of its own, as the reference's `eval_irep`
+    /// hands it to `mrb_exec_irep` ([`Vm::exec_proc`]); the natives that call this return its
+    /// value as it is.
     pub(crate) fn run_eval(&mut self, proc_: ObjId, self_: Value, override_tc: Option<ObjId>) -> VmResult<Value> {
         let mid = self.ci.last().and_then(|ci| ci.mid);
         let tc = override_tc.or_else(|| self.heap.proc_data(proc_).target_class);
-        self.pending_vis_break = true;
-        self.call_proc_with(proc_, self_, &[], None, Value::Nil, mid, tc)
+        self.exec_proc(proc_, self_, &[], None, Value::Nil, mid, tc, true)
+    }
+
+    /// [`Vm::run_eval`] in a nested loop whoever calls it (a host's `mrb_load_string`).
+    pub(crate) fn run_eval_nested(&mut self, proc_: ObjId, self_: Value, override_tc: Option<ObjId>) -> VmResult<Value> {
+        let direct = core::mem::replace(&mut self.direct_send, false);
+        let r = self.run_eval(proc_, self_, override_tc);
+        self.direct_send = direct;
+        r
     }
 
     /// Pops the current frame, detaching its environment (`cipop`).
@@ -3187,6 +3431,17 @@ impl Vm {
     /// end the loop; only a fiber's base frame terminating does, and then the
     /// loop carries on in the previous context.
     pub(crate) fn run_loop_ctx(&mut self, lc: usize, stop_depth: usize) -> VmResult<Value> {
+        // A native started this loop (or the host did): whatever runs in it until one of its own
+        // SENDs calls a native is not "called by a SEND of the running frame", and the register
+        // `native_ret_reg` names belongs to a frame below (`Vm::in_frame`). The inline natives of
+        // the index opcodes read it too, so it is cleared here rather than at every call.
+        let direct = core::mem::replace(&mut self.direct_send, false);
+        let r = self.run_loop_inner(lc, stop_depth);
+        self.direct_send = direct;
+        r
+    }
+
+    fn run_loop_inner(&mut self, lc: usize, stop_depth: usize) -> VmResult<Value> {
         let mut pending: Option<VmResult<Value>> = None;
         loop {
             let r = match pending.take() { Some(r) => r, None => self.exec_frames(stop_depth, lc) };

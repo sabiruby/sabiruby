@@ -135,7 +135,10 @@ pub fn init(vm: &mut Vm) {
                 let vis = vm.method_vis(owner, m);
                 if vis != Vis::Public { let name = vm.sym_name(m); let d = vm.describe_for_error(s); let v = if vis == Vis::Private { "private" } else { "protected" }; return Err(vm.no_method_error(m, s, &format!("{v} method '{name}' called for {d}"))); }
             }
-            vm.funcall(s, m, &a[1..], b)
+            // called by a SEND the method runs in this frame, as `send` does (mruby
+            // `send_method` with `pub`): no native boundary around it
+            let kw = match (vm.pending_kw, a.last()) { (Some(k), Some(l)) if a.len() > 1 && !k.is_nil() && k == *l => Some(k), _ => None };
+            vm.send_in_frame(s, m, &a[1..], kw, b)
         }),
     ]);
     let m = vm.core.module;

@@ -209,6 +209,13 @@ does not render is not what `include` decides.
 (an `eql?` that deletes entries mid-lookup must raise) does not pass here — the reference's small
 hash calls `eql?` on every entry, SabiRuby compares hash codes first — with the options left open.
 
+[2026-09-26-wait-anywhere](worklog/2026-09-26-wait-anywhere.md) is `wait-anywhere-plan.md`
+(Japanese): every place a native calls back into Ruby, sorted into blocks and implicit callbacks;
+`instance_exec` and its relatives, `Method#call`, `public_send`, `Class#new` and the string `eval`s
+leaving a frame where the SEND's value goes instead of running a nested loop (the reference's
+`mrb_exec_irep`); `sleep(n)` inside a boundary raising instead of returning at once; and the error
+that names the boundary, worked out from the frame below it only when it is raised.
+
 ## Where things were (before 2026-09-15)
 
 Every document above sat directly under `docs/`; references in older commits, in the book's notes

@@ -101,7 +101,8 @@ fn mcall(vm: &mut Vm, s: Value, recv: Option<Value>, a: &[Value], b: Value) -> V
         return vm.funcall(recv, mm, &args, b);
     }
     match iv(vm, s, i.proc_) {
-        Value::Obj(p) => vm.call_method_proc(p, recv, pos, kw, b, Some(mid), owner),
+        // called by a SEND the method's body becomes the frame (`mcall` → `mrb_exec_irep`)
+        Value::Obj(p) => vm.exec_method_proc(p, recv, pos, kw, b, Some(mid), owner),
         _ => match search(vm, owner, mid) {
             Some((Method::Native(f), _)) => vm.call_native(f, recv, a, b),
             Some((Method::Closure(f), _)) => vm.call_closure(&f, recv, a, b),
