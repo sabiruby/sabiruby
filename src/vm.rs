@@ -113,6 +113,8 @@ impl TaskQueue {
     pub(crate) fn insert(&mut self, key: (u8, u64), task: ObjId) { self.tasks.insert(key, task); }
     pub(crate) fn remove(&mut self, key: &(u8, u64)) { self.tasks.remove(key); }
     pub(crate) fn retain(&mut self, mut keep: impl FnMut(ObjId) -> bool) { self.tasks.retain(|_, o| keep(*o)); }
+    /// The keys and tasks in the order they come out.
+    pub(crate) fn entries(&self) -> impl Iterator<Item = ((u8, u64), ObjId)> + '_ { self.tasks.iter().map(|(k, o)| (*k, *o)) }
 }
 
 /// mruby-task's scheduler state (`mrb_task_state`). The queues hold the Task objects, which is
@@ -136,6 +138,16 @@ pub struct TaskState {
     /// The sleepers one wake-up takes out, kept between wake-ups so that the scheduler does not
     /// allocate for them every tick (`ext_task::wake_sleepers`).
     pub(crate) due: Vec<(u64, ObjId)>,
+    /// Whether `sleepers` and `waiters` are kept. They are only while the waiting queue is long
+    /// enough to be worth it ([`TaskState::index_from`]); below that a wake-up walks the queue,
+    /// as it did before 0.7.0, and a task that waits pays nothing for the indexes.
+    pub(crate) indexed: bool,
+    /// How many waiting tasks it takes for the scheduler to keep indexes of them (their deadlines,
+    /// what they wait for) instead of walking the waiting queue. 0 keeps them from the first.
+    /// Set with [`Vm::task_set_index_from`]. The default, 0, is what 0.7.0's stage B built; the
+    /// number a short queue walks faster up to is to be measured
+    /// (`docs/worklog/2026-09-27-release-0.7-bench.md`).
+    pub index_from: usize,
     /// `tick` counted without wrapping, and the value of `tick` it was last brought up to date
     /// with (`ext_task::abs_tick`): what the deadlines in `sleepers` are counted in.
     pub(crate) tick_abs: u64,
@@ -910,6 +922,19 @@ impl Vm {
     pub fn task_set_native_sample(&mut self, every: u32) {
         self.task.native_every = every.max(1);
         self.task.native_left = self.task.native_left.min(self.task.native_every);
+    }
+
+    /// How many waiting tasks it takes for the scheduler to index them ([`TaskState::index_from`]):
+    /// below it, a wake-up walks the waiting queue, which costs a few tasks less than keeping the
+    /// indexes; from it on, a wake-up costs the same with a thousand tasks waiting as with ten.
+    /// 0 indexes from the first. Takes effect at the next task that starts or stops waiting.
+    pub fn task_set_index_from(&mut self, n: usize) {
+        self.task.index_from = n;
+        if n == 0 || self.task.queues[crate::builtins::ext_task::Q_WAITING_PUB].len() >= n {
+            crate::builtins::ext_task::index_waiting(self);
+        } else {
+            crate::builtins::ext_task::unindex_waiting(self);
+        }
     }
 
     /// How timeslices end from now on ([`Timeslice`]).

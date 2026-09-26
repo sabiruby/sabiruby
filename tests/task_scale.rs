@@ -38,7 +38,23 @@ fn drain(vm: &mut Vm) {
 fn new_vm() -> Vm {
     let mut vm = Vm::with_mrblib().expect("vm");
     vm.set_gc_stress(std::env::var("SABIRUBY_GC_STRESS").map(|v| !v.is_empty() && v != "0").unwrap_or(false));
+    vm.task_set_index_from(INDEX_FROM.with(|m| m.get()));
     vm
+}
+
+std::thread_local! {
+    /// What the VMs this thread makes index their waiting tasks from (`Vm::task_set_index_from`).
+    static INDEX_FROM: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// Runs an order test twice: with the waiting tasks indexed from the first, and never indexed
+/// (a wake-up walks the waiting queue). The order must be the same either way.
+fn both(body: fn()) {
+    for n in [0, usize::MAX] {
+        INDEX_FROM.with(|m| m.set(n));
+        body();
+    }
+    INDEX_FROM.with(|m| m.set(0));
 }
 
 fn host_vm(src: &str) -> Vm {
@@ -50,8 +66,7 @@ fn host_vm(src: &str) -> Vm {
 
 // ------------------------------------------------------------------ the order things happen in
 
-#[test]
-fn sleepers_woken_together_run_in_the_order_they_went_to_sleep() {
+fn sleepers_woken_together_run_in_the_order_they_went_to_sleep_body() {
     // `a` sleeps longest and went to sleep first. A clock that jumps past every deadline at once
     // wakes them in the order they entered the waiting queue, not in the order of their deadlines
     // (`wake_sleepers` walked the waiting queue from its head).
@@ -76,8 +91,7 @@ fn sleepers_woken_together_run_in_the_order_they_went_to_sleep() {
     assert_eq!(vm.task_next_wakeup_ticks(), None);
 }
 
-#[test]
-fn a_sleeper_woken_early_leaves_no_deadline_behind() {
+fn a_sleeper_woken_early_leaves_no_deadline_behind_body() {
     // `Task#resume` wakes a sleeper before its deadline. What the scheduler reports afterwards
     // (the next wakeup, `Task.stat`) is what it reported before the queues changed shape: the
     // resumed task's deadline stays the recorded next wakeup until the clock passes it.
@@ -100,8 +114,7 @@ fn a_sleeper_woken_early_leaves_no_deadline_behind() {
     assert_eq!(vm.task_next_wakeup_ticks(), None);
 }
 
-#[test]
-fn readers_of_one_queue_are_woken_in_the_order_they_waited() {
+fn readers_of_one_queue_are_woken_in_the_order_they_waited_body() {
     let mut vm = host_vm(r#"
       $order = []
       $q = Task::Queue.new
@@ -132,8 +145,7 @@ fn readers_of_one_queue_are_woken_in_the_order_they_waited() {
     assert_eq!(inspect(&mut vm, "$other.num_waiting"), "1");
 }
 
-#[test]
-fn a_reader_with_a_timeout_is_woken_by_whichever_comes_first() {
+fn a_reader_with_a_timeout_is_woken_by_whichever_comes_first_body() {
     let mut vm = host_vm(r#"
       $order = []
       $q = Task::Queue.new
@@ -159,8 +171,7 @@ fn a_reader_with_a_timeout_is_woken_by_whichever_comes_first() {
     assert!(!vm.task_pending());
 }
 
-#[test]
-fn joiners_are_woken_in_the_order_they_joined() {
+fn joiners_are_woken_in_the_order_they_joined_body() {
     let mut vm = host_vm(r#"
       $order = []
       $q = Task::Queue.new
@@ -178,8 +189,7 @@ fn joiners_are_woken_in_the_order_they_joined() {
     assert_eq!(inspect(&mut vm, "$order"), "[:x, [:j1, nil], [:j2, nil]]");
 }
 
-#[test]
-fn the_ready_queue_is_priority_first_and_round_robin_within_one() {
+fn the_ready_queue_is_priority_first_and_round_robin_within_one_body() {
     let mut vm = host_vm(r#"
       $order = []
       Task.new(name: "a", priority: 200) { 2.times { |i| $order << "a#{i}"; Task.pass } }
@@ -196,8 +206,7 @@ fn the_ready_queue_is_priority_first_and_round_robin_within_one() {
         r#"["b0", "c0", "e0", "d0", "b1", "c1", "e1", "d1", "a0", "a1"]"#);
 }
 
-#[test]
-fn task_list_and_stat_list_each_queue_in_its_order() {
+fn task_list_and_stat_list_each_queue_in_its_order_body() {
     let mut vm = host_vm(r#"
       $q = Task::Queue.new
       $keep = []
@@ -228,6 +237,27 @@ fn task_list_and_stat_list_each_queue_in_its_order() {
 /// `n` tasks parked on queues of their own (the shape of rubevy's scripts waiting for the host's
 /// answer), `n` more sleeping far into the future, and one task that loops: parks on its own
 /// queue, is woken by a push, runs, parks again.
+#[test]
+fn sleepers_woken_together_run_in_the_order_they_went_to_sleep() { both(sleepers_woken_together_run_in_the_order_they_went_to_sleep_body) }
+
+#[test]
+fn a_sleeper_woken_early_leaves_no_deadline_behind() { both(a_sleeper_woken_early_leaves_no_deadline_behind_body) }
+
+#[test]
+fn readers_of_one_queue_are_woken_in_the_order_they_waited() { both(readers_of_one_queue_are_woken_in_the_order_they_waited_body) }
+
+#[test]
+fn a_reader_with_a_timeout_is_woken_by_whichever_comes_first() { both(a_reader_with_a_timeout_is_woken_by_whichever_comes_first_body) }
+
+#[test]
+fn joiners_are_woken_in_the_order_they_joined() { both(joiners_are_woken_in_the_order_they_joined_body) }
+
+#[test]
+fn the_ready_queue_is_priority_first_and_round_robin_within_one() { both(the_ready_queue_is_priority_first_and_round_robin_within_one_body) }
+
+#[test]
+fn task_list_and_stat_list_each_queue_in_its_order() { both(task_list_and_stat_list_each_queue_in_its_order_body) }
+
 fn crowd(n: usize) -> Vm {
     let mut vm = new_vm();
     vm.task_external_clock(true);

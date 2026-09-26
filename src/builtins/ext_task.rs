@@ -33,6 +33,7 @@ const REASON_QUEUE: u8 = 0x08;
 const Q_DORMANT: usize = 0;
 const Q_READY: usize = 1;
 const Q_WAITING: usize = 2;
+pub(crate) const Q_WAITING_PUB: usize = Q_WAITING;
 const Q_SUSPENDED: usize = 3;
 
 /// Milliseconds a tick stands for (`MRB_TICK_UNIT`).
@@ -93,6 +94,7 @@ fn requeue(vm: &mut Vm, o: ObjId, delete: bool, change: impl FnOnce(&mut TaskDat
     if let Some((oq, key)) = old.0 { vm.task.queues[oq].remove(&key); }
     if let Some(k) = old.1 { vm.task.sleepers.remove(&k); }
     if let Some(k) = old.2 { vm.task.waiters.remove(&k); }
+    if old.0.is_some_and(|(oq, _)| oq == Q_WAITING) { unindex_if_empty(vm); }
     let seq = vm.task.seq;
     vm.task.seq += 1;
     let key = (if q == Q_READY { pri } else { 0 }, seq);
@@ -100,20 +102,85 @@ fn requeue(vm: &mut Vm, o: ObjId, delete: bool, change: impl FnOnce(&mut TaskDat
     let mut sleep_key = None;
     let mut wait_key = None;
     if q == Q_WAITING {
-        if (reason == REASON_SLEEP || reason == REASON_QUEUE) && deadline != u32::MAX {
-            let k = (abs_deadline(vm, deadline), seq);
-            vm.task.sleepers.insert(k, o);
-            sleep_key = Some(k);
-        }
-        if let Some(target) = target {
-            vm.task.waiters.insert((target, seq), o);
-            wait_key = Some((target, seq));
+        if vm.task.indexed {
+            (sleep_key, wait_key) = index_one(vm, o, seq, reason, deadline, target);
+        } else if vm.task.queues[Q_WAITING].len() >= vm.task.index_from {
+            td_mut(vm, o).queued = Some((q, key));
+            build_index(vm);
+            return;
         }
     }
     let t = td_mut(vm, o);
     t.queued = Some((q, key));
     t.sleep_key = sleep_key;
     t.wait_key = wait_key;
+}
+
+/// Puts one waiting task in the indexes its fields call for: `sleepers` where it has a deadline,
+/// `waiters` where it waits for an object. Answers the two keys, for the task to keep.
+fn index_one(vm: &mut Vm, o: ObjId, seq: u64, reason: u8, deadline: u32, target: Option<ObjId>) -> (Option<(u64, u64)>, Option<(ObjId, u64)>) {
+    let mut sleep_key = None;
+    let mut wait_key = None;
+    if (reason == REASON_SLEEP || reason == REASON_QUEUE) && deadline != u32::MAX {
+        let k = (abs_deadline(vm, deadline), seq);
+        vm.task.sleepers.insert(k, o);
+        sleep_key = Some(k);
+    }
+    if let Some(target) = target {
+        vm.task.waiters.insert((target, seq), o);
+        wait_key = Some((target, seq));
+    }
+    (sleep_key, wait_key)
+}
+
+/// The waiting queue has grown to `TaskState::index_from` tasks: from now on a deadline and a
+/// waited-for object are found through the indexes, and every task already waiting goes in them
+/// (in the queue's order, which is the order of their keys).
+fn build_index(vm: &mut Vm) {
+    vm.task.indexed = true;
+    let waiting: Vec<(u64, ObjId)> = vm.task.queues[Q_WAITING].entries().map(|((_, seq), o)| (seq, o)).collect();
+    for (seq, o) in waiting {
+        let (reason, deadline, target) = {
+            let t = td(vm, o);
+            (t.reason, t.wakeup_tick, match t.reason { REASON_QUEUE => t.queue, REASON_JOIN => t.join, _ => None })
+        };
+        let (sk, wk) = index_one(vm, o, seq, reason, deadline, target);
+        let t = td_mut(vm, o);
+        t.sleep_key = sk;
+        t.wait_key = wk;
+    }
+}
+
+/// `Vm::task_set_index_from`: index the tasks already waiting now, or stop indexing them.
+pub(crate) fn index_waiting(vm: &mut Vm) {
+    if !vm.task.indexed { build_index(vm); }
+}
+
+pub(crate) fn unindex_waiting(vm: &mut Vm) {
+    if !vm.task.indexed { return; }
+    let waiting: Vec<ObjId> = vm.task.queues[Q_WAITING].iter().collect();
+    for o in waiting { let t = td_mut(vm, o); t.sleep_key = None; t.wait_key = None; }
+    vm.task.sleepers = Default::default();
+    vm.task.waiters = Default::default();
+    vm.task.indexed = false;
+}
+
+/// An empty waiting queue needs no index: the next wait starts walking again, unless
+/// `TaskState::index_from` says to index from the first one (0).
+fn unindex_if_empty(vm: &mut Vm) {
+    if vm.task.indexed && vm.task.index_from > 0 && vm.task.queues[Q_WAITING].is_empty() {
+        vm.task.indexed = false;
+    }
+}
+
+/// Whether a waiting task has a deadline, as `sleepers` indexes it.
+fn has_deadline(t: &TaskData) -> bool {
+    (t.reason == REASON_SLEEP || t.reason == REASON_QUEUE) && t.wakeup_tick != u32::MAX
+}
+
+/// Whether a waiting task waits for `target`, as `waiters` indexes it.
+fn waits_for(t: &TaskData, target: ObjId) -> bool {
+    match t.reason { REASON_QUEUE => t.queue == Some(target), REASON_JOIN => t.join == Some(target), _ => false }
 }
 
 /// Takes the task out of whichever queue holds it (`mrb_task_q_delete`), and out of the
@@ -126,6 +193,7 @@ fn q_delete(vm: &mut Vm, o: ObjId) {
     if let Some((q, key)) = queued { vm.task.queues[q].remove(&key); }
     if let Some(k) = sleep_key { vm.task.sleepers.remove(&k); }
     if let Some(k) = wait_key { vm.task.waiters.remove(&k); }
+    if queued.is_some_and(|(q, _)| q == Q_WAITING) { unindex_if_empty(vm); }
 }
 
 fn set_status(vm: &mut Vm, o: ObjId, status: u8) {
@@ -336,16 +404,30 @@ fn wake_sleepers(vm: &mut Vm) {
     if vm.task.wakeup_tick == u32::MAX { return; }
     let now = vm.task.tick;
     if (vm.task.wakeup_tick.wrapping_sub(now) as i32) > 0 { return; }
-    let now_abs = abs_tick(vm);
     let mut due = core::mem::take(&mut vm.task.due);
-    while let Some((&(deadline, seq), &o)) = vm.task.sleepers.first_key_value() {
-        if deadline > now_abs { break; }
-        due.push((seq, o));
-        vm.task.sleepers.remove(&(deadline, seq));
-        td_mut(vm, o).sleep_key = None;
+    let mut next = u32::MAX;
+    if vm.task.indexed {
+        let now_abs = abs_tick(vm);
+        while let Some((&(deadline, seq), &o)) = vm.task.sleepers.first_key_value() {
+            if deadline > now_abs { break; }
+            due.push((seq, o));
+            vm.task.sleepers.remove(&(deadline, seq));
+            td_mut(vm, o).sleep_key = None;
+        }
+        vm.task.walked += due.len() as u64;
+        due.sort_unstable_by_key(|(seq, _)| *seq);
+    } else {
+        // no index (a short waiting queue): walk it, as the reference does
+        let mut walked = 0;
+        for ((_, seq), o) in vm.task.queues[Q_WAITING].entries() {
+            walked += 1;
+            let t = td(vm, o);
+            if !has_deadline(t) { continue; }
+            if (t.wakeup_tick.wrapping_sub(now) as i32) <= 0 { due.push((seq, o)); }
+            else if next == u32::MAX || (t.wakeup_tick.wrapping_sub(next) as i32) < 0 { next = t.wakeup_tick; }
+        }
+        vm.task.walked += walked;
     }
-    vm.task.walked += due.len() as u64;
-    due.sort_unstable_by_key(|(seq, _)| *seq);
     for &(_, o) in &due {
         requeue(vm, o, true, |t| {
             t.status = READY;
@@ -357,19 +439,47 @@ fn wake_sleepers(vm: &mut Vm) {
     }
     due.clear();
     vm.task.due = due;
-    vm.task.wakeup_tick = match vm.task.sleepers.first_key_value() {
-        Some((_, &o)) => td(vm, o).wakeup_tick,
-        None => u32::MAX,
+    vm.task.wakeup_tick = if vm.task.indexed {
+        match vm.task.sleepers.first_key_value() { Some((_, &o)) => td(vm, o).wakeup_tick, None => u32::MAX }
+    } else {
+        next
     };
 }
 
 /// The tasks waiting for `target` (a `Task::Queue`, or a task being joined) in the order they
 /// began to wait: the first one only, or all of them.
 fn waiting_for(vm: &mut Vm, target: ObjId, all: bool) -> Vec<ObjId> {
+    if !vm.task.indexed {
+        let mut found = Vec::new();
+        let mut walked = 0;
+        for (_, o) in vm.task.queues[Q_WAITING].entries() {
+            walked += 1;
+            if waits_for(td(vm, o), target) { found.push(o); if !all { break; } }
+        }
+        vm.task.walked += walked;
+        return found;
+    }
     let range = vm.task.waiters.iter_from(&(target, 0)).take_while(|(k, _)| k.0 == target).map(|(_, o)| *o);
     let found: Vec<ObjId> = if all { range.collect() } else { range.take(1).collect() };
     vm.task.walked += found.len() as u64;
     found
+}
+
+/// The first task waiting for `target`, without collecting the rest (a push wakes one).
+fn first_waiting_for(vm: &mut Vm, target: ObjId) -> Option<ObjId> {
+    if !vm.task.indexed {
+        let mut walked = 0;
+        let mut found = None;
+        for (_, o) in vm.task.queues[Q_WAITING].entries() {
+            walked += 1;
+            if waits_for(td(vm, o), target) { found = Some(o); break; }
+        }
+        vm.task.walked += walked;
+        return found;
+    }
+    let first = vm.task.waiters.iter_from(&(target, 0)).next().filter(|(k, _)| k.0 == target).map(|(_, o)| *o);
+    if first.is_some() { vm.task.walked += 1; }
+    first
 }
 
 /// A deadline never equals the "no timed wakeup" sentinel (`mrb_task_normalize_wakeup`).
@@ -590,7 +700,9 @@ pub(crate) fn next_wakeup_ticks(vm: &Vm) -> Option<u32> {
 /// deadline. A task that only something else could wake (suspended, joining) is not counted,
 /// which is the same test `Task.run` ends on.
 pub(crate) fn pending(vm: &Vm) -> bool {
-    !vm.task.queues[Q_READY].is_empty() || !vm.task.sleepers.is_empty()
+    if !vm.task.queues[Q_READY].is_empty() { return true; }
+    if vm.task.indexed { return !vm.task.sleepers.is_empty(); }
+    vm.task.queues[Q_WAITING].iter().any(|o| has_deadline(td(vm, o)))
 }
 
 fn task_run(vm: &mut Vm, _s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
@@ -881,8 +993,7 @@ fn wake_queue_waiters(vm: &mut Vm, queue: ObjId, all: bool) {
     // a push wakes one: that one is found without collecting the list (every push of a queue
     // ping-pong comes here)
     if !all {
-        let first = vm.task.waiters.iter_from(&(queue, 0)).next().filter(|(k, _)| k.0 == queue).map(|(_, o)| *o);
-        if let Some(o) = first { vm.task.walked += 1; wake_queue_waiter(vm, o, queue); }
+        if let Some(o) = first_waiting_for(vm, queue) { wake_queue_waiter(vm, o, queue); }
         return;
     }
     for o in waiting_for(vm, queue, all) { wake_queue_waiter(vm, o, queue); }
