@@ -71,6 +71,15 @@ This page says what is here now; the versions and the dates live there.
   priority scheduler with preemption, each task a context of its own like a Fiber. The tick the
   reference gets from a timer is counted in instructions here, and `Vm::task_run_once` is the
   shape a host loop wants (one task per frame) where `Task.run` runs until every task is done.
+  **Where a task can wait** (`Task::Queue#pop`, `sleep`, `Task.pass`): anywhere in Ruby code,
+  including inside the blocks of `instance_exec`/`instance_eval`, `Method#call`, `Class#new`,
+  `index { }`, `Array.new(n) { }`, a Hash's default proc and `Class.new { }` (on `main`, not yet
+  released; 0.6.x cannot wait inside `instance_exec`, `instance_eval` or `Method#call`). **Where it
+  cannot** — `sort { }`, `ObjectSpace.each_object { }`, `sub`/`gsub`/`scan` with a block, a block a
+  host function calls back, and the calls a builtin makes on its own (`join`'s `to_s`, `include?`'s
+  `==`, …) — it raises `can't wait inside <the builtin>'s call to <what> (<the wait>)` rather than
+  going on silently. The full list and the reasons:
+  [`docs/design/wait-anywhere.md`](https://github.com/sabiruby/sabiruby/blob/main/docs/design/wait-anywhere.md), "What is still a boundary".
   **mruby-sleep** and **mruby-strftime** came with them: a `sleep` outside a task waits through a
   host hook, and `Time#strftime` is written out rather than handed to the C library. The numeric tower is complete: **mruby-bigint**
   (an Integer that leaves the 64-bit range grows instead of raising), **mruby-rational** and
