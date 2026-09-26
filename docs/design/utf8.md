@@ -6,8 +6,9 @@ it is built with `MRB_UTF8_STRING`, and as a sequence of **bytes** without the C
 whoever builds (`docs/plans/utf8-plan.md`, option B, decided by the author on 2026-09-12).
 
 ```toml
-sabiruby = "0.6"                                              # characters (default)
-sabiruby = { version = "0.6", default-features = false, features = ["std"] }   # bytes
+# the version is the one README.md's "Usage" gives
+sabiruby = "<version>"                                                  # characters (default)
+sabiruby = { version = "<version>", default-features = false, features = ["std"] }   # bytes
 ```
 
 `cargo build -p sabiruby-cli --no-default-features` builds the command the byte way;

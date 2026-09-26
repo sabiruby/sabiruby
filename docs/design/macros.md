@@ -36,7 +36,8 @@ The short one, since 0.5.0 — the feature `macros` on the VM crate, which is se
 serde_derive's arrangement:
 
 ```toml
-sabiruby = { version = "0.5", features = ["macros"] }
+# the versions are the ones README.md's "Usage" gives
+sabiruby = { version = "<version>", features = ["macros"] }
 ```
 
 ```rust
@@ -51,8 +52,8 @@ namespaces — the same reason `use serde::Serialize;` gives you the trait and t
 The long one, still supported, naming both crates:
 
 ```toml
-sabiruby = "0.6"
-sabiruby-macros = "0.1"
+sabiruby = "<version>"
+sabiruby-macros = "<version>"
 ```
 
 ```rust

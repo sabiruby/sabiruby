@@ -6,8 +6,9 @@
 > ここに書いた設計のとおり（`Host` の差し込み口 `src/host.rs`、vendoring したコンパイラへの
 > パッチ `SABIRUBY_EVAL_SCOPES`、`src/builtins/ext_eval.rs`／`ext_binding.rs`）。
 > 本家テストは `gem_eval` 18/18、`gem_binding` 8/8、mruby-binding／mruby-proc-binding 自身の
-> テストは C 補助コードの 3 件を除いて通る。**段階 3（require／load、下記 5 節）は未着手**で、
-> `Host` には `read_file`／`file_exists` を用意してある。
+> テストは C 補助コードの 3 件を除いて通る。段階 3（require／load、下記 5 節）は
+> 2026-09-13 に実装した（`37d4a31`、5 節の見出しの「済み」）。この行は書いた時点（2026-09-12）の
+> 「未着手」のまま残っていたので、0.7.0 の片付け（`release-0.7-plan.md` の S7）で直した。
 > 実装で変わった点: `Binding#eval` の `expand_lvspace` は「文字列を一度コンパイルして、その
 > irep の `lv`（＝外側で解決しなかった名前）を binding に足し、もう一度コンパイルする」形にした
 > （パーサを 2 回呼ぶ代わりにコンパイラを 2 回呼ぶ。`Host` に構文解析だけの入口を足さずに済む）。
