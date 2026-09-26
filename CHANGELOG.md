@@ -50,8 +50,7 @@ benchmarks together +0.9% and −0.7% in two rounds; a Hash's default proc −25
   passes the error on writes `vm.hash_get(h, k)?` (`3ad6fdd`).
 - `Hash#[]`, `key?`/`has_key?`/`include?`/`member?`, `fetch`, `delete`, `dig`, `values_at`,
   `slice`, `except`, `==` and `eql?` raise what the key's `eql?` or `hash` raises; they answered
-  nil/false, as if the key were missing. A `Set` still answers "not there", as mruby-set does
-  (`3ad6fdd`). One difference from the reference is left: a Hash of up to 16 entries there never
+  nil/false, as if the key were missing (`3ad6fdd`). One difference from the reference is left: a Hash of up to 16 entries there never
   calls `hash` (its small form compares with `eql?` only), so a key whose `hash` raises answers
   nil there and raises here, as it does in both past 16 entries.
 - A lookup whose `eql?` adds or removes entries of the Hash it is searching raises `RuntimeError`
@@ -63,6 +62,16 @@ benchmarks together +0.9% and −0.7% in two rounds; a Hash's default proc −25
   (`VmError::Rite`), as mruby 4.1.0-rc2 does; it made the VM panic (`66099fd`).
 - `OP_CALL`/`OP_BLKCALL` on a receiver that is not a Proc say `wrong type Integer (expected Proc)`;
   they said `wrong type (expected Proc)` (`66099fd`).
+- A Hash or Set key that is the same object as a stored one matches it without `eql?` being
+  asked, as `mrb_eql` answers identity first: a key whose `eql?` returns false (or raises) finds
+  itself again (`c3f0e85`).
+- A `Set` looks elements up as mruby-set does: an element's `hash` that raises counts as 0, and
+  `eql?` is asked of the element already in the set, so `Set["k0"].add(x)` adds an `x` whose
+  `eql?` raises; an `eql?` that does run and raises is raised (`c3f0e85`).
+- `p` of a `Set` or a `Struct` prints its contents; it printed `Set[...]` / `#<struct S ...>`
+  (`c3f0e85`).
+- A block that is not a Proc handed to `Vm::call_block` and its relatives raises `TypeError`
+  "not a block", as mruby's `check_block`; it said `wrong type (expected Proc)` (`a9a4740`).
 
 ## 0.6.1 — 2026-09-22
 

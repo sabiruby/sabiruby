@@ -20,7 +20,9 @@ Categories:
   differences.
 * **deviation** — a difference SabiRuby keeps on purpose (see README).
 * **build** — depends on how the reference binary was built.
-* **undecided** — a difference nobody has decided to keep or remove yet.
+* **undecided** — a difference nobody has decided to keep or remove yet. No row is in this
+  class now (the last one, `hash`, became a deviation for 0.7.0); it stays for the next
+  reference release that adds an assertion nobody has looked at.
 
 | file | not passing | category | reason |
 |---|---|---|---|
