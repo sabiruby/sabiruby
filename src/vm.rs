@@ -92,12 +92,13 @@ pub const ROOT: usize = 0;
 
 /// One of the scheduler's four queues, in the order its tasks come out: the ready one by
 /// priority and first come first served within one priority, the others first come first
-/// served. Each task knows its key (`TaskData::queued`), so taking one out, putting one back
-/// and finding the head cost the same with ten tasks queued or ten thousand
-/// (`docs/plans/host-scale-plan.md`, H1). It was a `Vec` walked from its head until 0.7.0.
+/// served. Each task knows its key (`TaskData::queued`), so taking one out and putting one back
+/// never walk the queue (`docs/plans/host-scale-plan.md`, H1): the head and the back are O(1),
+/// anywhere else a binary search and a shift of the shorter side (`sorted_deque`). It was a `Vec`
+/// walked from its head until 0.7.0.
 #[derive(Default)]
 pub struct TaskQueue {
-    tasks: alloc::collections::BTreeMap<(u8, u64), ObjId>,
+    tasks: crate::sorted_deque::SortedDeque<(u8, u64), ObjId>,
 }
 
 impl TaskQueue {
@@ -108,7 +109,7 @@ impl TaskQueue {
     /// The task that comes out next.
     pub fn first(&self) -> Option<ObjId> { self.tasks.first_key_value().map(|(_, o)| *o) }
     /// The tasks in the order they come out.
-    pub fn iter(&self) -> impl Iterator<Item = ObjId> + '_ { self.tasks.values().copied() }
+    pub fn iter(&self) -> impl Iterator<Item = ObjId> + '_ { self.tasks.iter().map(|(_, o)| *o) }
     pub(crate) fn insert(&mut self, key: (u8, u64), task: ObjId) { self.tasks.insert(key, task); }
     pub(crate) fn remove(&mut self, key: &(u8, u64)) { self.tasks.remove(key); }
     pub(crate) fn retain(&mut self, mut keep: impl FnMut(ObjId) -> bool) { self.tasks.retain(|_, o| keep(*o)); }
@@ -127,11 +128,14 @@ pub struct TaskState {
     /// The waiting tasks that have a deadline — a sleep, or a `Task::Queue#pop` with a timeout —
     /// by the tick it falls on (counted from the start, so it does not wrap) and their place in
     /// the waiting queue. A tick looks only at the ones that are due.
-    pub(crate) sleepers: alloc::collections::BTreeMap<(u64, u64), ObjId>,
+    pub(crate) sleepers: crate::sorted_deque::SortedDeque<(u64, u64), ObjId>,
     /// The waiting tasks that wait for an object — the `Task::Queue` they pop, the task they
     /// join — by that object and their place in the waiting queue. A push wakes the first one
     /// on its queue without looking at the others.
-    pub(crate) waiters: alloc::collections::BTreeMap<(ObjId, u64), ObjId>,
+    pub(crate) waiters: crate::sorted_deque::SortedDeque<(ObjId, u64), ObjId>,
+    /// The sleepers one wake-up takes out, kept between wake-ups so that the scheduler does not
+    /// allocate for them every tick (`ext_task::wake_sleepers`).
+    pub(crate) due: Vec<(u64, ObjId)>,
     /// `tick` counted without wrapping, and the value of `tick` it was last brought up to date
     /// with (`ext_task::abs_tick`): what the deadlines in `sleepers` are counted in.
     pub(crate) tick_abs: u64,

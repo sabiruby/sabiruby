@@ -74,11 +74,25 @@ fn q_of(status: u8) -> usize {
 /// one. Its key in each is the order it came in, so what a wake-up takes out in key order is
 /// what a walk of the waiting queue from its head found.
 fn q_insert(vm: &mut Vm, o: ObjId) {
-    let (q, pri, reason, deadline, target) = {
-        let t = td(vm, o);
+    requeue(vm, o, false, |_| {});
+}
+
+/// Takes the task out of the queue and the indexes it is in (with `delete`), lets `change`
+/// rewrite its fields, and puts it in the queue and the indexes those fields say — reading and
+/// writing the task twice instead of four times, which a scheduler with a few tasks feels on
+/// every switch (`docs/worklog/2026-09-27-release-0.7-bench.md`). `q_delete` then `q_insert`,
+/// in one.
+fn requeue(vm: &mut Vm, o: ObjId, delete: bool, change: impl FnOnce(&mut TaskData)) {
+    let (old, q, pri, reason, deadline, target) = {
+        let t = td_mut(vm, o);
+        let old = if delete { (t.queued.take(), t.sleep_key.take(), t.wait_key.take()) } else { (None, None, None) };
+        change(t);
         let target = match t.reason { REASON_QUEUE => t.queue, REASON_JOIN => t.join, _ => None };
-        (q_of(t.status), t.priority, t.reason, t.wakeup_tick, target)
+        (old, q_of(t.status), t.priority, t.reason, t.wakeup_tick, target)
     };
+    if let Some((oq, key)) = old.0 { vm.task.queues[oq].remove(&key); }
+    if let Some(k) = old.1 { vm.task.sleepers.remove(&k); }
+    if let Some(k) = old.2 { vm.task.waiters.remove(&k); }
     let seq = vm.task.seq;
     vm.task.seq += 1;
     let key = (if q == Q_READY { pri } else { 0 }, seq);
@@ -115,9 +129,7 @@ fn q_delete(vm: &mut Vm, o: ObjId) {
 }
 
 fn set_status(vm: &mut Vm, o: ObjId, status: u8) {
-    q_delete(vm, o);
-    td_mut(vm, o).status = status;
-    q_insert(vm, o);
+    requeue(vm, o, true, |t| t.status = status);
 }
 
 /// Whether the task is one the scheduler still knows (`Task#close` drops it).
@@ -325,7 +337,7 @@ fn wake_sleepers(vm: &mut Vm) {
     let now = vm.task.tick;
     if (vm.task.wakeup_tick.wrapping_sub(now) as i32) > 0 { return; }
     let now_abs = abs_tick(vm);
-    let mut due: Vec<(u64, ObjId)> = Vec::new();
+    let mut due = core::mem::take(&mut vm.task.due);
     while let Some((&(deadline, seq), &o)) = vm.task.sleepers.first_key_value() {
         if deadline > now_abs { break; }
         due.push((seq, o));
@@ -334,18 +346,17 @@ fn wake_sleepers(vm: &mut Vm) {
     }
     vm.task.walked += due.len() as u64;
     due.sort_unstable_by_key(|(seq, _)| *seq);
-    for (_, o) in due {
-        q_delete(vm, o);
-        {
-            let t = td_mut(vm, o);
+    for &(_, o) in &due {
+        requeue(vm, o, true, |t| {
             t.status = READY;
             t.reason = REASON_NONE;
             t.queue = None;
             t.wakeup_tick = u32::MAX;
-        }
-        q_insert(vm, o);
+        });
         vm.task.switching = true;
     }
+    due.clear();
+    vm.task.due = due;
     vm.task.wakeup_tick = match vm.task.sleepers.first_key_value() {
         Some((_, &o)) => td(vm, o).wakeup_tick,
         None => u32::MAX,
@@ -355,7 +366,7 @@ fn wake_sleepers(vm: &mut Vm) {
 /// The tasks waiting for `target` (a `Task::Queue`, or a task being joined) in the order they
 /// began to wait: the first one only, or all of them.
 fn waiting_for(vm: &mut Vm, target: ObjId, all: bool) -> Vec<ObjId> {
-    let range = vm.task.waiters.range((target, 0)..=(target, u64::MAX)).map(|(_, o)| *o);
+    let range = vm.task.waiters.iter_from(&(target, 0)).take_while(|(k, _)| k.0 == target).map(|(_, o)| *o);
     let found: Vec<ObjId> = if all { range.collect() } else { range.take(1).collect() };
     vm.task.walked += found.len() as u64;
     found
@@ -729,7 +740,7 @@ fn task_current(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value
 
 fn task_list(vm: &mut Vm, _s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
     argc!(vm, a, 0);
-    let mut all = Vec::new();
+    let mut all = Vec::with_capacity((0..4).map(|q| vm.task.queues[q].len()).sum());
     for q in 0..4 { for o in vm.task.queues[q].iter() { all.push(Value::Obj(o)); } }
     Ok(vm.ary_new(all))
 }
@@ -867,14 +878,21 @@ fn task_error(vm: &mut Vm, msg: &str) -> crate::error::VmError {
 
 /// Wakes the tasks parked on `queue`: the first one for a push, all of them for a close.
 fn wake_queue_waiters(vm: &mut Vm, queue: ObjId, all: bool) {
-    for o in waiting_for(vm, queue, all) {
-        let (reason, target) = { let t = td(vm, o); (t.reason, t.queue) };
-        if reason != REASON_QUEUE || target != Some(queue) { continue; }
-        q_delete(vm, o);
-        { let t = td_mut(vm, o); t.status = READY; t.reason = REASON_NONE; t.queue = None; t.wakeup_tick = u32::MAX; }
-        q_insert(vm, o);
-        vm.task.switching = true;
+    // a push wakes one: that one is found without collecting the list (every push of a queue
+    // ping-pong comes here)
+    if !all {
+        let first = vm.task.waiters.iter_from(&(queue, 0)).next().filter(|(k, _)| k.0 == queue).map(|(_, o)| *o);
+        if let Some(o) = first { vm.task.walked += 1; wake_queue_waiter(vm, o, queue); }
+        return;
     }
+    for o in waiting_for(vm, queue, all) { wake_queue_waiter(vm, o, queue); }
+}
+
+fn wake_queue_waiter(vm: &mut Vm, o: ObjId, queue: ObjId) {
+    let (reason, target) = { let t = td(vm, o); (t.reason, t.queue) };
+    if reason != REASON_QUEUE || target != Some(queue) { return; }
+    requeue(vm, o, true, |t| { t.status = READY; t.reason = REASON_NONE; t.queue = None; t.wakeup_tick = u32::MAX; });
+    vm.task.switching = true;
 }
 
 fn queue_init(vm: &mut Vm) -> ObjId {

@@ -97,6 +97,7 @@ pub mod opcode;
 #[cfg(feature = "regexp")]
 pub mod regexp;
 pub mod rite;
+pub(crate) mod sorted_deque;
 pub mod symbol;
 pub mod value;
 pub mod vm;
