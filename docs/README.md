@@ -43,6 +43,10 @@ What changed in each release, with the commit behind every claim, is
 | [upstream-issue-task-dormant.md](verification/upstream-issue-task-dormant.md) | item 4 of that list worked out — the issue text, the PR description, what is already reported upstream, and what the gem's README does and does not promise. **A record: nothing was submitted** (author's decision, 2026-09-17) |
 | [patches/](verification/patches/) | the patches those drafts propose, as `git format-patch` files. `mruby-task-dormant-weak.patch` holds the dormant queue weakly (mruby 4.1.0-rc) |
 
+## backlog
+
+[backlog.md](backlog.md) — what was decided to wait, one line each: why, when to look again, where the record is.
+
 ## plans/ — what was decided, in order
 
 | file | status |
@@ -62,6 +66,7 @@ What changed in each release, with the commit behind every claim, is
 | [from-mrubyedge-plan.md](plans/from-mrubyedge-plan.md) | items 1 and 3 done (2026-09-16); what mruby/edge does that is worth having — serde, RBS at the boundary, a coverage list, gems as features, `RUBY_ENGINE` |
 | [host-bridge-plan.md](plans/host-bridge-plan.md) | done through stage 6a (2026-09-15); 6b is rubevy's and 6c is both. Carries the findings of each stage |
 | [wait-anywhere-plan.md](plans/wait-anywhere-plan.md) | done (2026-09-26), stages 1 and 2 (stage 3 undecided): a task can wait inside `instance_exec`/`instance_eval`/`Method#call` (as the reference mruby) and inside block-taking builtins DSLs use; a wait that cannot happen raises instead of passing silently; no slowdown on ordinary paths |
+| [release-0.7-plan.md](plans/release-0.7-plan.md) | in progress (2026-09-26): what 0.7.0 takes besides waiting inside blocks — the Hash `eql?` exception, `method_missing` via `funcall`, rc2's two checks, irep reclaim (H2), native names in `Exception#backtrace` (H5), waiting-task cost (H1), tidying |
 
 ## worklog/ — what happened, when
 
