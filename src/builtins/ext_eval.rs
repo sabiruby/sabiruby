@@ -71,7 +71,7 @@ fn eval_proc(vm: &mut Vm, src: &[u8], file: Option<String>, line: u32) -> VmResu
     let (caller_proc, target_class) = (ci.proc_, ci.target_class);
     let filename = file.unwrap_or_else(|| String::from("(eval)"));
     let bin = compile_with(vm, src, &filename, line, caller_proc)?;
-    let irep = vm.load(&bin)?;
+    let irep = vm.load_ireps(&bin)?;
     // the caller frame's environment, made now if it has none (`mrb_vm_ci_env` / `mrb_env_new`)
     let env = vm.caller_env();
     let p = vm.heap.alloc(vm.core.proc_, ObjKind::Proc(ProcData {
@@ -99,7 +99,7 @@ pub(crate) fn top_load(vm: &mut Vm, src: &[u8], self_: Value) -> VmResult<Value>
             return Err(vm.raise(cls, &text));
         }
     };
-    let irep = vm.load(&bin)?;
+    let irep = vm.load_ireps(&bin)?;
     let p = vm.heap.alloc(vm.core.proc_, ObjKind::Proc(ProcData {
         irep, upper: None, env: None, target_class: Some(vm.core.object),
         strict: false, scope: false, orphan: false, mid: None,
@@ -169,7 +169,7 @@ fn eval_in_binding(vm: &mut Vm, binding: Value, src: &[u8], file: Option<String>
         }
     }
     let bin = compile_with(vm, src, &filename, line, bproc)?;
-    let irep = vm.load(&bin)?;
+    let irep = vm.load_ireps(&bin)?;
     let target_class = vm.heap.env(benv).target_class.or(Some(vm.core.object));
     let p = vm.heap.alloc(vm.core.proc_, ObjKind::Proc(ProcData {
         irep, upper: Some(bproc), env: Some(benv), target_class,

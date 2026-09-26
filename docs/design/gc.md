@@ -57,7 +57,7 @@ and heap pages are implementation choices of `src/gc.c` and are not copied (book
 | 7 | `inspect_guard`, `eq_guard`, `pending_kw`, `loop_exit` | `loop_exit` = value a fiber yielded to a native resumer |
 | 8 | `Vm::gc_registered` | `Vm::gc_register` / `gc_unregister` (mruby `mrb_gc_register`) |
 | 9 | mruby-task's four queues and the running task | a task the program dropped every reference to is still going to run, so the scheduler's queues own their tasks (`mrb_task_mark_all`) |
-| – | `ireps` | not scanned: pool literals are Rust values (`Pool`), not objects |
+| – | `ireps` | not scanned: pool literals are Rust values (`Pool`), not objects. A program's ireps are handed back only by the host (`Vm::unload`, below), never by a collection |
 | – | symbols | never collected |
 
 Edges from an object: `class`, `ivars`, and per kind:
@@ -109,6 +109,22 @@ fiber and kept elsewhere) is detached: its window is copied into `values` (mruby
   safely read, and the type is what enforces that rather than a rule in prose. A hook that
   needs to run Ruby queues the work for the host's next call into the VM. Only what the
   collector reclaims reaches the hook; what is still live when the `Vm` is dropped does not.
+
+## Programs: `Vm::unload` (0.7.0)
+
+The collector frees objects, not code: an irep lives in `Vm::ireps` until the host hands its
+program back with `Vm::unload(id)` (`docs/plans/host-scale-plan.md`, H2; the options weighed are in
+`docs/worklog/2026-09-26-release-0.7-b.md`). What can run a program's code is a frame of any
+context whose `irep` is in the program's range (`Vm::load` records it), or a Proc whose `irep` is —
+a block, a lambda, a method table's entry, the Proc a task or a fiber was made from. `unload`
+looks for both, and where it finds one it runs a collection and looks again, so that a Proc
+nothing reaches does not count; it does not collect while a native is on the host stack or
+under `GC.disable`, and then a Proc that is garbage still counts — the answer errs towards
+"still in use". An exception whose record (`@__bt`) names the program gets its text made first.
+The program's entries become empty and their numbers are not given out again, so an id a host
+kept names nothing: `run_irep` and `task_spawn` refuse it. Nothing is added to the mark phase or
+to the hot path; the cost is one walk of the frames and of the heap per `unload`, and one
+collection where something named the program.
 
 ## Decisions from review (2026-09-11)
 

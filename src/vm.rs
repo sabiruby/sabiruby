@@ -90,12 +90,52 @@ impl Context {
 /// Index of the root context in `Vm::contexts`.
 pub const ROOT: usize = 0;
 
+/// One of the scheduler's four queues, in the order its tasks come out: the ready one by
+/// priority and first come first served within one priority, the others first come first
+/// served. Each task knows its key (`TaskData::queued`), so taking one out, putting one back
+/// and finding the head cost the same with ten tasks queued or ten thousand
+/// (`docs/plans/host-scale-plan.md`, H1). It was a `Vec` walked from its head until 0.7.0.
+#[derive(Default)]
+pub struct TaskQueue {
+    tasks: alloc::collections::BTreeMap<(u8, u64), ObjId>,
+}
+
+impl TaskQueue {
+    /// How many tasks are in the queue.
+    pub fn len(&self) -> usize { self.tasks.len() }
+    /// Whether the queue is empty.
+    pub fn is_empty(&self) -> bool { self.tasks.is_empty() }
+    /// The task that comes out next.
+    pub fn first(&self) -> Option<ObjId> { self.tasks.first_key_value().map(|(_, o)| *o) }
+    /// The tasks in the order they come out.
+    pub fn iter(&self) -> impl Iterator<Item = ObjId> + '_ { self.tasks.values().copied() }
+    pub(crate) fn insert(&mut self, key: (u8, u64), task: ObjId) { self.tasks.insert(key, task); }
+    pub(crate) fn remove(&mut self, key: &(u8, u64)) { self.tasks.remove(key); }
+    pub(crate) fn retain(&mut self, mut keep: impl FnMut(ObjId) -> bool) { self.tasks.retain(|_, o| keep(*o)); }
+}
+
 /// mruby-task's scheduler state (`mrb_task_state`). The queues hold the Task objects, which is
 /// what keeps a task the program dropped every other reference to alive.
 #[derive(Default)]
 pub struct TaskState {
     /// dormant, ready, waiting, suspended — the ready one sorted by priority, FIFO within one
-    pub queues: [Vec<ObjId>; 4],
+    pub queues: [TaskQueue; 4],
+    /// The order tasks were put in a queue: the second half of a queue's key, so that tasks of one
+    /// priority come out first come first served, and what orders the tasks a wake-up makes ready
+    /// (the order they entered the waiting queue, as the reference's walk of that queue gives).
+    pub(crate) seq: u64,
+    /// The waiting tasks that have a deadline — a sleep, or a `Task::Queue#pop` with a timeout —
+    /// by the tick it falls on (counted from the start, so it does not wrap) and their place in
+    /// the waiting queue. A tick looks only at the ones that are due.
+    pub(crate) sleepers: alloc::collections::BTreeMap<(u64, u64), ObjId>,
+    /// The waiting tasks that wait for an object — the `Task::Queue` they pop, the task they
+    /// join — by that object and their place in the waiting queue. A push wakes the first one
+    /// on its queue without looking at the others.
+    pub(crate) waiters: alloc::collections::BTreeMap<(ObjId, u64), ObjId>,
+    /// `tick` counted without wrapping, and the value of `tick` it was last brought up to date
+    /// with (`ext_task::abs_tick`): what the deadlines in `sleepers` are counted in.
+    pub(crate) tick_abs: u64,
+    pub(crate) tick_seen: u32,
     /// ticks since the scheduler started (`MRB_TICK_UNIT` milliseconds apiece)
     pub tick: u32,
     /// the earliest tick a waiting task asked to be woken at; `u32::MAX` where none did
@@ -160,6 +200,10 @@ pub struct TaskState {
     pub forced: Option<u64>,
     /// `Task::Overrun`
     pub overrun_class: Option<ObjId>,
+    /// Queue elements the scheduler has looked at or moved one by one, for the tests that check
+    /// that a waiting task costs nothing per turn (`tests/task_scale.rs`). Not a measure of time.
+    #[doc(hidden)]
+    pub walked: u64,
 }
 
 /// Instructions a tick lasts where nothing else drives one (`MRB_TICK_UNIT` has no meaning
@@ -532,6 +576,20 @@ pub struct Vm {
     pub(crate) host_stores: Vec<crate::host_store::HostStoreEntry>,
     /// The next number `Vm::next_data_tag` hands out.
     pub(crate) next_tag: u32,
+    /// What each [`Vm::load`] put in `ireps`, by the id it answered (the top-level irep): the
+    /// range of ids of the program's ireps, which [`Vm::unload`] hands back together.
+    pub(crate) irep_loads: alloc::collections::BTreeMap<IrepId, (IrepId, IrepId)>,
+}
+
+/// Why [`Vm::unload`] did not hand a program's ireps back.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UnloadError {
+    /// The id is not one [`Vm::load`] answered, or that program was unloaded already.
+    NotLoaded,
+    /// Something can still run the program's code: a frame of any context (a task or a fiber
+    /// that stands in it), or a Proc — a block, a lambda, a method it defined, the Proc of a task
+    /// made from it. Nothing was changed.
+    StillInUse,
 }
 
 /// Result of [`Vm::step`].
@@ -680,7 +738,7 @@ impl Vm {
             exc: None, out: Vec::new(), core, s, top_self, step_left: None, instructions: 0, op_counts: [0; crate::opcode::OP_COUNT], count_ops: false, method_cache: alloc::boxed::Box::new([MethodCacheLine::default(); METHOD_CACHE_LEN]), idx_builtin: [None; IDX_SLOTS], idx_class: [None; IDX_SLOTS], idx_serial: 0, native_depth: 0, inspect_guard: Vec::new(), pending_kw: None, eq_guard: Vec::new(), gc_disabled: false, pending_vis_break: false, notimpl_fns: Vec::new(), gc_step_limit: 0, gc_interval_ratio: 200, gc_stress: false, native_active: 0, gc_registered: Vec::new(), native_mid: None, live_after_gc: 0, gc_count: 0, gc_time_ns: 0, gc_clock: None, wall_clock: None, sleep_hook: None, host: None, trace: None, call_proc,
             contexts: vec![Context::new(FiberState::Running)], cur: ROOT, direct_send: false, native_ret_reg: 0, loop_exit: None, native_arity: Vec::new(),
             task: TaskState { wakeup_tick: u32::MAX, tick_every: TASK_TICK_INSTRUCTIONS, tick_left: TASK_TICK_INSTRUCTIONS, clock_from_instructions: true, native_every: TASK_NATIVE_SAMPLE, native_left: TASK_NATIVE_SAMPLE, ..Default::default() },
-            host_state: None, on_free: None, host_stores: Vec::new(), next_tag: 1,
+            host_state: None, on_free: None, host_stores: Vec::new(), next_tag: 1, irep_loads: alloc::collections::BTreeMap::new(),
         };
         // Constants for the core classes, Object includes Kernel.
         for i in 0..vm.heap.len() {
@@ -1986,8 +2044,19 @@ impl Vm {
 
     // ------------------------------------------------------------------ loading
 
-    /// Loads a RITE binary; returns the id of its top-level irep.
+    /// Loads a RITE binary; returns the id of its top-level irep, which [`Vm::unload`] takes to
+    /// hand the program back.
     pub fn load(&mut self, bin: &[u8]) -> VmResult<IrepId> {
+        let before = self.ireps.len();
+        let root = self.load_ireps(bin)?;
+        self.irep_loads.insert(root, (before, self.ireps.len()));
+        Ok(root)
+    }
+
+    /// [`Vm::load`] where no one is given the id (`eval`, `require`, [`Vm::load_and_run`]): the
+    /// program is not one a host can name, so it is not recorded for [`Vm::unload`] either —
+    /// recording it would be one more entry per `eval` that nothing ever takes out.
+    pub(crate) fn load_ireps(&mut self, bin: &[u8]) -> VmResult<IrepId> {
         let rite = rite::parse(bin)?;
         let offset = self.ireps.len();
         for ir in &rite.ireps {
@@ -2012,9 +2081,75 @@ impl Vm {
         Ok(rite.root + offset)
     }
 
-    /// Loads and runs a binary to completion at the top level.
+    /// Hands back the ireps of a program [`Vm::load`] read, where nothing can run them any more:
+    /// no frame of any context stands in them, and no Proc is made of them. `irep` is the id
+    /// `load` answered. A host that replaces its scripts calls this for the program it replaced,
+    /// once its tasks are over and it has dropped them; until then the answer is
+    /// [`UnloadError::StillInUse`] and nothing changes — ask again later.
+    ///
+    /// Where something might still hold the code, a collection runs first, so that a Proc
+    /// nothing reaches any more does not count (not while a native is running — a host function
+    /// that calls this from Ruby gets the answer without one — nor under `GC.disable`). An
+    /// exception raised in the program keeps its backtrace: the record is made into text here.
+    ///
+    /// **The ids are not given out again.** The program's ids stay in `ireps` as empty
+    /// entries (the size of a [`VmIrep`] each, with nothing behind them), so an id a host kept
+    /// by mistake names nothing rather than a later program: [`Vm::run_irep`] and
+    /// [`Vm::task_spawn`] refuse it. What goes back is the code, the constants, the symbols'
+    /// lists, the line table and the file name.
+    pub fn unload(&mut self, irep: IrepId) -> Result<(), UnloadError> {
+        let Some(&(start, end)) = self.irep_loads.get(&irep) else { return Err(UnloadError::NotLoaded) };
+        if self.irep_users(start, end) {
+            // what makes it look in use may be garbage: a finished task's Proc, a block that was dropped
+            if self.native_active != 0 || self.gc_disabled { return Err(UnloadError::StillInUse); }
+            self.gc_collect();
+            if self.irep_users(start, end) { return Err(UnloadError::StillInUse); }
+        }
+        // an exception raised in the program names its frames by irep: the text is made now,
+        // as `Exception#backtrace` would make it, and kept where `set_backtrace` keeps its own
+        let bt = self.intern("@__bt");
+        let btstr = self.intern("@__btstr");
+        let mut records: Vec<(ObjId, Vec<i64>)> = Vec::new();
+        for o in self.heap.ids() {
+            let obj = self.heap.get(o);
+            if !matches!(obj.kind, ObjKind::Exception) { continue; }
+            if obj.ivars.iter().any(|(n, _)| *n == btstr) { continue; }
+            let Some(Value::Obj(a)) = obj.ivars.iter().find(|(n, _)| *n == bt).map(|(_, v)| v.get()) else { continue };
+            let Some(flat) = self.heap.array(a) else { continue };
+            let flat: Vec<i64> = flat.iter().filter_map(|x| match x.get() { Value::Int(i) => Some(i), _ => None }).collect();
+            if flat.chunks(3).any(|f| f[0] >= 0 && (start..end).contains(&(f[0] as usize))) { records.push((o, flat)); }
+        }
+        for (o, flat) in records {
+            let text: Vec<Value> = self.backtrace_text(&flat).into_iter().map(|t| self.str_from(t)).collect();
+            let a = self.ary_new(text);
+            self.heap.ivar_set(o, btstr, a);
+        }
+        for ir in &mut self.ireps[start..end] {
+            *ir = VmIrep { nlocals: 0, nregs: 0, iseq: Vec::new(), catch: Vec::new(), pool: Vec::new(), syms: Vec::new(),
+                reps: Vec::new(), lv: Vec::new(), lines: Vec::new(), filename: None };
+        }
+        self.irep_loads.remove(&irep);
+        Ok(())
+    }
+
+    /// Whether a frame of any context or a Proc on the heap names an irep in `start..end`.
+    fn irep_users(&self, start: IrepId, end: IrepId) -> bool {
+        let inside = |i: IrepId| start <= i && i < end;
+        if self.ci.iter().any(|ci| inside(ci.irep)) { return true; }
+        if self.contexts.iter().any(|c| c.ci.iter().any(|ci| inside(ci.irep))) { return true; }
+        self.heap.ids().any(|o| matches!(&self.heap.get(o).kind, ObjKind::Proc(pd) if inside(pd.irep)))
+    }
+
+    /// An irep that [`Vm::unload`] handed back (or an id past the end), which nothing may run.
+    pub(crate) fn irep_gone(&self, irep: IrepId) -> bool {
+        self.ireps.get(irep).is_none_or(|ir| ir.iseq.is_empty())
+    }
+
+    /// Loads and runs a binary to completion at the top level. The program is kept for good: its
+    /// id is not answered, so it cannot be [`Vm::unload`]ed — [`Vm::load`] and [`Vm::run_irep`]
+    /// are the pair for a program the host means to hand back.
     pub fn load_and_run(&mut self, bin: &[u8]) -> VmResult<Value> {
-        let irep = self.load(bin)?;
+        let irep = self.load_ireps(bin)?;
         self.run_irep(irep)
     }
 
@@ -2032,6 +2167,7 @@ impl Vm {
     }
     /// Runs a top-level irep with `self` = main.
     pub fn run_irep(&mut self, irep: IrepId) -> VmResult<Value> {
+        if self.irep_gone(irep) { return Err(self.raise(self.core.argument_error, "the program was unloaded")); }
         let proc_ = self.heap.alloc(self.core.proc_, ObjKind::Proc(ProcData {
             irep, upper: None, env: None, target_class: Some(self.core.object), strict: false, scope: true, orphan: false, mid: None,
         }));
@@ -2047,7 +2183,12 @@ impl Vm {
     }
 
     /// Prepares a top-level irep for stepped execution ([`Vm::step`]).
+    ///
+    /// # Panics
+    ///
+    /// On an id [`Vm::load`] did not answer, or one [`Vm::unload`] handed back.
     pub fn start(&mut self, irep: IrepId) {
+        assert!(!self.irep_gone(irep), "Vm::start: irep {irep} was unloaded or never loaded");
         let proc_ = self.heap.alloc(self.core.proc_, ObjKind::Proc(ProcData {
             irep, upper: None, env: None, target_class: Some(self.core.object), strict: false, scope: true, orphan: false, mid: None,
         }));
@@ -2690,11 +2831,12 @@ impl Vm {
     /// delivered to the register the new context waits on (or, when the fiber
     /// that yielded had been resumed by native code, the run loop is told to
     /// return it) and the caller must not write it to its own register.
-    fn call_native_direct(&mut self, f: crate::object::NativeFn, recv: Value, args: &[Value], blk: Value, ret_reg: usize) -> VmResult<(Value, bool)> {
+    fn call_native_direct(&mut self, f: crate::object::NativeFn, mid: Option<Sym>, recv: Value, args: &[Value], blk: Value, ret_reg: usize) -> VmResult<(Value, bool)> {
         let ctx0 = self.cur;
         let direct = core::mem::replace(&mut self.direct_send, true);
         let reg0 = core::mem::replace(&mut self.native_ret_reg, ret_reg);
         let r = self.call_native(f, recv, args, blk);
+        if r.is_err() { self.keep_native_backtrace(&r, Some(f), mid, ctx0); }
         self.native_ret_reg = reg0;
         self.direct_send = direct;
         self.orphan_block_of_native(blk);
@@ -2728,11 +2870,12 @@ impl Vm {
     }
 
     /// [`Vm::call_native_direct`](Vm::call_native) for a closure method.
-    fn call_closure_direct(&mut self, f: &crate::object::NativeClosure, recv: Value, args: &[Value], blk: Value, ret_reg: usize) -> VmResult<(Value, bool)> {
+    fn call_closure_direct(&mut self, f: &crate::object::NativeClosure, mid: Option<Sym>, recv: Value, args: &[Value], blk: Value, ret_reg: usize) -> VmResult<(Value, bool)> {
         let ctx0 = self.cur;
         let direct = core::mem::replace(&mut self.direct_send, true);
         let reg0 = core::mem::replace(&mut self.native_ret_reg, ret_reg);
         let r = self.call_closure(f, recv, args, blk);
+        if r.is_err() { self.keep_native_backtrace(&r, None, mid, ctx0); }
         self.native_ret_reg = reg0;
         self.direct_send = direct;
         self.orphan_block_of_native(blk);
@@ -3003,63 +3146,107 @@ impl Vm {
     }
 
     /// `mrb_get_backtrace` as `caller` sees it: one `file:line:in method` entry per Ruby
-    /// frame of the running context, innermost first. Frames without debug info are left
-    /// out, as the reference leaves them out. `native` names the native being run: it
-    /// comes first, located at the frame that called it (the reference's C frames are
-    /// located at the nearest Ruby frame below them the same way).
+    /// frame of the running context, innermost first, and one per native between them.
+    /// Frames without debug info are left out, as the reference leaves them out. `native`
+    /// names the native being run: it comes first. A native is located at the nearest frame
+    /// below it that has debug info, as the reference locates its C frames
+    /// (`pack_backtrace`, src/backtrace.c), and is `(unknown):0` where there is none.
+    /// [`Vm::backtrace_record`] says which natives are seen.
     pub fn backtrace(&self, native: Option<Sym>) -> Vec<String> {
-        let loc = |ci: &CallInfo| -> Option<String> {
-            let ir = self.ireps.get(ci.irep)?;
-            if ir.lines.is_empty() { return None; }
-            let file = ir.filename.as_deref().unwrap_or("(unknown)");
-            // `ci.pc` is past the instruction being executed
-            Some(match ir.line_of(ci.pc.saturating_sub(1)) { Some(l) => format!("{file}:{l}"), None => format!("{file}:0") })
-        };
-        let mut out = Vec::new();
-        if let Some(m) = native {
-            if let Some(top) = self.ci.iter().rev().find_map(|ci| loc(ci)) {
-                out.push(format!("{top}:in {}", self.syms.name_str(m)));
+        let natives: &[Sym] = match &native { Some(m) => core::slice::from_ref(m), None => &[] };
+        self.backtrace_text(&self.backtrace_record(natives))
+    }
+
+    /// The running context's frames as the flat record [`Vm::backtrace_text`] reads: `[irep,
+    /// pc, mid]` per frame, innermost first, `mid` `-1` for a frame with no method name (a
+    /// block), and `[-1, 0, mid]` for a native. The reference gives every C function a
+    /// callinfo of its own, so its backtrace names them (`Integer`, `sort!`, `gsub`); a
+    /// SabiRuby native has no frame, and the natives are found where they left a trace:
+    ///
+    /// * `natives`, innermost first: what the caller knows is running (the native that raised,
+    ///   or the one asking for `caller`);
+    /// * a native loop frame (`Vm::push_loop_frame`: `index { }`, `Array.new(n) { }`) stands
+    ///   for its native, by the name it was called by — except `catch`'s, which is bytecode
+    ///   without debug info in the reference (`catch_iseq`) and so never shows there;
+    /// * a frame a native started (`Cci::Skip`: the block `sort { }` or `gsub { }` calls) has
+    ///   that native right below it, and the frame below that is still at the call that reached
+    ///   it (`Vm::boundary_name`), which names it.
+    ///
+    /// A native another native called through [`Vm::funcall`] leaves no trace and is not seen.
+    pub fn backtrace_record(&self, natives: &[Sym]) -> Vec<i64> {
+        let mut flat: Vec<i64> = Vec::with_capacity((self.ci.len() + natives.len()) * 3);
+        for m in natives { flat.extend_from_slice(&[-1, 0, m.0 as i64]); }
+        for i in (0..self.ci.len()).rev() {
+            let ci = &self.ci[i];
+            let mid = ci.mid.map(|m| m.0 as i64).unwrap_or(-1);
+            if ci.irep == LOOP_IREP {
+                let kind = self.stack.get(ci.base + 2).map(|s| s.get());
+                if mid >= 0 && kind != Some(Value::Int(crate::builtins::ext_catch::LOOP_CATCH)) { flat.extend_from_slice(&[-1, 0, mid]); }
+            } else {
+                flat.extend_from_slice(&[ci.irep as i64, ci.pc as i64, mid]);
+            }
+            if ci.cci == Cci::Skip && i > 0 {
+                let below = &self.ci[i - 1];
+                if let Some((_, m)) = self.send_before(below.irep, below.pc) { flat.extend_from_slice(&[-1, 0, m.0 as i64]); }
             }
         }
-        for ci in self.ci.iter().rev() {
-            let Some(mut s) = loc(ci) else { continue };
-            if let Some(m) = ci.mid { s.push_str(":in "); s.push_str(&self.syms.name_str(m)); }
-            out.push(s);
-        }
-        out
+        flat
     }
 
     /// Where an exception was raised, kept as the frames rather than as text (`mrb_keep_backtrace`):
     /// a program that uses exceptions for control raises far more often than it reads
     /// `Exception#backtrace`, so the strings are built only when they are asked for. The record is
-    /// a flat Array of `[irep, pc, mid]` triples, innermost frame first; `mid` is `-1` for a frame
-    /// with no method name (a block). An exception that carries one already keeps it: a re-raise
-    /// does not move where it came from.
-    fn keep_backtrace(&mut self, exc: ObjId) {
+    /// [`Vm::backtrace_record`]'s, as an Array of Integers. `native` is the native that raised,
+    /// where the record is made on its way out (`Vm::call_native_direct`). An exception that
+    /// carries one already keeps it: a re-raise does not move where it came from.
+    fn keep_backtrace(&mut self, exc: ObjId, native: Option<Sym>) {
         let k = self.intern("@__bt");
         if self.heap.get(exc).ivars.iter().any(|(n, _)| *n == k) { return; }
-        let mut flat: Vec<Value> = Vec::with_capacity(self.ci.len() * 3);
-        for ci in self.ci.iter().rev() {
-            flat.push(Value::Int(ci.irep as i64));
-            flat.push(Value::Int(ci.pc as i64));
-            flat.push(Value::Int(ci.mid.map(|m| m.0 as i64).unwrap_or(-1)));
-        }
+        let natives: &[Sym] = match &native { Some(m) => core::slice::from_ref(m), None => &[] };
+        let flat: Vec<Value> = self.backtrace_record(natives).into_iter().map(Value::Int).collect();
         let a = self.ary_new(flat);
         self.heap.ivar_set(exc, k, a);
     }
 
-    /// The text of the record `keep_backtrace` made, in the format `caller` uses. Frames the
-    /// build kept no line numbers for are left out, as they are there.
+    /// The record of an exception a native raised, made as the native returns to the SEND that
+    /// called it, while the frames are still those of the call — at the run loop the native's
+    /// name is gone. `Kernel#raise` is not named, as the reference's clears its own
+    /// (`mrb_f_raise`: `ci->mid = 0`). Only where the native is still in the context it was
+    /// called from: one that switched fibers left its frames behind.
+    #[cold]
+    fn keep_native_backtrace(&mut self, r: &VmResult<Value>, f: Option<crate::object::NativeFn>, mid: Option<Sym>, ctx0: usize) {
+        let Err(VmError::Raise(Value::Obj(e))) = r else { return };
+        if self.cur != ctx0 || !matches!(self.heap.get(*e).kind, ObjKind::Exception) { return; }
+        let raise = f.is_some_and(|f| core::ptr::fn_addr_eq(f, crate::builtins::kernel::raise as crate::object::NativeFn));
+        self.keep_backtrace(*e, if raise { None } else { mid });
+    }
+
+    /// The text of a record [`Vm::backtrace_record`] made, in the format `caller` uses. Frames
+    /// the build kept no line numbers for are left out, as they are there; a native is placed
+    /// at the next frame that has them (`pack_backtrace`), or is `(unknown):0` with no name where
+    /// none has (`decode_location`, src/backtrace.c).
     pub fn backtrace_text(&self, flat: &[i64]) -> Vec<String> {
-        let mut out = Vec::new();
-        for f in flat.chunks(3) {
-            let [irep, pc, mid] = *f else { continue };
-            let Some(ir) = self.ireps.get(irep as usize) else { continue };
-            if ir.lines.is_empty() { continue; }
+        let place = |irep: i64, pc: i64| -> Option<String> {
+            let ir = self.ireps.get(usize::try_from(irep).ok()?)?;
+            if ir.lines.is_empty() { return None; }
             let file = ir.filename.as_deref().unwrap_or("(unknown)");
             // `pc` is past the instruction that raised
             let line = ir.line_of((pc as usize).saturating_sub(1)).unwrap_or(0);
-            let mut s = format!("{file}:{line}");
+            Some(format!("{file}:{line}"))
+        };
+        let mut out = Vec::new();
+        let frames: Vec<&[i64]> = flat.chunks(3).filter(|f| f.len() == 3).collect();
+        for (i, f) in frames.iter().enumerate() {
+            let [irep, pc, mid] = **f else { continue };
+            let at = if irep >= 0 {
+                match place(irep, pc) { Some(s) => s, None => continue }
+            } else {
+                match frames[i + 1..].iter().find_map(|g| if g[0] >= 0 { place(g[0], g[1]) } else { None }) {
+                    Some(s) => s,
+                    None => { out.push(String::from("(unknown):0")); continue; }
+                }
+            };
+            let mut s = at;
             if mid >= 0 { s.push_str(":in "); s.push_str(&self.syms.name_str(crate::symbol::Sym(mid as u32))); }
             out.push(s);
         }
@@ -3189,7 +3376,7 @@ impl Vm {
         // task a program can still reach, as the reference's do.
         {
             let heap = &self.heap;
-            self.task.queues[0].retain(|o| heap.is_marked(*o));
+            self.task.queues[0].retain(|o| heap.is_marked(o));
         }
         // A context nothing reached (its Fiber object is garbage) can never run
         // again. The environments of its frames that are still reachable (a
@@ -3275,7 +3462,7 @@ impl Vm {
         // to run no more, so it is held weakly and dropped from the queue once the collection
         // finds nothing else naming it (`Vm::gc_collect`, `docs/design/gems.md`).
         for q in &self.task.queues[1..] {
-            for id in q { h.mark_id(*id, work); }
+            for id in q.iter() { h.mark_id(id, work); }
         }
         for t in [self.task.running, self.task.main].into_iter().flatten() { h.mark_id(t, work); }
     }
@@ -3670,7 +3857,7 @@ impl Vm {
                         if matches!(self.heap.get(o).kind, ObjKind::Exception) {
                             let k = self.intern("@__raised");
                             self.heap.ivar_set(o, k, Value::True);
-                            self.keep_backtrace(o);
+                            self.keep_backtrace(o, None);
                         }
                     }
                     // Unwind: look for a catch handler in frames >= stop_depth.
@@ -5015,7 +5202,7 @@ impl Vm {
                             return self.op_send_vis(base, a, mm, c, has_blk, false, false);
                         }
                         let r = match m {
-                            Method::Closure(f) => { let kd = self.kdict_nonempty(kd); if let Some(k) = kd { nargs.push(k); } let (v, sw) = self.call_closure_direct(&f, recv, &nargs, blk, base + a)?; if sw { return Ok(()); } v }
+                            Method::Closure(f) => { let kd = self.kdict_nonempty(kd); if let Some(k) = kd { nargs.push(k); } let (v, sw) = self.call_closure_direct(&f, Some(mm), recv, &nargs, blk, base + a)?; if sw { return Ok(()); } v }
                             _ => Value::Nil,
                         };
                         self.stack[base + a] = Slot::from(r);
@@ -5042,7 +5229,7 @@ impl Vm {
                 }
                 let (args, kd) = self.native_call_args(base + a, argc, kw);
                 let saved = self.pending_kw.replace(kd.unwrap_or(Value::Nil));
-                let r = self.call_native_direct(f, recv, &args, blk, base + a);
+                let r = self.call_native_direct(f, Some(mid), recv, &args, blk, base + a);
                 self.pending_kw = saved;
                 let (v, switched) = r?;
                 if !switched { self.stack[base + a] = Slot::from(v); }
@@ -5052,7 +5239,7 @@ impl Vm {
                 let f = match self.closure_of(owner, mid) { Some(f) => f, None => return Err(VmError::Internal("closure vanished between lookup and call".into())) };
                 let (args, kd) = self.native_call_args(base + a, argc, kw);
                 let saved = self.pending_kw.replace(kd.unwrap_or(Value::Nil));
-                let r = self.call_closure_direct(&f, recv, &args, blk, base + a);
+                let r = self.call_closure_direct(&f, Some(mid), recv, &args, blk, base + a);
                 self.pending_kw = saved;
                 let (v, switched) = r?;
                 if !switched { self.stack[base + a] = Slot::from(v); }

@@ -114,7 +114,8 @@ pub struct Declared<T> {
     /// serde's point at the same place.
     ///
     /// `None` where the declaration came from bytecode built without debug information: the
-    /// VM has no line to give, and `Exception#backtrace` is empty there too. Where a name was
+    /// VM has no line to give, and `Exception#backtrace` places nothing there either (it says
+    /// `(unknown):0` for the native, as the reference does). Where a name was
     /// declared twice through [`Declarations::define_replacing`], it is the line of the
     /// *later* declaration, which is the one whose value survived.
     pub line: Option<u32>,

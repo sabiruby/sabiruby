@@ -69,25 +69,49 @@ fn q_of(status: u8) -> usize {
 }
 
 /// Puts the task in the queue its status names, the ready one ordered by priority and FIFO
-/// within one priority (`mrb_task_q_insert`).
+/// within one priority (`mrb_task_q_insert`). A waiting task also goes into the indexes a
+/// wake-up looks in: by its deadline if it has one, by the object it waits for if it waits for
+/// one. Its key in each is the order it came in, so what a wake-up takes out in key order is
+/// what a walk of the waiting queue from its head found.
 fn q_insert(vm: &mut Vm, o: ObjId) {
-    let (q, pri) = { let t = td(vm, o); (q_of(t.status), t.priority) };
-    if q == Q_READY {
-        let at = vm.task.queues[q].iter().position(|x| td(vm, *x).priority > pri).unwrap_or(vm.task.queues[q].len());
-        vm.task.queues[q].insert(at, o);
-    } else {
-        vm.task.queues[q].push(o);
-    }
-}
-
-/// Takes the task out of whichever queue holds it (`mrb_task_q_delete`).
-fn q_delete(vm: &mut Vm, o: ObjId) {
-    for q in 0..4 {
-        if let Some(i) = vm.task.queues[q].iter().position(|x| *x == o) {
-            vm.task.queues[q].remove(i);
-            return;
+    let (q, pri, reason, deadline, target) = {
+        let t = td(vm, o);
+        let target = match t.reason { REASON_QUEUE => t.queue, REASON_JOIN => t.join, _ => None };
+        (q_of(t.status), t.priority, t.reason, t.wakeup_tick, target)
+    };
+    let seq = vm.task.seq;
+    vm.task.seq += 1;
+    let key = (if q == Q_READY { pri } else { 0 }, seq);
+    vm.task.queues[q].insert(key, o);
+    let mut sleep_key = None;
+    let mut wait_key = None;
+    if q == Q_WAITING {
+        if (reason == REASON_SLEEP || reason == REASON_QUEUE) && deadline != u32::MAX {
+            let k = (abs_deadline(vm, deadline), seq);
+            vm.task.sleepers.insert(k, o);
+            sleep_key = Some(k);
+        }
+        if let Some(target) = target {
+            vm.task.waiters.insert((target, seq), o);
+            wait_key = Some((target, seq));
         }
     }
+    let t = td_mut(vm, o);
+    t.queued = Some((q, key));
+    t.sleep_key = sleep_key;
+    t.wait_key = wait_key;
+}
+
+/// Takes the task out of whichever queue holds it (`mrb_task_q_delete`), and out of the
+/// indexes of the waiting ones.
+fn q_delete(vm: &mut Vm, o: ObjId) {
+    let (queued, sleep_key, wait_key) = {
+        let t = td_mut(vm, o);
+        (t.queued.take(), t.sleep_key.take(), t.wait_key.take())
+    };
+    if let Some((q, key)) = queued { vm.task.queues[q].remove(&key); }
+    if let Some(k) = sleep_key { vm.task.sleepers.remove(&k); }
+    if let Some(k) = wait_key { vm.task.waiters.remove(&k); }
 }
 
 fn set_status(vm: &mut Vm, o: ObjId, status: u8) {
@@ -98,7 +122,26 @@ fn set_status(vm: &mut Vm, o: ObjId, status: u8) {
 
 /// Whether the task is one the scheduler still knows (`Task#close` drops it).
 fn is_queued(vm: &Vm, o: ObjId) -> bool {
-    vm.task.queues.iter().any(|q| q.contains(&o))
+    td(vm, o).queued.is_some()
+}
+
+/// `tick` counted from the start without wrapping. The clock only moves forward, and never by
+/// 2^32 ticks between two looks, so the ticks since the last look are `tick - tick_seen` in
+/// wrapping arithmetic whoever moved it.
+fn abs_tick(vm: &mut Vm) -> u64 {
+    let t = &mut vm.task;
+    t.tick_abs += t.tick.wrapping_sub(t.tick_seen) as u64;
+    t.tick_seen = t.tick;
+    t.tick_abs
+}
+
+/// A deadline on the wrapping clock as a tick on the one that does not wrap. A deadline is at
+/// most `i32::MAX` ticks from the tick it is compared with (`__deadline`, `sleep_us`), which is
+/// the same reading `(deadline - now) as i32` gives it everywhere else here.
+fn abs_deadline(vm: &mut Vm, deadline: u32) -> u64 {
+    let now = abs_tick(vm);
+    let ahead = deadline.wrapping_sub(vm.task.tick) as i32;
+    now.saturating_add_signed(ahead as i64)
 }
 
 // ------------------------------------------------------------------ the tick
@@ -202,6 +245,7 @@ pub(crate) fn advance_ticks(vm: &mut Vm, n: u32) {
 /// (`mrb_create_task`, which takes an `RProc`). Ready at once; nothing runs until the scheduler
 /// is asked to.
 pub(crate) fn task_spawn(vm: &mut Vm, irep: crate::object::IrepId, priority: u8, name: Option<&str>) -> VmResult<ObjId> {
+    if vm.irep_gone(irep) { return Err(vm.raise(vm.core.argument_error, "the program was unloaded")); }
     let proc_ = vm.heap.alloc(vm.core.proc_, ObjKind::Proc(crate::object::ProcData {
         irep, upper: None, env: None, target_class: Some(vm.core.object),
         strict: false, scope: true, orphan: false, mid: None,
@@ -273,32 +317,48 @@ pub(crate) fn task_is_dormant(vm: &Vm, task: ObjId) -> bool {
 }
 
 /// Moves every waiting task whose deadline has passed to the ready queue, and records the next
-/// deadline (the tail of `mrb_tick`).
+/// deadline (the tail of `mrb_tick`). Only the tasks that are due are looked at; they become
+/// ready in the order they entered the waiting queue, which is the order the reference's walk of
+/// that queue makes them ready in, whatever their deadlines were.
 fn wake_sleepers(vm: &mut Vm) {
     if vm.task.wakeup_tick == u32::MAX { return; }
     let now = vm.task.tick;
     if (vm.task.wakeup_tick.wrapping_sub(now) as i32) > 0 { return; }
-    let mut next = u32::MAX;
-    for o in vm.task.queues[Q_WAITING].clone() {
-        let (reason, deadline) = { let t = td(vm, o); (t.reason, t.wakeup_tick) };
-        if reason != REASON_SLEEP && reason != REASON_QUEUE { continue; }
-        if deadline == u32::MAX { continue; }
-        if (deadline.wrapping_sub(now) as i32) <= 0 {
-            q_delete(vm, o);
-            {
-                let t = td_mut(vm, o);
-                t.status = READY;
-                t.reason = REASON_NONE;
-                t.queue = None;
-                t.wakeup_tick = u32::MAX;
-            }
-            q_insert(vm, o);
-            vm.task.switching = true;
-        } else if next == u32::MAX || (deadline.wrapping_sub(next) as i32) < 0 {
-            next = deadline;
-        }
+    let now_abs = abs_tick(vm);
+    let mut due: Vec<(u64, ObjId)> = Vec::new();
+    while let Some((&(deadline, seq), &o)) = vm.task.sleepers.first_key_value() {
+        if deadline > now_abs { break; }
+        due.push((seq, o));
+        vm.task.sleepers.remove(&(deadline, seq));
+        td_mut(vm, o).sleep_key = None;
     }
-    vm.task.wakeup_tick = next;
+    vm.task.walked += due.len() as u64;
+    due.sort_unstable_by_key(|(seq, _)| *seq);
+    for (_, o) in due {
+        q_delete(vm, o);
+        {
+            let t = td_mut(vm, o);
+            t.status = READY;
+            t.reason = REASON_NONE;
+            t.queue = None;
+            t.wakeup_tick = u32::MAX;
+        }
+        q_insert(vm, o);
+        vm.task.switching = true;
+    }
+    vm.task.wakeup_tick = match vm.task.sleepers.first_key_value() {
+        Some((_, &o)) => td(vm, o).wakeup_tick,
+        None => u32::MAX,
+    };
+}
+
+/// The tasks waiting for `target` (a `Task::Queue`, or a task being joined) in the order they
+/// began to wait: the first one only, or all of them.
+fn waiting_for(vm: &mut Vm, target: ObjId, all: bool) -> Vec<ObjId> {
+    let range = vm.task.waiters.range((target, 0)..=(target, u64::MAX)).map(|(_, o)| *o);
+    let found: Vec<ObjId> = if all { range.collect() } else { range.take(1).collect() };
+    vm.task.walked += found.len() as u64;
+    found
 }
 
 /// A deadline never equals the "no timed wakeup" sentinel (`mrb_task_normalize_wakeup`).
@@ -414,7 +474,7 @@ fn stop_task(vm: &mut Vm, t: ObjId) {
 }
 
 fn wake_join_waiters(vm: &mut Vm, done: ObjId) {
-    for o in vm.task.queues[Q_WAITING].clone() {
+    for o in waiting_for(vm, done, true) {
         let (reason, join) = { let t = td(vm, o); (t.reason, t.join) };
         if reason == REASON_JOIN && join == Some(done) {
             q_delete(vm, o);
@@ -437,7 +497,7 @@ fn park(vm: &mut Vm) {
 /// One turn of the scheduler (`task_run_one_iteration`): `Some(task)` where one ran.
 fn scheduler_step(vm: &mut Vm) -> Option<ObjId> {
     if let Some(f) = vm.task.hook { f(vm); }
-    let t = vm.task.queues[Q_READY].first().copied()?;
+    let t = vm.task.queues[Q_READY].first()?;
     if td(vm, t).status == DORMANT { q_delete(vm, t); return Some(t); }
     // the running task is at the head of the ready queue while it runs, so a scheduler reached
     // from inside it would resume the context it is standing in
@@ -519,11 +579,7 @@ pub(crate) fn next_wakeup_ticks(vm: &Vm) -> Option<u32> {
 /// deadline. A task that only something else could wake (suspended, joining) is not counted,
 /// which is the same test `Task.run` ends on.
 pub(crate) fn pending(vm: &Vm) -> bool {
-    if !vm.task.queues[Q_READY].is_empty() { return true; }
-    vm.task.queues[Q_WAITING].iter().any(|o| {
-        let t = td(vm, *o);
-        (t.reason == REASON_SLEEP || t.reason == REASON_QUEUE) && t.wakeup_tick != u32::MAX
-    })
+    !vm.task.queues[Q_READY].is_empty() || !vm.task.sleepers.is_empty()
 }
 
 fn task_run(vm: &mut Vm, _s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
@@ -648,7 +704,7 @@ fn create_task(vm: &mut Vm, cls: ObjId, proc_: ObjId, name: Value, priority: u8)
     let o = vm.heap.alloc(cls, ObjKind::Task(alloc::boxed::Box::new(TaskData {
         ctx: ctx_id, priority, status: READY, reason: REASON_NONE, timeslice: TIMESLICE,
         name: Slot::from(name), result: Slot::from(Value::Nil), wakeup_tick: u32::MAX,
-        join: None, queue: None, instructions: 0,
+        join: None, queue: None, instructions: 0, queued: None, sleep_key: None, wait_key: None,
     })));
     q_insert(vm, o);
     Ok(Value::Obj(o))
@@ -665,7 +721,7 @@ fn task_current(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value
     let o = vm.heap.alloc(cls, ObjKind::Task(alloc::boxed::Box::new(TaskData {
         ctx: ROOT, priority: 0, status: RUNNING, reason: REASON_NONE, timeslice: TIMESLICE,
         name: Slot::from(name), result: Slot::from(Value::Nil), wakeup_tick: u32::MAX,
-        join: None, queue: None, instructions: 0,
+        join: None, queue: None, instructions: 0, queued: None, sleep_key: None, wait_key: None,
     })));
     vm.task.main = Some(o);
     Ok(Value::Obj(o))
@@ -674,7 +730,7 @@ fn task_current(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value
 fn task_list(vm: &mut Vm, _s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
     argc!(vm, a, 0);
     let mut all = Vec::new();
-    for q in 0..4 { for o in &vm.task.queues[q] { all.push(Value::Obj(*o)); } }
+    for q in 0..4 { for o in vm.task.queues[q].iter() { all.push(Value::Obj(o)); } }
     Ok(vm.ary_new(all))
 }
 
@@ -682,7 +738,8 @@ fn task_get(vm: &mut Vm, _s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
     argc!(vm, a, 1);
     let want = vm.expect_str(a[0], "name")?;
     for q in 0..4 {
-        for o in vm.task.queues[q].clone() {
+        let tasks: Vec<ObjId> = vm.task.queues[q].iter().collect();
+        for o in tasks {
             let n = td(vm, o).name.get();
             if vm.str_bytes(n).map(|b| b == &want[..]).unwrap_or(false) { return Ok(Value::Obj(o)); }
         }
@@ -711,7 +768,7 @@ fn task_stat(vm: &mut Vm, _s: Value, a: &[Value], _b: Value) -> VmResult<Value> 
     let k = vm.intern("tick"); vm.hash_set(h, Value::Sym(k), Value::Int(tick))?;
     let k = vm.intern("wakeup_tick"); vm.hash_set(h, Value::Sym(k), Value::Int(wakeup))?;
     for (q, name) in [(Q_DORMANT, "dormant"), (Q_READY, "ready"), (Q_WAITING, "waiting"), (Q_SUSPENDED, "suspended")] {
-        let tasks: Vec<Value> = vm.task.queues[q].iter().map(|o| Value::Obj(*o)).collect();
+        let tasks: Vec<Value> = vm.task.queues[q].iter().map(Value::Obj).collect();
         let sub = vm.hash_new();
         let ck = vm.intern("count");
         vm.hash_set(sub, Value::Sym(ck), Value::Int(tasks.len() as i64))?;
@@ -810,14 +867,13 @@ fn task_error(vm: &mut Vm, msg: &str) -> crate::error::VmError {
 
 /// Wakes the tasks parked on `queue`: the first one for a push, all of them for a close.
 fn wake_queue_waiters(vm: &mut Vm, queue: ObjId, all: bool) {
-    for o in vm.task.queues[Q_WAITING].clone() {
+    for o in waiting_for(vm, queue, all) {
         let (reason, target) = { let t = td(vm, o); (t.reason, t.queue) };
         if reason != REASON_QUEUE || target != Some(queue) { continue; }
         q_delete(vm, o);
         { let t = td_mut(vm, o); t.status = READY; t.reason = REASON_NONE; t.queue = None; t.wakeup_tick = u32::MAX; }
         q_insert(vm, o);
         vm.task.switching = true;
-        if !all { break; }
     }
 }
 
@@ -889,9 +945,9 @@ fn queue_init(vm: &mut Vm) -> ObjId {
         ("num_waiting", |vm, s, a, _b| {
             argc!(vm, a, 0);
             q_items(vm, s)?;
-            let me = s.obj();
-            let n = vm.task.queues[Q_WAITING].clone().into_iter()
-                .filter(|o| { let t = td(vm, *o); t.reason == REASON_QUEUE && t.queue == me })
+            let Some(me) = s.obj() else { return Ok(Value::Int(0)) };
+            let n = waiting_for(vm, me, true).into_iter()
+                .filter(|o| { let t = td(vm, *o); t.reason == REASON_QUEUE && t.queue == Some(me) })
                 .count();
             Ok(Value::Int(n as i64))
         }),

@@ -233,6 +233,13 @@ closure `method_missing` reached through `funcall` that could yield a fiber from
 rc2's two loader/VM checks with images forged as the reference's bintest forges them; and the
 tidying (the no_std check now covers `sabiruby-serde`, version numbers kept out of `docs/design`).
 
+[2026-09-26-release-0.7-b](worklog/2026-09-26-release-0.7-b.md) is stage B of `release-0.7-plan.md`
+(Japanese): the natives in `Exception#backtrace` as the reference's C frames are, found where they
+left a trace (the native that raised, the frame a native's block runs in, a native loop frame), and
+what is still different; the scheduler's queues as ordered maps so that a waiting task costs
+nothing per turn, with the walked elements counted before and after; and handing a program's
+ireps back (`Vm::unload`) where nothing can still run them.
+
 ## Where things were (before 2026-09-15)
 
 Every document above sat directly under `docs/`; references in older commits, in the book's notes

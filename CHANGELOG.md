@@ -72,6 +72,39 @@ benchmarks together +0.9% and −0.7% in two rounds; a Hash's default proc −25
   (`c3f0e85`).
 - A block that is not a Proc handed to `Vm::call_block` and its relatives raises `TypeError`
   "not a block", as mruby's `check_block`; it said `wrong type (expected Proc)` (`a9a4740`).
+- `Vm::call_block` and `exec_block` with a nil block raise `ArgumentError` "no block given", as
+  mruby's `check_block`; they raised `LocalJumpError` "no block given (yield)" (`39be934`).
+- `Array#index` and `#rindex` with neither an argument nor a block answer an Enumerator
+  (`to_enum`), as mruby's `mrb_ary_index_m` (`39be934`).
+- The hash of a Struct, or of any object whose class includes `Enumerable`, raised
+  `NoMethodError` (`__method_recursive?`); `Kernel#__method_recursive?` and
+  `Enumerable.__update_hash` are there now, as in mruby (`39be934`).
+- A closure `method_missing` reached by a SEND sees `Vm::native_mid` as `:method_missing`; it
+  saw the name of the native called before it.
+
+`sabiruby` — for hosts that run many scripts and replace them
+([`docs/plans/release-0.7-plan.md`](docs/plans/release-0.7-plan.md) S4–S6,
+[`docs/worklog/2026-09-26-release-0.7-b.md`](docs/worklog/2026-09-26-release-0.7-b.md)):
+
+- `Exception#backtrace` names the natives on the way to the raise, placed at the nearest Ruby frame
+  below them, as mruby names its C functions: `a.rb:2:in Integer`, `a.rb:4:in sort!`,
+  `a.rb:5:in index`; a native with no frame that has debug information below it is `(unknown):0`.
+  `caller` sees the same natives (`Vm::backtrace_record`, new). A native written by the host
+  (`define_fn`, `define_closure`) is named too, so the first line of an exception it raised is now
+  `data.rb:2:in unit` where it was `data.rb:2`. Where mruby rewrites a C function's frame into a
+  block (`instance_exec`, `eval`, `Class.new { }`), SabiRuby still differs
+  (`tests/custom/native_backtrace.rb`) (`1f933e9`).
+- A task that is only waiting costs nothing per turn of the others: the scheduler's queues are
+  ordered maps and the waiting tasks are indexed by deadline and by what they wait for. A push and
+  a tick look at the one task they wake with 100 or 1000 tasks waiting (they looked at 406 and
+  4006 elements). The order tasks run in is unchanged. `TaskState::queues` is now
+  `[TaskQueue; 4]` (was `[Vec<ObjId>; 4]`) and `ObjId` is `Ord` (`1c3161e`).
+- `Vm::unload(irep)` hands back the ireps of a program `Vm::load` read, once nothing can run them
+  (no frame stands in them, no Proc is made of them); `UnloadError::StillInUse` otherwise. The
+  numbers are not given out again, so an id a host kept can never run another program:
+  `run_irep` and `task_spawn` refuse an unloaded one. Each unloaded irep leaves an empty entry of
+  208 bytes behind; that is the accepted price (`docs/design/gc.md`, "Programs"). Programs read
+  by `load_and_run`, `eval` and `binding` are not handed back (`docs/backlog.md`).
 
 ## 0.6.1 — 2026-09-22
 

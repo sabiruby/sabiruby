@@ -95,7 +95,7 @@ fn exec_file(vm: &mut Vm, _s: Value, a: &[Value], _b: Value) -> VmResult<Value> 
             }
         }
     };
-    let irep = match vm.load(&bin) {
+    let irep = match vm.load_ireps(&bin) {
         Ok(i) => i,
         Err(e) => return Err(load_error(vm, &format!("{e} -- {path}"))),
     };

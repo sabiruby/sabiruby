@@ -1,0 +1,497 @@
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=8 reps=32 ilen=232
+local variable names:
+  R1:x
+file: /w/native_backtrace.rb
+   12 000 TDEF		R2	:t	I[0]
+   18 004 TDEF		R2	:foo	I[1]
+   21 008 BLOCK		R3	I[2]
+   21 011 SSENDB	R2	:t	n=0
+   22 015 BLOCK		R3	I[3]
+   22 018 SSENDB	R2	:t	n=0
+   23 022 TDEF		R2	:bar	I[4]
+   26 026 BLOCK		R3	I[5]
+   26 029 SSENDB	R2	:t	n=0
+   27 033 BLOCK		R3	I[6]
+   27 036 SSENDB	R2	:t	n=0
+   28 040 TDEF		R2	:baz	I[7]
+   31 044 BLOCK		R3	I[8]
+   31 047 SSENDB	R2	:t	n=0
+   32 051 BLOCK		R3	I[9]
+   32 054 SSENDB	R2	:t	n=0
+   33 058 BLOCK		R3	I[10]
+   33 061 SSENDB	R2	:t	n=0
+   34 065 BLOCK		R3	I[11]
+   34 068 SSENDB	R2	:t	n=0
+   35 072 BLOCK		R3	I[12]
+   35 075 SSENDB	R2	:t	n=0
+   36 079 BLOCK		R3	I[13]
+   36 082 SSENDB	R2	:t	n=0
+   37 086 BLOCK		R3	I[14]
+   37 089 SSENDB	R2	:t	n=0
+   38 093 BLOCK		R3	I[15]
+   38 096 SSENDB	R2	:t	n=0
+   39 100 BLOCK		R3	I[16]
+   39 103 SSENDB	R2	:t	n=0
+   40 107 BLOCK		R3	I[17]
+   40 110 SSENDB	R2	:t	n=0
+   41 114 BLOCK		R3	I[18]
+   41 117 SSENDB	R2	:t	n=0
+   42 121 BLOCK		R3	I[19]
+   42 124 SSENDB	R2	:t	n=0
+   43 128 BLOCK		R3	I[20]
+   43 131 SSENDB	R2	:t	n=0
+   44 135 TDEF		R2	:deep	I[21]
+   47 139 BLOCK		R3	I[22]
+   47 142 SSENDB	R2	:t	n=0
+   48 146 LOADNIL	R1	(nil)	; R1:x
+   49 148 LOADI_3	R2	(3)
+   49 150 LOADI_1	R3	(1)
+   49 152 ARRAY		R2	2
+   49 155 BLOCK		R3	I[23]
+   49 158 SENDB		R2	:sort	n=0
+   50 162 MOVE		R3	R1	; R1:x
+   50 165 SSEND		R2	:p	n=1
+   51 169 TDEF		R2	:c1	I[24]
+   52 173 SSEND0	R3	:c1
+   52 176 SSEND		R2	:p	n=1
+   53 180 BLOCK		R3	I[25]
+   53 183 SSENDB	R2	:t	n=0
+   54 187 BLOCK		R3	I[26]
+   54 190 SSENDB	R2	:t	n=0
+   55 194 BLOCK		R3	I[27]
+   55 197 SSENDB	R2	:t	n=0
+   56 201 BLOCK		R3	I[28]
+   56 204 SSENDB	R2	:t	n=0
+   57 208 BLOCK		R3	I[29]
+   57 211 SSENDB	R2	:t	n=0
+   58 215 BLOCK		R3	I[30]
+   58 218 SSENDB	R2	:t	n=0
+   59 222 BLOCK		R3	I[31]
+   59 225 SSENDB	R2	:t	n=0
+   59 229 RETURN	R2	
+   59 231 STOP
+
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=3 reps=0 ilen=49
+local variable names:
+  R2:e
+catch type: rescue   begin: 0004 end: 0011 target: 0014
+file: /w/native_backtrace.rb
+   12 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   13 004 BLKPUSH	R3	0:0:0:0 (0)
+   13 008 BLKCALL		R3	0
+   13 011 JMP		047
+   13 014 EXCEPT	R3	
+   13 016 GETCONST	R4	StandardError
+   13 019 RESCUE	R3	R4
+   13 022 JMPIF		R4	029
+   13 026 JMP		045
+   13 029 MOVE		R2	R3	; R2:e
+   15 032 MOVE		R4	R2	; R2:e
+   15 035 SEND0		R4	:backtrace
+   15 038 SSEND		R3	:p	n=1
+   15 042 JMP		047
+   15 045 RAISEIF	R3	
+   15 047 RETURN	R3	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
+file: /w/native_backtrace.rb
+   18 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   19 004 STRING	R3	L[0]	; x
+   19 007 SSEND		R2	:raise	n=1
+   19 011 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=0 ilen=9
+file: /w/native_backtrace.rb
+   21 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   21 004 SSEND0	R2	:foo
+   21 007 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
+file: /w/native_backtrace.rb
+   22 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   22 004 STRING	R3	L[0]	; zz
+   22 007 SSEND		R2	:Integer	n=1
+   22 011 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=1 reps=0 ilen=17
+file: /w/native_backtrace.rb
+   23 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   24 004 LOADI_1	R2	(1)
+   24 006 ARRAY		R2	1
+   24 009 LOADI_5	R3	(5)
+   24 011 SEND		R2	:fetch	n=1
+   24 015 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=0 ilen=9
+file: /w/native_backtrace.rb
+   26 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   26 004 SSEND0	R2	:bar
+   26 007 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=1 ilen=20
+file: /w/native_backtrace.rb
+   27 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   27 004 LOADI_1	R2	(1)
+   27 006 LOADI_2	R3	(2)
+   27 008 ARRAY		R2	2
+   27 011 BLOCK		R3	I[0]
+   27 014 SENDB		R2	:each	n=0
+   27 018 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=3 pools=0 syms=1 reps=0 ilen=11
+local variable names:
+  R1:x
+file: /w/native_backtrace.rb
+   27 000 ENTER		1:0:0:0:0:0:0:0 (0x40000)
+   27 004 LOADNIL	R3	(nil)
+   27 006 SEND0		R3	:zork
+   27 009 RETURN	R3	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=1 ilen=20
+file: /w/native_backtrace.rb
+   28 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   29 004 LOADI_1	R2	(1)
+   29 006 LOADI_2	R3	(2)
+   29 008 ARRAY		R2	2
+   29 011 BLOCK		R3	I[0]
+   29 014 SENDB		R2	:map	n=0
+   29 018 RETURN	R2	
+
+irep 0xADDR nregs=7 nlocals=3 pools=1 syms=2 reps=0 ilen=16
+local variable names:
+  R1:x
+file: /w/native_backtrace.rb
+   29 000 ENTER		1:0:0:0:0:0:0:0 (0x40000)
+   29 004 GETCONST	R4	ArgumentError
+   29 007 STRING	R5	L[0]	; q
+   29 010 SSEND		R3	:raise	n=2
+   29 014 RETURN	R3	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=0 ilen=9
+file: /w/native_backtrace.rb
+   31 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   31 004 SSEND0	R2	:baz
+   31 007 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=0 reps=0 ilen=12
+file: /w/native_backtrace.rb
+   32 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   32 004 LOADI_1	R2	(1)
+   32 006 LOADI_0	R3	(0)
+   32 008 DIV		R2	(R3)
+   32 010 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=1 ilen=20
+file: /w/native_backtrace.rb
+   33 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   33 004 LOADI_3	R2	(3)
+   33 006 LOADI_1	R3	(1)
+   33 008 ARRAY		R2	2
+   33 011 BLOCK		R3	I[0]
+   33 014 SENDB		R2	:sort	n=0
+   33 018 RETURN	R2	
+
+irep 0xADDR nregs=7 nlocals=4 pools=1 syms=1 reps=0 ilen=13
+local variable names:
+  R1:a
+  R2:b
+file: /w/native_backtrace.rb
+   33 000 ENTER		2:0:0:0:0:0:0:0 (0x80000)
+   33 004 STRING	R5	L[0]	; s
+   33 007 SSEND		R4	:raise	n=1
+   33 011 RETURN	R4	
+
+irep 0xADDR nregs=4 nlocals=2 pools=1 syms=1 reps=0 ilen=12
+file: /w/native_backtrace.rb
+   34 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   34 004 STRING	R2	L[0]	; abc
+   34 007 SEND0		R2	:center
+   34 010 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=1 ilen=18
+file: /w/native_backtrace.rb
+   35 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   35 004 LOADI_1	R2	(1)
+   35 006 ARRAY		R2	1
+   35 009 BLOCK		R3	I[0]
+   35 012 SENDB		R2	:index	n=0
+   35 016 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
+file: /w/native_backtrace.rb
+   35 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   35 004 STRING	R3	L[0]	; i
+   35 007 SSEND		R2	:raise	n=1
+   35 011 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=1 ilen=18
+file: /w/native_backtrace.rb
+   36 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   36 004 LOADI_1	R2	(1)
+   36 006 ARRAY		R2	1
+   36 009 BLOCK		R3	I[0]
+   36 012 SENDB		R2	:rindex	n=0
+   36 016 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
+file: /w/native_backtrace.rb
+   36 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   36 004 STRING	R3	L[0]	; r
+   36 007 SSEND		R2	:raise	n=1
+   36 011 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=2 reps=1 ilen=18
+file: /w/native_backtrace.rb
+   37 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   37 004 GETCONST	R2	Array
+   37 007 LOADI_2	R3	(2)
+   37 009 BLOCK		R4	I[0]
+   37 012 SENDB		R2	:new	n=1
+   37 016 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
+file: /w/native_backtrace.rb
+   37 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   37 004 STRING	R3	L[0]	; a
+   37 007 SSEND		R2	:raise	n=1
+   37 011 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=1 ilen=13
+file: /w/native_backtrace.rb
+   38 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   38 004 BLOCK		R3	I[0]
+   38 007 SSENDB	R2	:catch	n=0
+   38 011 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
+file: /w/native_backtrace.rb
+   38 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   38 004 STRING	R3	L[0]	; c
+   38 007 SSEND		R2	:raise	n=1
+   38 011 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=2 reps=1 ilen=16
+file: /w/native_backtrace.rb
+   39 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   39 004 LOADSYM	R3	:x
+   39 007 BLOCK		R4	I[0]
+   39 010 SSENDB	R2	:catch	n=1
+   39 014 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=1 ilen=18
+file: /w/native_backtrace.rb
+   39 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   39 004 LOADI_1	R2	(1)
+   39 006 ARRAY		R2	1
+   39 009 BLOCK		R3	I[0]
+   39 012 SENDB		R2	:index	n=0
+   39 016 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
+file: /w/native_backtrace.rb
+   39 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   39 004 STRING	R3	L[0]	; ci
+   39 007 SSEND		R2	:raise	n=1
+   39 011 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=2 reps=1 ilen=20
+file: /w/native_backtrace.rb
+   40 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   40 004 GETCONST	R2	Hash
+   40 007 BLOCK		R3	I[0]
+   40 010 SENDB		R2	:new	n=0
+   40 014 LOADI_1	R3	(1)
+   40 016 GETIDX	R2	(R3)
+   40 018 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
+file: /w/native_backtrace.rb
+   40 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   40 004 STRING	R3	L[0]	; h
+   40 007 SSEND		R2	:raise	n=1
+   40 011 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=1 ilen=19
+file: /w/native_backtrace.rb
+   41 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   41 004 STRING	R2	L[0]	; a
+   41 007 STRING	R3	L[0]	; a
+   41 010 BLOCK		R4	I[0]
+   41 013 SENDB		R2	:gsub	n=1
+   41 017 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
+file: /w/native_backtrace.rb
+   41 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   41 004 STRING	R3	L[0]	; g
+   41 007 SSEND		R2	:raise	n=1
+   41 011 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=2 reps=1 ilen=16
+file: /w/native_backtrace.rb
+   42 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   42 004 GETCONST	R2	ObjectSpace
+   42 007 BLOCK		R3	I[0]
+   42 010 SENDB		R2	:each_object	n=0
+   42 014 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
+file: /w/native_backtrace.rb
+   42 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   42 004 STRING	R3	L[0]	; os
+   42 007 SSEND		R2	:raise	n=1
+   42 011 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=1 ilen=18
+file: /w/native_backtrace.rb
+   43 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   43 004 LOADI_1	R2	(1)
+   43 006 ARRAY		R2	1
+   43 009 BLOCK		R3	I[0]
+   43 012 SENDB		R2	:each_with_index	n=0
+   43 016 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
+file: /w/native_backtrace.rb
+   43 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   43 004 STRING	R3	L[0]	; ewi
+   43 007 SSEND		R2	:raise	n=1
+   43 011 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=1 ilen=18
+file: /w/native_backtrace.rb
+   44 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   45 004 LOADI_1	R2	(1)
+   45 006 ARRAY		R2	1
+   45 009 BLOCK		R3	I[0]
+   45 012 SENDB		R2	:map	n=0
+   45 016 RETURN	R2	
+
+irep 0xADDR nregs=6 nlocals=3 pools=1 syms=1 reps=0 ilen=13
+local variable names:
+  R1:v
+file: /w/native_backtrace.rb
+   45 000 ENTER		1:0:0:0:0:0:0:0 (0x40000)
+   45 004 STRING	R4	L[0]	; q
+   45 007 SSEND		R3	:Integer	n=1
+   45 011 RETURN	R3	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=0 ilen=9
+file: /w/native_backtrace.rb
+   47 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   47 004 SSEND0	R2	:deep
+   47 007 RETURN	R2	
+
+irep 0xADDR nregs=6 nlocals=4 pools=0 syms=1 reps=0 ilen=15
+local variable names:
+  R1:a
+  R2:b
+file: /w/native_backtrace.rb
+   49 000 ENTER		2:0:0:0:0:0:0:0 (0x80000)
+   49 004 SSEND0	R4	:caller
+   49 007 SETUPVAR	R4	1	0
+   49 011 LOADI_0	R4	(0)
+   49 013 RETURN	R4	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=0 ilen=9
+file: /w/native_backtrace.rb
+   51 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   51 004 SSEND0	R2	:caller
+   51 007 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=2 reps=1 ilen=16
+file: /w/native_backtrace.rb
+   53 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   53 004 GETCONST	R2	Class
+   53 007 BLOCK		R3	I[0]
+   53 010 SENDB		R2	:new	n=0
+   53 014 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
+file: /w/native_backtrace.rb
+   53 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   53 004 STRING	R3	L[0]	; k
+   53 007 SSEND		R2	:raise	n=1
+   53 011 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=2 reps=1 ilen=16
+file: /w/native_backtrace.rb
+   54 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   54 004 GETCONST	R2	Module
+   54 007 BLOCK		R3	I[0]
+   54 010 SENDB		R2	:new	n=0
+   54 014 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
+file: /w/native_backtrace.rb
+   54 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   54 004 STRING	R3	L[0]	; m
+   54 007 SSEND		R2	:raise	n=1
+   54 011 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=3 reps=1 ilen=19
+file: /w/native_backtrace.rb
+   55 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   55 004 GETCONST	R2	Struct
+   55 007 LOADSYM	R3	:a
+   55 010 BLOCK		R4	I[0]
+   55 013 SENDB		R2	:new	n=1
+   55 017 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
+file: /w/native_backtrace.rb
+   55 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   55 004 STRING	R3	L[0]	; s
+   55 007 SSEND		R2	:raise	n=1
+   55 011 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=1 reps=1 ilen=20
+file: /w/native_backtrace.rb
+   56 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   56 004 LOADI_1	R2	(1)
+   56 006 ARRAY		R2	1
+   56 009 LOADI_5	R3	(5)
+   56 011 BLOCK		R4	I[0]
+   56 014 SENDB		R2	:delete	n=1
+   56 018 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
+file: /w/native_backtrace.rb
+   56 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   56 004 STRING	R3	L[0]	; d
+   56 007 SSEND		R2	:raise	n=1
+   56 011 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=1 ilen=18
+file: /w/native_backtrace.rb
+   57 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   57 004 LOADI_1	R2	(1)
+   57 006 ARRAY		R2	1
+   57 009 BLOCK		R3	I[0]
+   57 012 SENDB		R2	:instance_exec	n=0
+   57 016 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
+file: /w/native_backtrace.rb
+   57 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   57 004 STRING	R3	L[0]	; ix
+   57 007 SSEND		R2	:raise	n=1
+   57 011 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
+file: /w/native_backtrace.rb
+   58 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   58 004 STRING	R3	L[0]	; raise 'ev'
+   58 007 SSEND		R2	:eval	n=1
+   58 011 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=3 reps=0 ilen=21
+file: /w/native_backtrace.rb
+   59 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   59 004 LOADI_1	R2	(1)
+   59 006 LOADSYM	R3	:+
+   59 009 SEND		R2	:method	n=1
+   59 013 LOADNIL	R3	(nil)
+   59 015 SEND		R2	:call	n=1
+   59 019 RETURN	R2	
+
