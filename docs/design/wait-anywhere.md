@@ -22,8 +22,7 @@ calling frame into the block's and return to the VM (`exec_irep` / `mrb_exec_ire
 mruby-method `mcall` → `mrb_exec_irep`, method.c:278; mruby-eval `eval_irep`, eval.c:153).
 `Class#new` and `catch` are methods written in bytecode there (`new_iseq`, src/class.c:4596;
 `catch_iseq`, mruby-catch/src/catch.c:20), so their `initialize` and their block are ordinary
-frames. Iterators with a block written in C (`Array#index`, `sort`, `Array.new`) are
-boundaries there.
+frames.
 
 A SabiRuby native has no frame of its own — a SEND calls it straight from the instruction loop
 and writes what it returns into the call's register. So the same move is: **push a frame whose
@@ -38,10 +37,8 @@ left on the host stack.
 | `Vm::exec_proc` | `mrb_exec_irep`: in a frame when `in_frame`, nested (`call_proc_with`) otherwise. The frame's target class and `mid` are chosen as the nested call chooses them |
 | `exec_block`, `exec_block_with_self`, `exec_method_proc`, `run_eval` | `call_block`, `call_block_with_self_kw`, `call_method_proc` and the `eval` runner on top of it |
 | `Vm::send_in_frame` | `send_method`: a Ruby method or a Ruby `method_missing` gets a frame; a native is called with `in_frame` kept, so it can do the same in turn |
-| `Cci::KeepSelf` | a frame that answers its R0 — its receiver — whatever it returns, unless a `break` ends it (`BreakTag::BlockBreak` carries that through an `ensure`). `Class#new` pushes `initialize` so, and `Class.new { }`, `Module.new { }`, `Struct.new { }` and `Data.define { }` their block: the tail of the reference's `new_iseq`, without a frame of its own |
-| `Vm::push_return_frame` | a frame of one instruction, `OP_RETURN R0`, holding a value; what is pushed above it answers into its R1 and is dropped. Only for a native `initialize` given a block (`Array.new(n) { }` through `Class#new`) |
-| `Vm::push_loop_frame` | a native that calls its block again and again — `index { }`, `rindex { }`, `Array.new(n) { }`, `sort! { }`, `catch { }` — leaves the loop to a frame that runs one `OP_NOP`: each time it runs, the native's step function (`builtins::array::loop_step`) reads the loop's state from the frame's registers and either calls the block in a frame above (its value lands in the register `LOOP_RESULT`) or answers. Step for step it does what the native's own loop does: the same elements, the array read again where the native reads it again, the same comparisons in the same order for `sort!`. Not called by a SEND, the same frame runs in a nested loop; `throw` finds `catch`'s either way |
-| `OP_GETIDX` | a Hash that misses and has a default proc: the proc's frame is pushed where the instruction's value goes |
+| `Vm::push_return_frame` | a frame of one instruction, `OP_RETURN R0`, holding a value; what is pushed above it answers into its R1 and is dropped. `Class#new` puts `initialize` above one holding the new object — the tail of the reference's `new_iseq` |
+| `src/mrblib/block-frames.rb` | the loops of `index { }`, `rindex { }`, `Array.new(n) { }` and `sort! { }` in Ruby, step for step as the natives do them; the native sends there when it has a block and `in_frame` |
 
 **The rule for a native that uses these:** it must be the native the SEND called, and it must
 return what they return, as it is, with nothing after. A native that another native calls as a
