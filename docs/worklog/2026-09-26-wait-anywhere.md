@@ -270,6 +270,37 @@ block なし、`Kernel.catch`、`Method#call` 経由）・`Regexp#match`）を�
 GC を毎回走らせる設定（`SABIRUBY_GC_STRESS=1`）でも、probe の主な経路・上の比較スクリプト・関係する mrbtest の
 18 ファイルの通過数が変わらないことを確かめた。
 
+## W3: 文書
+
+- `docs/design/wait-anywhere.md`（新規、英語）: 仕組み、使う側の約束（「SEND から呼ばれたネイティブが、その答えを
+  そのまま返すときだけ」）、本家 4.1.0-rc2 / 変更前 / 変更後の経路ごとの表、`sleep(n)` を例外にした理由、残る境界の一覧と
+  例外の文言。表の本家の列は book の実測（36 経路）で、実測していない経路はソースを読んだもの（「source:」と書いた）か
+  「not measured」。
+- `docs/design/fibers.md` の "Native boundaries" に 1 段落（同じ動きの一般化と、上の文書への参照）。
+- `docs/design/gc.md`: 「ネイティブの下で動く Ruby」の例に `sort { }` と `Class#new` → `initialize` を挙げていたのを直した
+  （SEND から呼ばれたときはもうネイティブの下ではないので、GC も止まらない）。
+- `src/vm.rs` の `RunLimits` の rustdoc も同じ例を挙げていたので、残る境界の例に替えた。
+- `CHANGELOG.md` の Unreleased、`docs/README.md` の目次（design と worklog）。
+- `docs/design/gems.md` の 2026-09-14 の記録（`Array.new(1) { loop { } }` が番を返さなかった）は、その日の計測の記録なので
+  そのままにした。
+
+## 計測（未実施）
+
+機械が空くまで取らない（冒頭）。用意したもの:
+
+- バイナリ（それぞれ別の worktree と `CARGO_TARGET_DIR` で建てた。md5 は 3 つとも別）:
+  - 変更前 `3170b63`: `$SP/wa/target-before/release/sabiruby`（`c78f78a0…`）
+  - W1 `9eaf698`: `$SP/wa/target-w1/release/sabiruby`（`b053a060…`）
+  - W2 `da68a3a`: `$SP/wa/target-w2/release/sabiruby`（`2ae9d026…`）
+  （`$SP` は作業者のスクラッチパッド。repo には置かない）
+- マイクロベンチ 21 本（`$SP/wa/micro/`、参照の `mrbc` で焼いた）: task の無い普通のループ・メソッド呼び出し・`yield`、
+  `instance_exec` / `instance_eval` / `class_exec` / `Method#call` / `send` / `public_send`、`new`（Ruby の `initialize` と
+  `Object.new`）、`sort { }` と `sort`、`index { }` と `index(x)`、`Array.new(n) { }`、`h[k]` の当たり・外れ・既定の proc、
+  `catch`、`Class.new { }`。`N` は命令数から決めた（1 本あたり 1〜3 千万命令の見当。重いネイティブのものは少なめ）。
+- 手順: まず A/A（変更前どうし）を `tools/bench_ab.sh` の形（`$SP/wa/bench_ab_micro.sh` は `DIR` を変えられるようにした写し）で
+  `bench/` 全部とマイクロベンチに取り、best の差の幅から「劣化なし」の線を決める。次に 変更前 ↔ W2 を交互に 2 巡以上
+  （`--core 2`、best of 5）、`vmstat 1 5` を前後に。
+
 ## 気づいた点
 
 - `Vm::funcall` の「メソッドが無い」枝で、クロージャの `method_missing` を `call_closure` で呼ぶとき

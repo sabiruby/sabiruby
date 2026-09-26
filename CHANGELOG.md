@@ -8,6 +8,36 @@ Every claim here is traceable to a commit or to a document under `docs/`, and th
 named. Measurements are the ones in [`docs/verification/bench.md`](docs/verification/bench.md);
 nothing is estimated.
 
+## Unreleased
+
+`sabiruby` — a task can wait inside more blocks, and a wait that cannot happen says where
+([`docs/design/wait-anywhere.md`](docs/design/wait-anywhere.md),
+[`docs/worklog/2026-09-26-wait-anywhere.md`](docs/worklog/2026-09-26-wait-anywhere.md);
+`9eaf698`, `da68a3a`). Behaviour changes:
+
+- `Task::Queue#pop`, `sleep`, `sleep(n)` and `Task.pass` work inside `instance_exec`,
+  `instance_eval`, `class_exec`, `class_eval`, `module_eval`, `Method#call`, `bind_call`,
+  `public_send`, the `initialize` `Class#new` calls, `eval("…")` and `instance_eval("…")`, as in
+  mruby 4.1.0-rc2 (`9eaf698`), and inside `index { }`, `rindex { }`, `Array.new(n) { }`,
+  `sort { }`, `delete(x) { }`, a Hash's default proc, `Hash#default(k)`, `Class.new { }`,
+  `Module.new { }`, `Struct.new { }`, `Data.define { }`, `catch { }` and `Regexp#match { }`,
+  where mruby cannot (`da68a3a`).
+- `sleep(n)`, `usleep` and `sleep_ms` in a task inside a native boundary raise `RuntimeError`;
+  they returned at once without waiting (`9eaf698`).
+- The error of a wait inside a native boundary names it: `can't wait inside Array#join's call to
+  #to_s (Task::Queue#pop)`. It was `blocking pop cannot be called from within a C function
+  boundary`, `can't sleep across C function boundary` or `can't switch task across C function
+  boundary` (`9eaf698`).
+- A `break` out of the blocks above leaves the method that took the block
+  (`[1, 2].index { break :b }` is `:b`, was `0`; `Class.new { break 1 }` is `1`, was the class;
+  `Foo.new { break 1 }` with an `initialize` that yields is `1`, was the object).
+- Recursion through `instance_exec` and its relatives stops at 512 frames
+  (`SystemStackError`), not at 96 nested loops.
+- `Vm::catch_tags` (`#[doc(hidden)]`) is gone: `catch` is the reference's bytecode method and
+  `throw` finds it on the frame stack (`Vm::catch_proc`).
+
+Benchmarks before and after: **pending** (the worklog will carry them).
+
 ## 0.6.1 — 2026-09-22
 
 Documentation only: no `.rs` file changed (`git diff v0.6.0 -- '*.rs'` is empty). The author

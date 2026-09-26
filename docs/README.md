@@ -16,6 +16,7 @@ What changed in each release, with the commit behind every claim, is
 | [compiler.md](design/compiler.md) | the reference compiler as a crate (`sabiruby-compiler`), the C shim, `eval`, the `Host` trait |
 | [exceptions.md](design/exceptions.md) | unwinding with `Result` instead of `setjmp`/`longjmp`; `break`/`return` through natives |
 | [fibers.md](design/fibers.md) | fibers without a second host stack; the native-boundary rule; fibers inside tasks |
+| [wait-anywhere.md](design/wait-anywhere.md) | waiting inside a block: the natives that leave a frame instead of running a nested loop (the reference's `mrb_exec_irep`), the table of paths against the reference, why `sleep(n)` inside a boundary raises, what is still a boundary and the error that names it |
 | [gc.md](design/gc.md) | stop-the-world mark & sweep, roots, the contract for natives, the scheduler-driven mode, the free hook for `Data` |
 | [gems.md](design/gems.md) | every ported gem, what deviates and why, mruby-task in depth (host entry points, time limits, how far the fork may drift), gems as Cargo features |
 | [macros.md](design/macros.md) | `sabiruby-macros`: a Rust struct and its `impl` block as a Ruby class — what the two macros generate, the Host Object method, how a host depends on it (the feature `macros`), what it does not cover |

@@ -64,6 +64,12 @@ body is an ordinary frame and can `Fiber.yield` — or park a task on `Queue#pop
 of it. The basic `method_missing` written in C, and `Vm::funcall`'s own fallback
 (nested, as `mrb_funcall` is), keep the boundary.
 
+The same move — a frame where the SEND's value goes, instead of a nested loop — is what keeps
+`instance_exec` and its relatives, `Method#call`, `public_send`, `Class#new`, the string `eval`s,
+`catch` and the block-taking natives DSLs use (`index { }`, `sort { }`, `Array.new(n) { }`,
+`Class.new { }`, a Hash's default proc, …) off the boundary: [`wait-anywhere.md`](wait-anywhere.md),
+which also lists what is still a boundary and the error that names it.
+
 The three index opcodes are the same story. `OP_GETIDX`, `OP_GETIDX0` and `OP_SETIDX`
 answer an Array, Hash or String themselves — while that class still carries the `[]`
 they stand in for — and *send* everything else in the frame the call was made in
