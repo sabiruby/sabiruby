@@ -557,8 +557,11 @@ pub struct TaskData {
 /// Why a `Break` object is unwinding the stack (mruby `RBREAK_TAG_*`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BreakTag {
-    /// `return`/`break`: unwind to frame `ci_index` and return `value` from it.
+    /// `return` (and `throw`): unwind to frame `ci_index` and return `value` from it.
     Break,
+    /// `break` out of a block: the same, and the value is the answer even of a frame that
+    /// answers its receiver (`Cci::KeepSelf`: `Foo.new { break 1 }` is 1).
+    BlockBreak,
     /// `OP_JMPUW`: after the ensure body, jump to pc `value` (an Integer).
     Jump,
 }

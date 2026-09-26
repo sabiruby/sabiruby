@@ -49,6 +49,10 @@ pub enum Cci {
     /// Frame started from native code (`Vm::call_proc`); the interpreter loop
     /// returns to the native caller when this frame is popped.
     Skip,
+    /// Ordinary frame that answers its R0 — the receiver — whatever it returns, unless a
+    /// `break` ends it: `initialize` under `Class#new`, the block of `Class.new { }` (the
+    /// tail of the reference's `new_iseq`, without a frame of its own: `Vm::keep_self`).
+    KeepSelf,
 }
 
 /// `mrb_fiber_state`.
@@ -411,6 +415,8 @@ pub struct Vm {
     /// The Proc whose body is a single `OP_RETURN R0`: the frame [`Vm::push_return_frame`]
     /// leaves under a call whose value a native drops for one of its own.
     ret_proc: ObjId,
+    /// The Proc of a native loop frame (`LOOP_IREP`).
+    pub(crate) loop_proc: ObjId,
     pub instructions: u64,
     /// Executions per opcode (index = opcode number), filled only while
     /// [`Vm::set_op_counting`] is on; the test runner reports which opcodes a workload never
@@ -470,11 +476,6 @@ pub struct Vm {
     /// find their member); valid at the native's entry only.
     #[doc(hidden)]
     pub native_mid: Option<Sym>,
-    /// The body of `Kernel#catch`, a bytecode method as in the reference (`catch_iseq`):
-    /// `throw` finds a `catch` in flight by this proc on the frame stack (mruby-catch,
-    /// `ext_catch.rs`).
-    #[doc(hidden)]
-    pub catch_proc: Option<ObjId>,
     /// Objects alive after the last collection.
     pub live_after_gc: usize,
     /// Collections run so far.
@@ -669,9 +670,12 @@ impl Vm {
         // `OP_RETURN R0`; R1 is where the call made above it answers (`Vm::push_return_frame`)
         let ret_irep = VmIrep { nlocals: 1, nregs: 2, iseq: vec![Op::Return as u8, 0], catch: vec![], pool: vec![], syms: vec![], reps: vec![], lv: vec![], lines: vec![], filename: None };
         let ret_proc = heap.alloc(core.proc_, ObjKind::Proc(ProcData { irep: 1, upper: None, env: None, target_class: Some(object), strict: true, scope: true, orphan: false, mid: None }));
+        // `OP_DEBUG`, read as one step of a native loop (`Vm::push_loop_frame`)
+        let loop_irep = VmIrep { nlocals: 1, nregs: LOOP_RESULT + 1, iseq: vec![Op::Debug as u8, 0, 0, 0], catch: vec![], pool: vec![], syms: vec![], reps: vec![], lv: vec![], lines: vec![], filename: None };
+        let loop_proc = heap.alloc(core.proc_, ObjKind::Proc(ProcData { irep: LOOP_IREP, upper: None, env: None, target_class: Some(object), strict: true, scope: true, orphan: false, mid: None }));
         let mut vm = Vm {
-            heap, syms, ireps: vec![call_irep, ret_irep], ret_proc, stack: Vec::new(), ci: Vec::new(), globals: HashMap::new(),
-            exc: None, out: Vec::new(), core, s, top_self, step_left: None, instructions: 0, op_counts: [0; crate::opcode::OP_COUNT], count_ops: false, method_cache: alloc::boxed::Box::new([MethodCacheLine::default(); METHOD_CACHE_LEN]), idx_builtin: [None; IDX_SLOTS], idx_class: [None; IDX_SLOTS], idx_serial: 0, native_depth: 0, inspect_guard: Vec::new(), pending_kw: None, eq_guard: Vec::new(), gc_disabled: false, pending_vis_break: false, notimpl_fns: Vec::new(), gc_step_limit: 0, gc_interval_ratio: 200, gc_stress: false, native_active: 0, gc_registered: Vec::new(), catch_proc: None, native_mid: None, live_after_gc: 0, gc_count: 0, gc_time_ns: 0, gc_clock: None, wall_clock: None, sleep_hook: None, host: None, trace: None, call_proc,
+            heap, syms, ireps: vec![call_irep, ret_irep, loop_irep], ret_proc, loop_proc, stack: Vec::new(), ci: Vec::new(), globals: HashMap::new(),
+            exc: None, out: Vec::new(), core, s, top_self, step_left: None, instructions: 0, op_counts: [0; crate::opcode::OP_COUNT], count_ops: false, method_cache: alloc::boxed::Box::new([MethodCacheLine::default(); METHOD_CACHE_LEN]), idx_builtin: [None; IDX_SLOTS], idx_class: [None; IDX_SLOTS], idx_serial: 0, native_depth: 0, inspect_guard: Vec::new(), pending_kw: None, eq_guard: Vec::new(), gc_disabled: false, pending_vis_break: false, notimpl_fns: Vec::new(), gc_step_limit: 0, gc_interval_ratio: 200, gc_stress: false, native_active: 0, gc_registered: Vec::new(), native_mid: None, live_after_gc: 0, gc_count: 0, gc_time_ns: 0, gc_clock: None, wall_clock: None, sleep_hook: None, host: None, trace: None, call_proc,
             contexts: vec![Context::new(FiberState::Running)], cur: ROOT, direct_send: false, native_ret_reg: 0, loop_exit: None, native_arity: Vec::new(),
             task: TaskState { wakeup_tick: u32::MAX, tick_every: TASK_TICK_INSTRUCTIONS, tick_left: TASK_TICK_INSTRUCTIONS, clock_from_instructions: true, native_every: TASK_NATIVE_SAMPLE, native_left: TASK_NATIVE_SAMPLE, ..Default::default() },
             host_state: None, on_free: None, host_stores: Vec::new(), next_tag: 1,
@@ -736,9 +740,6 @@ impl Vm {
         #[cfg(feature = "regexp")]
         vm.load_and_run(crate::MRBLIB_REGEXP_MRB)?;
         vm.load_and_run(crate::MRBLIB_TASK_MRB)?;
-        // SabiRuby's own: the loops `index { }`, `sort! { }` and `Array.new(n) { }` hand their
-        // block to when a SEND called them (`src/mrblib/block-frames.rb`)
-        vm.load_and_run(crate::MRBLIB_BLOCK_FRAMES_MRB)?;
         // mruby-regexp initialises after the core mrblib is loaded, as a gem does: it takes the
         // names of the String methods mrblib defines in Ruby (`sub`, `gsub`, which mix character
         // and byte units there) as well as the ones the natives hold
@@ -2220,6 +2221,33 @@ impl Vm {
         self.exec_proc(p, self_, args, None, Value::Nil, mid, tc, false)
     }
 
+    /// Makes the frame just pushed for the running native answer its receiver (R0) whatever it
+    /// returns ([`Cci::KeepSelf`]).
+    #[inline]
+    pub(crate) fn keep_self(&mut self) {
+        if let Some(c) = self.ci.last_mut() { c.cci = Cci::KeepSelf; }
+    }
+
+    /// `h[k]` missed and `h` has a default proc (`OP_GETIDX`): the proc runs in a frame at
+    /// `nbase`, the instruction's register, and this answers `None`. A class that redefines
+    /// `default` is answered by that method, nested as `Hash#[]` calls it (`Some`).
+    fn hash_default_frame(&mut self, h: Value, o: ObjId, k: Value, nbase: usize) -> VmResult<Option<Value>> {
+        let dm = self.intern("default");
+        let cls = self.class_of(h);
+        if let Some((MethodRef::Ruby(_) | MethodRef::Closure, _)) = self.find_method_cached(cls, dm) {
+            return self.funcall(h, dm, &[k], Value::Nil).map(Some);
+        }
+        let p = match self.heap.ivar_get(o, self.s.default_proc) { Value::Obj(p) if matches!(self.heap.get(p).kind, ObjKind::Proc(_)) => p, _ => return Ok(Some(Value::Nil)) };
+        if self.ci.len() >= CALL_LEVEL_MAX { return Err(self.raise(self.core.system_stack_error, "stack level too deep")); }
+        let pd = self.heap.proc_data(p);
+        let (env, ptc) = (pd.env, pd.target_class);
+        let self_ = match env { Some(e) => self.env_get(e, 0), None => Value::Nil };
+        let mid = self.heap.proc_data(p).mid.or(env.and_then(|e| self.heap.env(e).mid));
+        let tc = match env { Some(e) => self.heap.env(e).target_class.unwrap_or(self.core.object), None => ptc.unwrap_or(self.core.object) };
+        self.push_frame_at(nbase, p, self_, &[h, k], None, Value::Nil, mid, tc, false, false);
+        Ok(None)
+    }
+
     /// [`Vm::call_block_with_self`] followed by answering `answer` (`Class.new { }`,
     /// `Struct.new { }`): called by a SEND, the block runs in a frame of its own above one that
     /// answers `answer` ([`Vm::push_return_frame`]).
@@ -2228,9 +2256,10 @@ impl Vm {
             self.call_block_with_self(blk, self_, args)?;
             return Ok(answer);
         }
-        let name = self.native_mid.unwrap_or(self.s.call);
-        self.push_return_frame(answer, name)?;
+        // the block's frame answers its self, which is `answer`
+        let depth = self.ci.len();
         self.exec_block_with_self(blk, self_, args, None)?;
+        if self.ci.len() == depth + 1 && self_ == answer { self.keep_self(); }
         Ok(answer)
     }
 
@@ -2359,7 +2388,7 @@ impl Vm {
         };
         let mid = self.heap.proc_data(proc_).mid.or(mid);
         let nbase = self.native_ret_reg;
-        self.push_frame_at(nbase, proc_, self_, args.to_vec(), kw, blk, mid, tc, vis_break, false);
+        self.push_frame_at(nbase, proc_, self_, args, kw, blk, mid, tc, vis_break, false);
         // one frame per native: a second call from the same native would land on this one
         self.direct_send = false;
         Ok(self_)
@@ -2368,17 +2397,98 @@ impl Vm {
     /// Lays out a frame for `proc_` at `nbase` (R0 = `self_`, then the arguments as
     /// [`Vm::relay_args`] writes them) and pushes it as an ordinary frame.
     #[allow(clippy::too_many_arguments)]
-    fn push_frame_at(&mut self, nbase: usize, proc_: ObjId, self_: Value, args: Vec<Value>, kw: Option<Value>, blk: Value, mid: Option<Sym>, tc: ObjId, vis_break: bool, pack: bool) {
+    fn push_frame_at(&mut self, nbase: usize, proc_: ObjId, self_: Value, args: &[Value], kw: Option<Value>, blk: Value, mid: Option<Sym>, tc: ObjId, vis_break: bool, pack: bool) {
         let irep = self.heap.proc_data(proc_).irep;
-        let c = self.relay_args(nbase, args, kw, blk, pack);
-        let n = c & 0xf;
-        let kwf = (c >> 4) == 15;
+        let (n, kwf) = if pack || args.len() >= 15 {
+            // one Array for the positional arguments: `relay_args` makes it
+            let c = self.relay_args(nbase, args.to_vec(), kw, blk, pack);
+            (c & 0xf, (c >> 4) == 15)
+        } else {
+            // the layout `relay_args` writes, without the Vec it takes
+            let end = nbase + args.len() + usize::from(kw.is_some()) + 2;
+            if self.stack.len() < end { self.stack.resize(end, Slot::NIL); }
+            for (i, v) in args.iter().enumerate() { self.stack[nbase + 1 + i] = Slot::from(*v); }
+            let mut next = nbase + 1 + args.len();
+            if let Some(k) = kw { self.stack[next] = Slot::from(k); next += 1; }
+            self.stack[next] = Slot::from(blk);
+            (args.len(), kw.is_some())
+        };
         let used = (if n == 15 { 1 } else { n }) + (kwf as usize) + 2;
         let nregs = self.ireps[irep].nregs.max(used).max(4);
         if self.stack.len() < nbase + nregs { self.stack.resize(nbase + nregs, Slot::NIL); }
         for i in used..nregs { self.stack[nbase + i] = Slot::NIL; }
         self.stack[nbase] = Slot::from(self_);
         self.ci.push(CallInfo { base: nbase, pc: 0, irep, proc_, n: n as u8, kw: kwf, mid, target_class: tc, env: None, cci: Cci::None, vis: Vis::Public, modfunc: false, vis_break });
+    }
+
+    /// A native that calls its block again and again (`index { }`, `sort! { }`, `catch { }`),
+    /// called by a SEND, leaves the loop to a frame of its own: R0 `recv`, R1 the block, R2
+    /// `kind`, R3 0 (not started), then `state`. The frame runs one instruction, `OP_DEBUG`,
+    /// which asks the native's step function (`builtins::array::loop_step`) what to do: call
+    /// the block — in a frame above this one, whose value lands in [`LOOP_RESULT`] — and ask
+    /// again when it returns, or answer. The block's frame is an ordinary one, so a task can
+    /// wait inside it; the loop's state lives in registers, where the collector sees it.
+    ///
+    /// Not called by a SEND ([`Vm::in_frame`] false), the same frame runs in a nested loop,
+    /// as a block called from native code always did, and this returns what the loop answers.
+    pub(crate) fn push_loop_frame(&mut self, kind: i64, recv: Value, blk: Value, state: &[Value]) -> VmResult<Value> {
+        if self.ci.len() >= CALL_LEVEL_MAX || self.native_depth >= NATIVE_DEPTH_MAX {
+            return Err(self.raise(self.core.system_stack_error, "stack level too deep"));
+        }
+        let direct = self.direct_send;
+        let nbase = if direct { self.native_ret_reg } else { self.stack.len() };
+        let end = nbase + LOOP_RESULT + 1;
+        if self.stack.len() < end { self.stack.resize(end, Slot::NIL); }
+        self.stack[nbase] = Slot::from(recv);
+        self.stack[nbase + 1] = Slot::from(blk);
+        self.stack[nbase + 2] = Slot::from(Value::Int(kind));
+        self.stack[nbase + 3] = Slot::from(Value::Int(0));
+        for i in 4..=LOOP_RESULT { self.stack[nbase + i] = Slot::from(state.get(i - 4).copied().unwrap_or(Value::Nil)); }
+        let tc = self.ci.last().map(|c| c.target_class).unwrap_or(self.core.object);
+        let mid = self.native_mid;
+        let depth = self.ci.len();
+        self.ci.push(CallInfo { base: nbase, pc: 0, irep: LOOP_IREP, proc_: self.loop_proc, n: 0, kw: false, mid, target_class: tc, env: None, cci: if direct { Cci::None } else { Cci::Skip }, vis: Vis::Public, modfunc: false, vis_break: false });
+        if direct {
+            self.direct_send = false;
+            // the first step is taken here rather than by one more turn of the instruction loop
+            let top = self.ci.len() - 1;
+            return match crate::builtins::array::loop_step(self, nbase) {
+                Ok(LoopNext::Call(n)) => { self.loop_call_block(top, nbase, n)?; Ok(recv) }
+                // over before the block was called: no frame is needed after all
+                Ok(LoopNext::Done(v)) => { self.ci.pop(); Ok(v) }
+                Err(e) => { self.ci.pop(); Err(e) }
+            };
+        }
+        self.native_depth += 1;
+        let r = self.run_loop(depth);
+        self.native_depth -= 1;
+        self.stack.truncate(nbase);
+        r
+    }
+
+    /// Writes argument `i` of the block call a native loop's step asks for ([`LoopNext::Call`]).
+    #[inline]
+    pub(crate) fn loop_arg(&mut self, base: usize, i: usize, v: Value) {
+        let at = base + LOOP_RESULT + 1 + i;
+        if self.stack.len() <= at + 1 { self.stack.resize(at + 2, Slot::NIL); }
+        self.stack[at] = Slot::from(v);
+    }
+
+    /// Pushes the frame of the loop frame `top`'s block with `n` arguments at [`LOOP_RESULT`], as
+    /// `OP_BLKCALL` pushes one.
+    fn loop_call_block(&mut self, top: usize, base: usize, n: usize) -> VmResult<()> {
+        if self.ci.len() >= CALL_LEVEL_MAX { return Err(self.raise(self.core.system_stack_error, "stack level too deep")); }
+        let p = match self.stack[base + 1].get() {
+            Value::Obj(o) if matches!(self.heap.get(o).kind, ObjKind::Proc(_)) => o,
+            _ => return Err(self.raise_type("wrong type (expected Proc)")),
+        };
+        let nbase = base + LOOP_RESULT;
+        if self.stack.len() <= nbase + n + 1 { self.stack.resize(nbase + n + 2, Slot::NIL); }
+        self.stack[nbase + n + 1] = Slot::NIL;
+        let tc = self.ci[top].target_class;
+        self.ci.push(CallInfo { base: nbase, pc: 0, irep: 0, proc_: p, n: n as u8, kw: false, mid: None, target_class: tc, env: None, cci: Cci::None, vis: Vis::Public, modfunc: false, vis_break: false });
+        self.vm_call_proc(p, n + 2);
+        Ok(())
     }
 
     /// The Ruby method `recv.mid` resolves to, as `(body, owner)`; `None` for anything else.
@@ -2390,7 +2500,7 @@ impl Vm {
     /// Pushes the frame a SEND of `mid` would push for the Ruby method `p` found on `owner`
     /// (`op_send_vis`), where the running native's result goes. The native returns `recv`.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn push_method_frame(&mut self, p: ObjId, owner: ObjId, recv: Value, mid: Sym, args: Vec<Value>, kw: Option<Value>, blk: Value, pack: bool) -> VmResult<()> {
+    pub(crate) fn push_method_frame(&mut self, p: ObjId, owner: ObjId, recv: Value, mid: Sym, args: &[Value], kw: Option<Value>, blk: Value, pack: bool) -> VmResult<()> {
         if self.ci.len() >= CALL_LEVEL_MAX { return Err(self.raise(self.core.system_stack_error, "stack level too deep")); }
         let mid = self.heap.proc_data(p).mid.unwrap_or(mid);
         let nbase = self.native_ret_reg;
@@ -2409,7 +2519,7 @@ impl Vm {
         let p = self.ret_proc;
         let nbase = self.native_ret_reg;
         let tc = self.ci.last().map(|c| c.target_class).unwrap_or(self.core.object);
-        self.push_frame_at(nbase, p, value, Vec::new(), None, Value::Nil, Some(mid), tc, false, false);
+        self.push_frame_at(nbase, p, value, &[], None, Value::Nil, Some(mid), tc, false, false);
         self.native_ret_reg = nbase + 1;
         Ok(())
     }
@@ -2425,7 +2535,7 @@ impl Vm {
         let cls = self.class_of(recv);
         match self.find_method_cached(cls, mid) {
             Some((MethodRef::Ruby(p), owner)) => {
-                self.push_method_frame(p, owner, recv, mid, pos.to_vec(), kw, blk, false)?;
+                self.push_method_frame(p, owner, recv, mid, pos, kw, blk, false)?;
                 Ok(recv)
             }
             Some((MethodRef::Native(f), _)) => {
@@ -2441,7 +2551,7 @@ impl Vm {
                 if let Some((MethodRef::Ruby(p), owner)) = self.find_method_cached(cls, mm) {
                     let mut nargs = vec![Value::Sym(mid)];
                     nargs.extend_from_slice(pos);
-                    self.push_method_frame(p, owner, recv, mm, nargs, kw, blk, true)?;
+                    self.push_method_frame(p, owner, recv, mm, &nargs, kw, blk, true)?;
                     return Ok(recv);
                 }
                 self.funcall(recv, mid, args, blk)
@@ -3110,7 +3220,7 @@ impl Vm {
         h.mark_id(self.top_self, work);
         h.mark_id(self.call_proc, work);
         h.mark_id(self.ret_proc, work);
-        if let Some(p) = self.catch_proc { h.mark_id(p, work); }
+        h.mark_id(self.loop_proc, work);
         for id in &self.inspect_guard { h.mark_id(*id, work); }
         for (x, y) in &self.eq_guard { h.mark_id(*x, work); h.mark_id(*y, work); }
         for id in &self.gc_registered { h.mark_id(*id, work); }
@@ -3572,6 +3682,7 @@ impl Vm {
         self.exc = Some(Value::Obj(brk));
         match tag {
             BreakTag::Break => self.unwind_return(idx, value, stop_depth, lc, UnwindBy::Return),
+            BreakTag::BlockBreak => self.unwind_return(idx, value, stop_depth, lc, UnwindBy::Break),
             BreakTag::Jump => { let target = match value { Value::Int(t) => t as usize, _ => 0 }; self.jmpuw(target); Ok(None) }
         }
     }
@@ -3599,8 +3710,9 @@ impl Vm {
         loop {
             let top = self.ci.len() - 1;
             let (irep, pc) = { let ci = &self.ci[top]; (ci.irep, ci.pc) };
+            let tag = if by == UnwindBy::Break { BreakTag::BlockBreak } else { BreakTag::Break };
             if let Some(h) = self.catch_find(irep, pc, true) {
-                let brk = self.break_new(BreakTag::Break, return_idx, v);
+                let brk = self.break_new(tag, return_idx, v);
                 self.enter_ensure(h, brk);
                 return Ok(None);
             }
@@ -3609,7 +3721,7 @@ impl Vm {
             let popped = self.pop_frame();
             if popped.cci == Cci::Skip || (self.cur == lc && top <= stop_depth) {
                 // crossing a native frame: let the native caller propagate it
-                let brk = self.break_new(BreakTag::Break, return_idx, v);
+                let brk = self.break_new(tag, return_idx, v);
                 self.exc = None;
                 return Err(VmError::Break(brk));
             }
@@ -3623,7 +3735,12 @@ impl Vm {
             self.deliver(v);
             return Ok(None);
         }
-        if popped.cci == Cci::Skip || (self.cur == lc && return_idx <= stop_depth) {
+        if popped.cci != Cci::None || (self.cur == lc && return_idx <= stop_depth) {
+            // a frame that answers its receiver has it in R0 already, which is the caller's R[a]
+            if popped.cci == Cci::KeepSelf && !(self.cur == lc && return_idx <= stop_depth) {
+                if by == UnwindBy::Break { self.stack[popped.base] = Slot::from(v); }
+                return Ok(None);
+            }
             return Ok(Some(v));
         }
         // the callee's R0 is the caller's R[a]
@@ -4252,7 +4369,16 @@ impl Vm {
                 Op::Undef => { let s = self.ireps[irep].syms[a]; self.undef_method(self.ci[top].target_class, s)?; }
                 Op::Sclass => { let v = reg!(a); setreg!(a, Value::Obj(self.singleton_class(v)?)); }
                 Op::Tclass => { setreg!(a, Value::Obj(self.ci[top].target_class)); }
-                Op::Debug => {}
+                Op::Debug => {
+                    // one step of a native loop frame (`Vm::push_loop_frame`); anywhere else a no-op
+                    if irep == LOOP_IREP {
+                        self.ci[top].pc = 0;
+                        match crate::builtins::array::loop_step(self, base)? {
+                            LoopNext::Call(n) => self.loop_call_block(top, base, n)?,
+                            LoopNext::Done(v) => { if let Some(r) = self.op_return(v, stop_depth, lc)? { return Ok(r); } }
+                        }
+                    }
+                }
                 Op::Err => {
                     let msg = match &self.ireps[irep].pool[a] { Pool::Str(s) => String::from_utf8_lossy(s).into_owned(), _ => "error".into() };
                     return Err(self.raise(self.core.local_jump_error, &msg));
@@ -4638,7 +4764,11 @@ impl Vm {
             // (no native boundary, so a task can wait inside it); the rest is answered here.
             IDX_HASH_AREF => match self.hash_get(recv, idx) {
                 Some(v) => v,
-                None if !self.heap.ivar_get(o, self.s.default_proc).is_nil() => return Ok(true),
+                None if !self.heap.ivar_get(o, self.s.default_proc).is_nil() => {
+                    // the proc runs in a frame where this instruction's value goes
+                    if let Some(v) = self.hash_default_frame(recv, o, idx, base + a)? { self.stack[base + a] = Slot::from(v); }
+                    return Ok(false);
+                }
                 None => self.call_native(crate::builtins::hash::hash_missing, recv, &[idx], Value::Nil)?,
             },
             _ => {
@@ -5124,6 +5254,25 @@ impl Default for Vm {
 
 /// `MRB_CALL_LEVEL_MAX`.
 pub const CALL_LEVEL_MAX: usize = 512;
+
+/// The irep a native loop frame runs (`Vm::push_loop_frame`): one `OP_DEBUG`, which the
+/// instruction loop reads as "step the native loop of this frame". 0 is `call_proc`'s, 1
+/// `ret_proc`'s.
+pub(crate) const LOOP_IREP: IrepId = 2;
+/// The register of a native loop frame where the block's frame sits, so where the block's value
+/// lands. Below it: R0 the receiver, R1 the block, R2 the kind of loop, R3 how far it got
+/// (0: not started, 1: a block's value is waiting in this register), and R4.. the loop's own
+/// state — the most any loop keeps is `sort!`'s eleven (`builtins/array.rs`), which is what
+/// this number is.
+pub(crate) const LOOP_RESULT: usize = 16;
+
+/// What the step of a native loop asks for next (`Vm::push_loop_frame`).
+pub(crate) enum LoopNext {
+    /// call the block with this many arguments, written above [`LOOP_RESULT`] (`Vm::loop_arg`)
+    Call(usize),
+    /// the loop is over, and the native answers this
+    Done(Value),
+}
 /// Nested native -> VM re-entries allowed (each one uses host stack).
 pub const NATIVE_DEPTH_MAX: u32 = 96;
 

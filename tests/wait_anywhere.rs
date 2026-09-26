@@ -167,6 +167,10 @@ fn the_loops_handed_to_a_frame_do_what_the_natives_did() {
       h = Hash.new { |hh, k| hh[k] = k * 2 }
       p [h[3], h[0], h.default(5), [].delete(1) { :none }]
       p catch { |t| throw t, 7 }
+      class F; def initialize; begin; yield; ensure; @e = 1; end; end; end
+      class G; def initialize; return 5; end; end
+      p [F.new { break 9 }, (Class.new { begin; break 1; ensure; end }), G.new.class, Class.new { next 3 }.class]
+      p [[].index { true }, [].sort { raise "never" }, catch(:o) { [3, 1, 2].sort { |a, b| throw :o, :thrown } }]
     "#);
     assert_eq!(out, concat!(
         "[1, 3, nil]\n",
@@ -181,6 +185,10 @@ fn the_loops_handed_to_a_frame_do_what_the_natives_did() {
         "[:c, 2]\n",
         "[6, 0, 10, :none]\n",
         "7\n",
+        // `initialize` and the block of `Class.new` answer the receiver, unless a `break` ends
+        // them, also on its way through an `ensure` (`Cci::KeepSelf`)
+        "[9, 1, G, Class]\n",
+        "[nil, [], :thrown]\n",
     ));
 }
 

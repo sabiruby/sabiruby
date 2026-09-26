@@ -5,9 +5,8 @@
 # inside the container because the files it writes are root's (as the book's tools/build_kit.rb).
 #   tools/fixtures.sh            # all fixtures
 #   tools/fixtures.sh hello      # one fixture
-# Also builds the Ruby part of mruby's core library into src/mrblib/core.mrb,
-# src/mrblib/require.rb (SabiRuby's own require/load) into src/mrblib/require.mrb, and
-# src/mrblib/block-frames.rb (the loops of block-taking natives) into src/mrblib/block-frames.mrb.
+# Also builds the Ruby part of mruby's core library into src/mrblib/core.mrb, and
+# src/mrblib/require.rb (SabiRuby's own require/load) into src/mrblib/require.mrb.
 set -eu
 cd "$(dirname "$0")/.."
 IMG=kishima/mruby:4.1.0-rc2
@@ -24,8 +23,6 @@ fi
 # SabiRuby's own Ruby part: require/load (`docs/plans/eval-require-plan.md` 5). The reference has none
 # of it, so this one is compiled from the source that lives beside it.
 docker run --rm -v "$PWD/src/mrblib:/w" $IMG mrbc -o /w/require.mrb /w/require.rb
-# the same for the loops of the block-taking natives (`docs/design/wait-anywhere.md`)
-docker run --rm -v "$PWD/src/mrblib:/w" $IMG mrbc -o /w/block-frames.mrb /w/block-frames.rb
 for rb in tests/fixtures/${1:-*}.rb; do
   base=${rb%.rb}
   docker run --rm -v "$PWD/tests/fixtures:/w" $IMG /bin/sh -c "

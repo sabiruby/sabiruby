@@ -195,9 +195,16 @@ pub fn init(vm: &mut Vm) {
             // (`new_iseq`: `SSENDB :initialize` then `RETURN R0`), so it is no native boundary.
             // A native `initialize` given a block is called the same way, so that one which
             // hands its loop to a frame (`Array.new(n) { }`) can do it there.
-            if vm.in_frame() && (!b.is_nil() || vm.ruby_method(obj, init).is_some()) {
+            if vm.in_frame() {
                 let kw = match (vm.pending_kw, a.last()) { (Some(k), Some(l)) if !k.is_nil() && k == *l => Some(k), _ => None };
-                return vm.send_in_frame_then(obj, obj, init, a, kw, b);
+                if let Some((p, owner)) = vm.ruby_method(obj, init) {
+                    let pos = if kw.is_some() { &a[..a.len() - 1] } else { a };
+                    vm.push_method_frame(p, owner, obj, init, pos, kw, b, false)?;
+                    // it answers the object whatever `initialize` returns
+                    vm.keep_self();
+                    return Ok(obj);
+                }
+                if !b.is_nil() { return vm.send_in_frame_then(obj, obj, init, a, kw, b); }
             }
             if vm.respond_to(obj, init) {
                 vm.funcall(obj, init, a, b)?;
