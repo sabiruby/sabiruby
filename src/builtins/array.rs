@@ -235,13 +235,14 @@ fn ary_put(vm: &mut Vm, a: Value, i: i64, v: Value) {
 
 /// `sort! { }`: the bottom-up merge sort of `sort_values`, stopped at every comparison. The
 /// block is called with `(src[r], src[l])` and `r` goes first where it answers "less", as there.
+/// Only what changed is written back: `l`, `r` and `k` at every comparison, the bounds of a merge
+/// when it starts, `width` when a pass ends.
 fn sort_step(vm: &mut Vm, base: usize) -> VmResult<LoopNext> {
-    let (src, dst) = (reg(vm, base, 4), reg(vm, base, 5));
+    let (mut src, mut dst) = (reg(vm, base, 4), reg(vm, base, 5));
     let n = int(vm, base, 6);
-    let (mut width, mut i, mut mid, mut hi, mut l, mut r, mut k) =
-        (int(vm, base, 7), int(vm, base, 8), int(vm, base, 9), int(vm, base, 10), int(vm, base, 11), int(vm, base, 12), int(vm, base, 13));
+    let (mut width, mut i, mut mid, mut hi) = (int(vm, base, 7), int(vm, base, 8), int(vm, base, 9), int(vm, base, 10));
+    let (mut l, mut r, mut k) = (int(vm, base, 11), int(vm, base, 12), int(vm, base, 13));
     let mut merging = reg(vm, base, 14).truthy();
-    let (mut src, mut dst) = (src, dst);
     if int(vm, base, 3) == 1 {
         let (x, y) = (ary_at(vm, src, r), ary_at(vm, src, l));
         let answer = reg(vm, base, LOOP_RESULT);
@@ -251,8 +252,9 @@ fn sort_step(vm: &mut Vm, base: usize) -> VmResult<LoopNext> {
     loop {
         if merging {
             if l < mid && r < hi {
-                for (at, v) in [(7, width), (8, i), (9, mid), (10, hi), (11, l), (12, r), (13, k)] { set(vm, base, at, Value::Int(v)); }
-                set(vm, base, 14, Value::True);
+                set(vm, base, 11, Value::Int(l));
+                set(vm, base, 12, Value::Int(r));
+                set(vm, base, 13, Value::Int(k));
                 set(vm, base, 3, Value::Int(1));
                 let (x, y) = (ary_at(vm, src, r), ary_at(vm, src, l));
                 vm.loop_arg(base, 0, x);
@@ -269,6 +271,8 @@ fn sort_step(vm: &mut Vm, base: usize) -> VmResult<LoopNext> {
             mid = (i + width).min(n); hi = (i + 2 * width).min(n);
             l = i; r = mid; k = i;
             merging = true;
+            for (at, v) in [(8, i), (9, mid), (10, hi)] { set(vm, base, at, Value::Int(v)); }
+            set(vm, base, 14, Value::True);
             continue;
         }
         // the pass is over: what was written is what the next one reads
@@ -277,6 +281,7 @@ fn sort_step(vm: &mut Vm, base: usize) -> VmResult<LoopNext> {
         set(vm, base, 5, dst);
         width *= 2;
         i = 0;
+        set(vm, base, 7, Value::Int(width));
     }
     let s = reg(vm, base, 0);
     let v = items(vm, src);

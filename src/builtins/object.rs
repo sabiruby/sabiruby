@@ -190,28 +190,37 @@ pub fn init(vm: &mut Vm) {
                 None => vm.instance_alloc(c)?,
             };
             let init = vm.s.initialize;
-            // Called by a SEND, an `initialize` written in Ruby runs in a frame of its own above
-            // one that answers the object, which is what the reference's bytecode `new` is
-            // (`new_iseq`: `SSENDB :initialize` then `RETURN R0`), so it is no native boundary.
-            // A native `initialize` given a block is called the same way, so that one which
-            // hands its loop to a frame (`Array.new(n) { }`) can do it there.
-            if vm.in_frame() {
-                let kw = match (vm.pending_kw, a.last()) { (Some(k), Some(l)) if !k.is_nil() && k == *l => Some(k), _ => None };
-                if let Some((p, owner)) = vm.ruby_method(obj, init) {
+            // Called by a SEND, an `initialize` written in Ruby runs in a frame of its own that
+            // answers the object whatever it returns (`Cci::KeepSelf`), which is what the
+            // reference's bytecode `new` does (`new_iseq`: `SSENDB :initialize` then
+            // `RETURN R0`), so it is no native boundary. A native `initialize` given a block is
+            // called keeping the frame too, so that one which hands its loop to a frame
+            // (`Array.new(n) { }`) can do it there, above a frame that answers the object.
+            // one lookup, through the method cache, answers both what `initialize` is and
+            // whether there is one (`respond_to`)
+            match vm.method_ref_of(obj, init) {
+                Some((crate::object::MethodRef::Ruby(p), owner)) if vm.in_frame() => {
+                    let kw = match (vm.pending_kw, a.last()) { (Some(k), Some(l)) if !k.is_nil() && k == *l => Some(k), _ => None };
                     let pos = if kw.is_some() { &a[..a.len() - 1] } else { a };
                     vm.push_method_frame(p, owner, obj, init, pos, kw, b, false)?;
                     // it answers the object whatever `initialize` returns
                     vm.keep_self();
-                    return Ok(obj);
+                    Ok(obj)
                 }
-                if !b.is_nil() { return vm.send_in_frame_then(obj, obj, init, a, kw, b); }
+                Some((crate::object::MethodRef::Native(f), _)) if vm.notimpl_fns.iter().any(|g| core::ptr::fn_addr_eq(*g, f)) => {
+                    if !a.is_empty() { return Err(vm.argnum_error(a.len(), "0")); }
+                    Ok(obj)
+                }
+                None => {
+                    if !a.is_empty() { return Err(vm.argnum_error(a.len(), "0")); }
+                    Ok(obj)
+                }
+                Some(_) if vm.in_frame() && !b.is_nil() => {
+                    let kw = match (vm.pending_kw, a.last()) { (Some(k), Some(l)) if !k.is_nil() && k == *l => Some(k), _ => None };
+                    vm.send_in_frame_then(obj, obj, init, a, kw, b)
+                }
+                Some(_) => { vm.funcall(obj, init, a, b)?; Ok(obj) }
             }
-            if vm.respond_to(obj, init) {
-                vm.funcall(obj, init, a, b)?;
-            } else if !a.is_empty() {
-                return Err(vm.argnum_error(a.len(), "0"));
-            }
-            Ok(obj)
         }),
         ("allocate", default_allocate),
         ("superclass", |vm, s, _a, _b| { let mut c = vm.heap.class(s.obj().unwrap()).superclass; while let Some(x) = c { let cd = vm.heap.class(x); if cd.iclass_of.is_none() && !cd.is_singleton { return Ok(Value::Obj(x)); } c = cd.superclass; } Ok(Value::Nil) }),

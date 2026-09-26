@@ -367,6 +367,7 @@ pub struct Syms {
     pub aref: Sym,
     pub aset: Sym,
     pub attached: Sym,
+    pub default_: Sym,
     /// the instance variable a Hash keeps its default proc in (`builtins/hash.rs`)
     pub default_proc: Sym,
     /// The hidden instance variables of a Rational and a Complex (`ext_rational.rs`,
@@ -663,6 +664,7 @@ impl Vm {
             aset: syms.intern_str("[]="),
             attached: syms.intern_str("__attached__"),
             default_proc: syms.intern_str("__default_proc"),
+            default_: syms.intern_str("default"),
         };
         let top_self = heap.alloc(object, ObjKind::Object);
         let call_irep = VmIrep { nlocals: 1, nregs: 4, iseq: vec![Op::Call as u8], catch: vec![], pool: vec![], syms: vec![], reps: vec![], lv: vec![], lines: vec![], filename: None };
@@ -671,7 +673,7 @@ impl Vm {
         let ret_irep = VmIrep { nlocals: 1, nregs: 2, iseq: vec![Op::Return as u8, 0], catch: vec![], pool: vec![], syms: vec![], reps: vec![], lv: vec![], lines: vec![], filename: None };
         let ret_proc = heap.alloc(core.proc_, ObjKind::Proc(ProcData { irep: 1, upper: None, env: None, target_class: Some(object), strict: true, scope: true, orphan: false, mid: None }));
         // `OP_DEBUG`, read as one step of a native loop (`Vm::push_loop_frame`)
-        let loop_irep = VmIrep { nlocals: 1, nregs: LOOP_RESULT + 1, iseq: vec![Op::Debug as u8, 0, 0, 0], catch: vec![], pool: vec![], syms: vec![], reps: vec![], lv: vec![], lines: vec![], filename: None };
+        let loop_irep = VmIrep { nlocals: 1, nregs: LOOP_RESULT + 1, iseq: vec![Op::Debug as u8, 0, 0, 0, Op::Return as u8, LOOP_RESULT as u8], catch: vec![], pool: vec![], syms: vec![], reps: vec![], lv: vec![], lines: vec![], filename: None };
         let loop_proc = heap.alloc(core.proc_, ObjKind::Proc(ProcData { irep: LOOP_IREP, upper: None, env: None, target_class: Some(object), strict: true, scope: true, orphan: false, mid: None }));
         let mut vm = Vm {
             heap, syms, ireps: vec![call_irep, ret_irep, loop_irep], ret_proc, loop_proc, stack: Vec::new(), ci: Vec::new(), globals: HashMap::new(),
@@ -2228,16 +2230,20 @@ impl Vm {
         if let Some(c) = self.ci.last_mut() { c.cci = Cci::KeepSelf; }
     }
 
-    /// `h[k]` missed and `h` has a default proc (`OP_GETIDX`): the proc runs in a frame at
-    /// `nbase`, the instruction's register, and this answers `None`. A class that redefines
-    /// `default` is answered by that method, nested as `Hash#[]` calls it (`Some`).
-    fn hash_default_frame(&mut self, h: Value, o: ObjId, k: Value, nbase: usize) -> VmResult<Option<Value>> {
-        let dm = self.intern("default");
+    /// `h[k]` missed (`OP_GETIDX`), and this is what `Hash#[]` answers then: a class that
+    /// redefines `default` is answered by that method, nested as `Hash#[]` calls it; a default
+    /// proc runs in a frame at `nbase`, the instruction's register, and this answers `None`;
+    /// otherwise the plain default.
+    fn hash_miss_at(&mut self, h: Value, o: ObjId, k: Value, nbase: usize) -> VmResult<Option<Value>> {
+        let dm = self.s.default_;
         let cls = self.class_of(h);
         if let Some((MethodRef::Ruby(_) | MethodRef::Closure, _)) = self.find_method_cached(cls, dm) {
             return self.funcall(h, dm, &[k], Value::Nil).map(Some);
         }
-        let p = match self.heap.ivar_get(o, self.s.default_proc) { Value::Obj(p) if matches!(self.heap.get(p).kind, ObjKind::Proc(_)) => p, _ => return Ok(Some(Value::Nil)) };
+        let p = match self.heap.ivar_get(o, self.s.default_proc) {
+            Value::Obj(p) if matches!(self.heap.get(p).kind, ObjKind::Proc(_)) => p,
+            _ => return Ok(Some(match &self.heap.get(o).kind { ObjKind::Hash(hd) => hd.default.get(), _ => Value::Nil })),
+        };
         if self.ci.len() >= CALL_LEVEL_MAX { return Err(self.raise(self.core.system_stack_error, "stack level too deep")); }
         let pd = self.heap.proc_data(p);
         let (env, ptc) = (pd.env, pd.target_class);
@@ -2248,9 +2254,21 @@ impl Vm {
         Ok(None)
     }
 
-    /// [`Vm::call_block_with_self`] followed by answering `answer` (`Class.new { }`,
-    /// `Struct.new { }`): called by a SEND, the block runs in a frame of its own above one that
-    /// answers `answer` ([`Vm::push_return_frame`]).
+    /// Whether `recv.mid` is a method written in Ruby or a closure, through the method cache.
+    pub(crate) fn user_method_p(&mut self, recv: Value, mid: Sym) -> bool {
+        let cls = self.class_of(recv);
+        matches!(self.find_method_cached(cls, mid), Some((MethodRef::Ruby(_) | MethodRef::Closure, _)))
+    }
+
+    /// `recv.mid` through the method cache.
+    pub(crate) fn method_ref_of(&mut self, recv: Value, mid: Sym) -> Option<(MethodRef, ObjId)> {
+        let cls = self.class_of(recv);
+        self.find_method_cached(cls, mid)
+    }
+
+    /// [`Vm::call_block_with_self`] followed by answering `answer`, which is the block's self
+    /// (`Class.new { }`, `Struct.new { }`): called by a SEND, the block runs in a frame of its
+    /// own that answers its self whatever it returns ([`Cci::KeepSelf`]).
     pub(crate) fn exec_block_with_self_then(&mut self, blk: Value, self_: Value, args: &[Value], answer: Value) -> VmResult<Value> {
         if !self.direct_send {
             self.call_block_with_self(blk, self_, args)?;
@@ -2443,7 +2461,8 @@ impl Vm {
         self.stack[nbase + 1] = Slot::from(blk);
         self.stack[nbase + 2] = Slot::from(Value::Int(kind));
         self.stack[nbase + 3] = Slot::from(Value::Int(0));
-        for i in 4..=LOOP_RESULT { self.stack[nbase + i] = Slot::from(state.get(i - 4).copied().unwrap_or(Value::Nil)); }
+        for (i, v) in state.iter().enumerate() { self.stack[nbase + 4 + i] = Slot::from(*v); }
+        self.stack[nbase + 4 + state.len()..=nbase + LOOP_RESULT].fill(Slot::NIL);
         let tc = self.ci.last().map(|c| c.target_class).unwrap_or(self.core.object);
         let mid = self.native_mid;
         let depth = self.ci.len();
@@ -2454,6 +2473,7 @@ impl Vm {
             let top = self.ci.len() - 1;
             return match crate::builtins::array::loop_step(self, nbase) {
                 Ok(LoopNext::Call(n)) => { self.loop_call_block(top, nbase, n)?; Ok(recv) }
+                Ok(LoopNext::Tail(n)) => { self.ci[top].pc = LOOP_TAIL_PC; self.loop_call_block(top, nbase, n)?; Ok(recv) }
                 // over before the block was called: no frame is needed after all
                 Ok(LoopNext::Done(v)) => { self.ci.pop(); Ok(v) }
                 Err(e) => { self.ci.pop(); Err(e) }
@@ -2491,12 +2511,6 @@ impl Vm {
         Ok(())
     }
 
-    /// The Ruby method `recv.mid` resolves to, as `(body, owner)`; `None` for anything else.
-    pub(crate) fn ruby_method(&mut self, recv: Value, mid: Sym) -> Option<(ObjId, ObjId)> {
-        let cls = self.class_of(recv);
-        match self.find_method_cached(cls, mid) { Some((MethodRef::Ruby(p), owner)) => Some((p, owner)), _ => None }
-    }
-
     /// Pushes the frame a SEND of `mid` would push for the Ruby method `p` found on `owner`
     /// (`op_send_vis`), where the running native's result goes. The native returns `recv`.
     #[allow(clippy::too_many_arguments)]
@@ -2513,7 +2527,9 @@ impl Vm {
     /// running native's result register into it: what the native pushes next runs there, and
     /// its value is dropped for `value` (`Class#new` answers the object whatever `initialize`
     /// returns). mruby does this with a method written in bytecode (`new_iseq` of src/class.c);
-    /// the frame here is the tail of such a method, one `OP_RETURN R0`.
+    /// the frame here is the tail of such a method, one `OP_RETURN R0`. Where the frame pushed
+    /// above has the value as its own R0, [`Cci::KeepSelf`] does the same without this frame;
+    /// this one is for a native `initialize` that pushes a frame of another self.
     pub(crate) fn push_return_frame(&mut self, value: Value, mid: Sym) -> VmResult<()> {
         if self.ci.len() + 1 >= CALL_LEVEL_MAX { return Err(self.raise(self.core.system_stack_error, "stack level too deep")); }
         let p = self.ret_proc;
@@ -4375,6 +4391,7 @@ impl Vm {
                         self.ci[top].pc = 0;
                         match crate::builtins::array::loop_step(self, base)? {
                             LoopNext::Call(n) => self.loop_call_block(top, base, n)?,
+                            LoopNext::Tail(n) => { self.ci[top].pc = LOOP_TAIL_PC; self.loop_call_block(top, base, n)?; }
                             LoopNext::Done(v) => { if let Some(r) = self.op_return(v, stop_depth, lc)? { return Ok(r); } }
                         }
                     }
@@ -4764,12 +4781,8 @@ impl Vm {
             // (no native boundary, so a task can wait inside it); the rest is answered here.
             IDX_HASH_AREF => match self.hash_get(recv, idx) {
                 Some(v) => v,
-                None if !self.heap.ivar_get(o, self.s.default_proc).is_nil() => {
-                    // the proc runs in a frame where this instruction's value goes
-                    if let Some(v) = self.hash_default_frame(recv, o, idx, base + a)? { self.stack[base + a] = Slot::from(v); }
-                    return Ok(false);
-                }
-                None => self.call_native(crate::builtins::hash::hash_missing, recv, &[idx], Value::Nil)?,
+                // a default proc runs in a frame where this instruction's value goes
+                None => match self.hash_miss_at(recv, o, idx, base + a)? { Some(v) => v, None => return Ok(false) },
             },
             _ => {
                 if !self.str_index_p(idx) { return Ok(true); }
@@ -4799,8 +4812,10 @@ impl Vm {
             IDX_ARY_AREF => self.heap.array(o).and_then(|l| l.first().map(|e| e.get())).unwrap_or(Value::Nil),
             IDX_HASH_AREF => match self.hash_get(recv, Value::Int(0)) {
                 Some(v) => v,
-                None if !self.heap.ivar_get(o, self.s.default_proc).is_nil() => return fallback(self),
-                None => self.call_native(crate::builtins::hash::hash_missing, recv, &[Value::Int(0)], Value::Nil)?,
+                None => {
+                    if self.stack.len() <= base + a + 1 { self.stack.resize(base + a + 2, Slot::NIL); }
+                    match self.hash_miss_at(recv, o, Value::Int(0), base + a)? { Some(v) => v, None => return Ok(false) }
+                }
             },
             _ => self.call_native(crate::builtins::string::str_aref, recv, &[Value::Int(0)], Value::Nil)?,
         };
@@ -5255,9 +5270,9 @@ impl Default for Vm {
 /// `MRB_CALL_LEVEL_MAX`.
 pub const CALL_LEVEL_MAX: usize = 512;
 
-/// The irep a native loop frame runs (`Vm::push_loop_frame`): one `OP_DEBUG`, which the
-/// instruction loop reads as "step the native loop of this frame". 0 is `call_proc`'s, 1
-/// `ret_proc`'s.
+/// The irep a native loop frame runs (`Vm::push_loop_frame`): `OP_DEBUG`, which the
+/// instruction loop reads as "step the native loop of this frame", then `OP_RETURN` of
+/// [`LOOP_RESULT`] ([`LoopNext::Tail`]). 0 is `call_proc`'s, 1 `ret_proc`'s.
 pub(crate) const LOOP_IREP: IrepId = 2;
 /// The register of a native loop frame where the block's frame sits, so where the block's value
 /// lands. Below it: R0 the receiver, R1 the block, R2 the kind of loop, R3 how far it got
@@ -5265,6 +5280,8 @@ pub(crate) const LOOP_IREP: IrepId = 2;
 /// state — the most any loop keeps is `sort!`'s eleven (`builtins/array.rs`), which is what
 /// this number is.
 pub(crate) const LOOP_RESULT: usize = 16;
+/// Where the loop frame's `OP_RETURN` is ([`LoopNext::Tail`]).
+const LOOP_TAIL_PC: usize = 4;
 
 /// What the step of a native loop asks for next (`Vm::push_loop_frame`).
 pub(crate) enum LoopNext {
@@ -5272,6 +5289,9 @@ pub(crate) enum LoopNext {
     Call(usize),
     /// the loop is over, and the native answers this
     Done(Value),
+    /// call the block with this many arguments, and answer what it answers (`catch`): the
+    /// frame returns the block's value without another step
+    Tail(usize),
 }
 /// Nested native -> VM re-entries allowed (each one uses host stack).
 pub const NATIVE_DEPTH_MAX: u32 = 96;

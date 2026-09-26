@@ -66,19 +66,13 @@ pub(crate) fn hash_value(vm: &mut Vm, s: Value, k: Value) -> VmResult<Value> {
     missing(vm, s, k, false)
 }
 
-/// What `h[k]` answers where the index opcodes' own lookup missed and there is no default proc
-/// (a default proc is left to the send: `Vm::op_getidx`).
-pub(crate) fn hash_missing(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
-    missing(vm, s, a[0], false)
-}
-
 /// What `h[k]` answers where `k` is not there. `in_frame`: the caller returns the value as it
 /// is, so a default proc may run in a frame of its own when a SEND called it.
 fn missing(vm: &mut Vm, s: Value, k: Value, in_frame: bool) -> VmResult<Value> {
     // a redefined `default` is honoured (#3272)
-    let dm = vm.intern("default");
-    if let Some((crate::object::Method::Ruby(_) | crate::object::Method::Closure(_), _)) = vm.find_method(vm.class_of(s), dm) { return vm.funcall(s, dm, &[k], Value::Nil); }
-    let dp = default_proc_ivar(vm);
+    let dm = vm.s.default_;
+    if vm.user_method_p(s, dm) { return vm.funcall(s, dm, &[k], Value::Nil); }
+    let dp = vm.s.default_proc;
     let proc_ = s.obj().map(|o| vm.heap.ivar_get(o, dp)).unwrap_or(Value::Nil);
     if !proc_.is_nil() { return if in_frame { vm.exec_block(proc_, &[s, k]) } else { vm.call_block(proc_, &[s, k]) }; }
     Ok(default_of(vm, s))

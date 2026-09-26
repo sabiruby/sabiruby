@@ -14,8 +14,7 @@ use crate::argc;
 use crate::error::{VmError, VmResult};
 use crate::object::BreakTag;
 use crate::value::Value;
-use crate::value::Slot;
-use crate::vm::{LoopNext, Vm, LOOP_IREP, LOOP_RESULT};
+use crate::vm::{LoopNext, Vm, LOOP_IREP};
 
 use super::object::same_object;
 
@@ -36,13 +35,11 @@ fn catch_m(vm: &mut Vm, s: Value, a: &[Value], b: Value) -> VmResult<Value> {
 /// The kind of native loop frame `catch` runs its block in (`builtins::array::loop_step`).
 pub(crate) const LOOP_CATCH: i64 = 4;
 
-/// One step of `catch`'s frame: call the block with the tag, then answer what it answered.
+/// The step of `catch`'s frame: call the block with the tag, and answer what it answers.
 pub(crate) fn catch_step(vm: &mut Vm, base: usize) -> VmResult<LoopNext> {
-    if vm.stack[base + 3].get() == Value::Int(1) { return Ok(LoopNext::Done(vm.stack[base + LOOP_RESULT].get())); }
-    vm.stack[base + 3] = Slot::from(Value::Int(1));
     let tag = vm.stack[base + 4].get();
     vm.loop_arg(base, 0, tag);
-    Ok(LoopNext::Call(1))
+    Ok(LoopNext::Tail(1))
 }
 
 fn throw_m(vm: &mut Vm, _s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
