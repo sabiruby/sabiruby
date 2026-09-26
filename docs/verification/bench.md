@@ -483,6 +483,119 @@ runs of one binary and does not cover build-to-build placement; **the author acc
 (2026-09-26). Integer-only `sort` without a block now uses `sort_unstable` (equal Integers are one value, so the
 order cannot differ): `m_sort_plain` −36.9%. Rounds: `bench/results/wait-anywhere/{sortfin,fin5}-*.tsv`.
 
+### 0.7.0 candidate (`2fe974e` → `d0d0c8d`, 2026-09-27)
+
+Before is main `2fe974e` (wait-anywhere in); after is `rel07-correct` at `d0d0c8d`, which is the
+candidate `dd8d343` plus the scheduler fix these measurements called for. The record, with the
+first candidate's numbers, the fix and the bisection, is
+[`../worklog/2026-09-27-release-0.7-bench.md`](../worklog/2026-09-27-release-0.7-bench.md); the TSVs
+are in `bench/results/release-0.7/`.
+
+**How.** Interleaved A/B with `tools/bench_ab.sh`: 5 runs a round, and the side that goes first
+alternates run by run and round by round. `--core 2`. A number is the best of all runs of a side.
+The PC was cleared for this: `vmstat -t 10` was logged throughout, and no round saw it below 90% idle.
+Three sets: the 27 of `bench/`, the 21 of `bench/micro-wait/`, and 7 new task-heavy ones in
+`bench/micro-tasks/` (a queue ping-pong, 10/100/1000 tasks sleeping in turn, 60 tasks at six
+priorities passing, `Task.list`/`Task.stat` over 1000 tasks, spawn-and-join). Instruction counts
+(`--stats`) are the same before and after in every one of them.
+
+**The line.** The old binary against itself, 2 rounds a set. The largest difference was 1.2% (tasks),
+1.8% (wait) and 1.8% (`bench/`). Slower means over that, the same way in every round.
+
+Task micro-benchmarks (ms; the A/A and first-candidate `dd8d343` columns are the change only):
+
+| benchmark | A/A | `dd8d343` | `2fe974e` | `d0d0c8d` | change | rounds |
+|---|---:|---:|---:|---:|---:|---|
+| `t_list_stat` | +0.8% | +28.7% | 95.577 | 89.174 | **-6.7%** | -7.1 -6.4 -7.3 |
+| `t_pass_prio` | +1.2% | +14.4% | 203.862 | 215.874 | **+5.9%** | +6.5 +5.9 +6.3 |
+| `t_pingpong` | +0.0% | +10.4% | 165.794 | 172.175 | **+3.8%** | +4.3 +3.8 +4.0 |
+| `t_sleep_10` | -0.5% | +31.2% | 331.018 | 341.796 | **+3.3%** | +3.8 +4.1 +3.3 |
+| `t_sleep_100` | -0.6% | +23.8% | 412.545 | 347.272 | **-15.8%** | -15.9 -16.1 -15.8 |
+| `t_sleep_1000` | +0.3% | -50.2% | 273.672 | 69.883 | **-74.5%** | -74.1 -74.1 -74.7 |
+| `t_spawn_join` | -0.5% | -95.2% | 478.430 | 19.260 | **-96.0%** | -96.0 -95.8 -95.9 |
+
+The first candidate kept its queues in `BTreeMap`s. That made the scheduler with a few tasks 10–31%
+slower while 1000 sleepers got twice as fast. `d0d0c8d` replaces them with a `VecDeque` kept sorted,
+which is O(1) at both ends (where the keys come and go) and a binary search elsewhere. It also
+requeues a task with two reads of it instead of four, and wakes a queue's one waiter without
+building a `Vec`. **Still over the line: `t_pass_prio` +5.9%, `t_pingpong` +3.8%, `t_sleep_10` +3.3%**,
+a few ns to about 16 ns per switch. The large cases are much faster.
+
+`bench/` (ms):
+
+| benchmark | A/A | `2fe974e` | `d0d0c8d` | change | rounds |
+|---|---:|---:|---:|---:|---|
+| app_json_hash | -0.6% | 1174.781 | 1207.985 | **+2.8%** | +2.4 +3.0 |
+| app_robot | -0.5% | 1069.798 | 1085.258 | **+1.4%** | +2.0 +1.3 |
+| app_tak | +0.3% | 1105.139 | 1113.563 | **+0.8%** | +0.8 +0.7 |
+| bm_ao_render | -0.1% | 5169.124 | 5316.894 | **+2.9%** | +2.9 +3.5 |
+| bm_fib | +0.2% | 5093.192 | 5086.051 | **-0.1%** | -0.3 +0.9 |
+| bm_mandel_term | +1.7% | 17.752 | 18.119 | **+2.1%** | +1.6 +2.1 |
+| bm_so_lists | +0.1% | 919.232 | 1055.447 | **+14.8%** | +14.8 +14.5 |
+| bm_so_mandelbrot | -0.8% | 1291.327 | 1275.705 | **-1.2%** | -1.6 -1.2 |
+| call_args | -0.1% | 854.462 | 871.227 | **+2.0%** | +1.5 +2.0 |
+| call_block_yield | -0.7% | 986.867 | 989.714 | **+0.3%** | +0.3 +0.3 |
+| call_fiber | +0.5% | 863.070 | 976.276 | **+13.1%** | +13.2 +13.1 |
+| call_kwargs | +0.2% | 810.153 | 800.228 | **-1.2%** | -1.4 -1.2 |
+| ds_array | -0.2% | 822.782 | 856.570 | **+4.1%** | +4.1 +4.1 |
+| ds_hash | +0.1% | 208.533 | 210.569 | **+1.0%** | +0.1 +1.0 |
+| ds_string | -0.2% | 360.338 | 361.901 | **+0.4%** | +0.3 +0.4 |
+| gc_churn | +0.4% | 348.404 | 357.570 | **+2.6%** | +2.5 +2.6 |
+| loop_if_branch | +0.2% | 821.177 | 848.230 | **+3.3%** | +4.5 +3.3 |
+| loop_times | -0.7% | 834.085 | 849.306 | **+1.8%** | +0.4 +2.4 |
+| loop_while_add | -0.0% | 791.012 | 793.301 | **+0.3%** | +0.3 +0.2 |
+| mem_retained | +0.2% | 656.954 | 679.533 | **+3.4%** | +3.9 +3.4 |
+| mem_short_lived | +0.7% | 869.798 | 908.304 | **+4.4%** | +4.1 +4.4 |
+| vm_optimization_bench | +0.5% | 10620.586 | 10842.423 | **+2.1%** | +1.8 +2.1 |
+| vmo_arith | +0.5% | 3560.662 | 3609.907 | **+1.4%** | +1.4 -1.8 |
+| vmo_calls | +0.3% | 2806.000 | 2928.177 | **+4.4%** | +3.9 +4.7 |
+| vmo_dispatch | +0.5% | 2101.535 | 2125.504 | **+1.1%** | +1.2 +0.8 |
+| vmo_index | +1.4% | 480.202 | 499.970 | **+4.1%** | +3.5 +4.1 |
+| vmo_objects | +1.8% | 578.744 | 575.045 | **-0.6%** | -0.6 -1.0 |
+
+All 27 together: +2.1% and +2.2% in the two rounds (A/A +0.2%, +0.0%).
+
+`bench/micro-wait/` (ms):
+
+| benchmark | A/A | `dd8d343` | `2fe974e` | `d0d0c8d` | change | rounds |
+|---|---:|---:|---:|---:|---:|---|
+| `m_array_new_block` | +1.4% | +2.2% | 137.756 | 144.799 | **+5.1%** | +6.5 +2.6 |
+| `m_catch` | -0.3% | +3.8% | 139.514 | 145.452 | **+4.3%** | +4.9 +4.3 |
+| `m_class_exec` | +1.4% | +2.3% | 78.227 | 79.894 | **+2.1%** | +2.1 +1.9 |
+| `m_class_new_block` | -0.4% | -1.4% | 52.834 | 52.789 | **-0.1%** | +0.8 -1.0 |
+| `m_hash_default_proc` | +1.1% | -1.7% | 52.873 | 53.062 | **+0.4%** | +0.4 -1.5 |
+| `m_hash_hit` | -0.5% | -0.2% | 131.650 | 133.019 | **+1.0%** | +0.3 +1.8 |
+| `m_hash_miss` | -0.0% | +1.6% | 133.116 | 134.673 | **+1.2%** | +0.7 +1.2 |
+| `m_index_arg` | -0.3% | +0.1% | 292.681 | 289.622 | **-1.0%** | +0.1 -1.0 |
+| `m_index_block` | +0.2% | +0.9% | 227.237 | 232.007 | **+2.1%** | +2.6 +2.1 |
+| `m_instance_eval` | +0.3% | -1.0% | 81.835 | 81.426 | **-0.5%** | +1.5 -0.5 |
+| `m_instance_exec` | -0.0% | +2.2% | 86.033 | 86.729 | **+0.8%** | +1.5 +0.1 |
+| `m_method_call` | +1.8% | +1.9% | 79.580 | 81.515 | **+2.4%** | +1.2 +3.0 |
+| `m_method_loop` | -0.7% | +0.1% | 82.146 | 84.144 | **+2.4%** | +1.6 +2.4 |
+| `m_new_plain` | -0.0% | +7.4% | 132.187 | 139.360 | **+5.4%** | +7.2 +5.4 |
+| `m_new_ruby_init` | -0.4% | +2.7% | 193.816 | 200.669 | **+3.5%** | +2.4 +4.5 |
+| `m_plain_loop` | -0.1% | +0.4% | 91.655 | 91.879 | **+0.2%** | +2.3 -0.8 |
+| `m_public_send` | -0.6% | +4.7% | 64.214 | 68.005 | **+5.9%** | +4.4 +6.2 |
+| `m_send` | +0.0% | +0.1% | 119.580 | 120.004 | **+0.4%** | +0.2 +0.4 |
+| `m_sort_block` | +0.1% | +2.1% | 275.789 | 291.214 | **+5.6%** | +6.4 +3.7 |
+| `m_sort_plain` | +0.9% | +7.0% | 149.714 | 167.294 | **+11.7%** | +11.5 +11.7 |
+| `m_yield_loop` | +1.0% | -0.7% | 162.592 | 161.347 | **-0.8%** | +1.8 -0.8 |
+
+**Paths without tasks are slower too, from the merge of stage B (`3e6238c`) on:** `bm_so_lists` +14.8%,
+`call_fiber` +13.1%, `m_sort_plain` +11.7%, and a spread of +2–6%. Stage A's end (`39be934`) does not
+show it (`call_fiber` +0.0%, `so_lists` +4.6%). Their instruction counts are the same and they use no
+task. Two causes were ruled out. It is not the size of `TaskState` (the old binary with 128 bytes of
+padding added there does not move). It is not the native-return check S5 added (moving it off the
+path changes nothing). **The cause is not found.** The next step is a tree with each of stage B's
+S4, S5 and S6 taken out in turn.
+
+rubevy (`how_many_scripts` / `how_many_subscribers`, rubevy main on crates.io's 0.6.1 against a scratch
+copy patched to `d0d0c8d`, 2 runs each, alternating): `how_many_scripts` with 1000 scripts waking every
+frame goes 6.3–6.5 → 5.2–5.4 ms a tick. The other rows vary 2× between runs of the same side.
+`how_many_subscribers` `publish_heard` is **11–15% slower** at 10 subscribers or more and 100
+messages a frame or more. It is 0.7.0's share: 0.6.1 → main is −6 to +0 on those rows. Its tick is 2–7% slower.
+The host's push runs the same code before and after, so this is the stage-B slowdown above.
+
 ## Earlier measurements (the five reference benchmarks, best of 3)
 
 

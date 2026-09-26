@@ -246,6 +246,12 @@ error that `check_block` gives; merging stage B into stage A (no conflict in the
 had to be checked for), the `native_mid` of a closure `method_missing` reached by a SEND, the
 decision that unloaded irep numbers are never reused, and every check on the merged tree.
 
+[2026-09-27-release-0.7-bench](worklog/2026-09-27-release-0.7-bench.md) measures the 0.7.0
+candidate (Japanese): the A/A line, seven task-heavy micro-benchmarks (`bench/micro-tasks/`), the
+`BTreeMap` queues that made a few tasks 10–31% slower and the sorted `VecDeque` that replaced them,
+what is still over the line, the slowdown of paths without tasks that begins at the merge of stage B
+(cause not found), and rubevy's two instruments against the candidate.
+
 ## Where things were (before 2026-09-15)
 
 Every document above sat directly under `docs/`; references in older commits, in the book's notes

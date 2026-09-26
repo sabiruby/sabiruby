@@ -1,0 +1,8 @@
+category	benchmark	a_ms_best	a_ms_median	b_ms_best	b_ms_median	change_pct
+other	t_list_stat	97.723	98.413	98.134	99.378	+0.4
+other	t_pass_prio	200.098	205.339	203.696	207.316	+1.8
+other	t_pingpong	164.385	169.008	164.923	170.349	+0.3
+other	t_sleep_10	329.896	332.986	327.512	333.170	-0.7
+other	t_sleep_100	414.970	416.550	410.553	416.833	-1.1
+other	t_sleep_1000	272.898	281.636	273.853	275.918	+0.3
+other	t_spawn_join	481.660	485.164	479.397	482.499	-0.5
