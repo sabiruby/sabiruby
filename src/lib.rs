@@ -112,7 +112,7 @@ pub use host_store::{HostStore, RubyClass};
 pub use error::VmError;
 pub use host::{EvalOptions, Host};
 pub use value::Value;
-pub use vm::{RunLimits, Step, Timeslice, Vm};
+pub use vm::{RunLimits, Step, Timeslice, UnloadError, Vm};
 
 /// `#[derive(RubyClass)]` — a Rust struct as a Ruby class — with the feature `macros`,
 /// re-exported from [`sabiruby-macros`](https://crates.io/crates/sabiruby-macros).

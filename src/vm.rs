@@ -576,6 +576,20 @@ pub struct Vm {
     pub(crate) host_stores: Vec<crate::host_store::HostStoreEntry>,
     /// The next number `Vm::next_data_tag` hands out.
     pub(crate) next_tag: u32,
+    /// What each [`Vm::load`] put in `ireps`, by the id it answered (the top-level irep): the
+    /// range of ids of the program's ireps, which [`Vm::unload`] hands back together.
+    pub(crate) irep_loads: alloc::collections::BTreeMap<IrepId, (IrepId, IrepId)>,
+}
+
+/// Why [`Vm::unload`] did not hand a program's ireps back.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UnloadError {
+    /// The id is not one [`Vm::load`] answered, or that program was unloaded already.
+    NotLoaded,
+    /// Something can still run the program's code: a frame of any context (a task or a fiber
+    /// that stands in it), or a Proc — a block, a lambda, a method it defined, the Proc of a task
+    /// made from it. Nothing was changed.
+    StillInUse,
 }
 
 /// Result of [`Vm::step`].
@@ -724,7 +738,7 @@ impl Vm {
             exc: None, out: Vec::new(), core, s, top_self, step_left: None, instructions: 0, op_counts: [0; crate::opcode::OP_COUNT], count_ops: false, method_cache: alloc::boxed::Box::new([MethodCacheLine::default(); METHOD_CACHE_LEN]), idx_builtin: [None; IDX_SLOTS], idx_class: [None; IDX_SLOTS], idx_serial: 0, native_depth: 0, inspect_guard: Vec::new(), pending_kw: None, eq_guard: Vec::new(), gc_disabled: false, pending_vis_break: false, notimpl_fns: Vec::new(), gc_step_limit: 0, gc_interval_ratio: 200, gc_stress: false, native_active: 0, gc_registered: Vec::new(), native_mid: None, live_after_gc: 0, gc_count: 0, gc_time_ns: 0, gc_clock: None, wall_clock: None, sleep_hook: None, host: None, trace: None, call_proc,
             contexts: vec![Context::new(FiberState::Running)], cur: ROOT, direct_send: false, native_ret_reg: 0, loop_exit: None, native_arity: Vec::new(),
             task: TaskState { wakeup_tick: u32::MAX, tick_every: TASK_TICK_INSTRUCTIONS, tick_left: TASK_TICK_INSTRUCTIONS, clock_from_instructions: true, native_every: TASK_NATIVE_SAMPLE, native_left: TASK_NATIVE_SAMPLE, ..Default::default() },
-            host_state: None, on_free: None, host_stores: Vec::new(), next_tag: 1,
+            host_state: None, on_free: None, host_stores: Vec::new(), next_tag: 1, irep_loads: alloc::collections::BTreeMap::new(),
         };
         // Constants for the core classes, Object includes Kernel.
         for i in 0..vm.heap.len() {
@@ -2030,8 +2044,19 @@ impl Vm {
 
     // ------------------------------------------------------------------ loading
 
-    /// Loads a RITE binary; returns the id of its top-level irep.
+    /// Loads a RITE binary; returns the id of its top-level irep, which [`Vm::unload`] takes to
+    /// hand the program back.
     pub fn load(&mut self, bin: &[u8]) -> VmResult<IrepId> {
+        let before = self.ireps.len();
+        let root = self.load_ireps(bin)?;
+        self.irep_loads.insert(root, (before, self.ireps.len()));
+        Ok(root)
+    }
+
+    /// [`Vm::load`] where no one is given the id (`eval`, `require`, [`Vm::load_and_run`]): the
+    /// program is not one a host can name, so it is not recorded for [`Vm::unload`] either —
+    /// recording it would be one more entry per `eval` that nothing ever takes out.
+    pub(crate) fn load_ireps(&mut self, bin: &[u8]) -> VmResult<IrepId> {
         let rite = rite::parse(bin)?;
         let offset = self.ireps.len();
         for ir in &rite.ireps {
@@ -2056,9 +2081,75 @@ impl Vm {
         Ok(rite.root + offset)
     }
 
-    /// Loads and runs a binary to completion at the top level.
+    /// Hands back the ireps of a program [`Vm::load`] read, where nothing can run them any more:
+    /// no frame of any context stands in them, and no Proc is made of them. `irep` is the id
+    /// `load` answered. A host that replaces its scripts calls this for the program it replaced,
+    /// once its tasks are over and it has dropped them; until then the answer is
+    /// [`UnloadError::StillInUse`] and nothing changes — ask again later.
+    ///
+    /// Where something might still hold the code, a collection runs first, so that a Proc
+    /// nothing reaches any more does not count (not while a native is running — a host function
+    /// that calls this from Ruby gets the answer without one — nor under `GC.disable`). An
+    /// exception raised in the program keeps its backtrace: the record is made into text here.
+    ///
+    /// **The ids are not given out again.** The program's ids stay in `ireps` as empty
+    /// entries (the size of a [`VmIrep`] each, with nothing behind them), so an id a host kept
+    /// by mistake names nothing rather than a later program: [`Vm::run_irep`] and
+    /// [`Vm::task_spawn`] refuse it. What goes back is the code, the constants, the symbols'
+    /// lists, the line table and the file name.
+    pub fn unload(&mut self, irep: IrepId) -> Result<(), UnloadError> {
+        let Some(&(start, end)) = self.irep_loads.get(&irep) else { return Err(UnloadError::NotLoaded) };
+        if self.irep_users(start, end) {
+            // what makes it look in use may be garbage: a finished task's Proc, a block that was dropped
+            if self.native_active != 0 || self.gc_disabled { return Err(UnloadError::StillInUse); }
+            self.gc_collect();
+            if self.irep_users(start, end) { return Err(UnloadError::StillInUse); }
+        }
+        // an exception raised in the program names its frames by irep: the text is made now,
+        // as `Exception#backtrace` would make it, and kept where `set_backtrace` keeps its own
+        let bt = self.intern("@__bt");
+        let btstr = self.intern("@__btstr");
+        let mut records: Vec<(ObjId, Vec<i64>)> = Vec::new();
+        for o in self.heap.ids() {
+            let obj = self.heap.get(o);
+            if !matches!(obj.kind, ObjKind::Exception) { continue; }
+            if obj.ivars.iter().any(|(n, _)| *n == btstr) { continue; }
+            let Some(Value::Obj(a)) = obj.ivars.iter().find(|(n, _)| *n == bt).map(|(_, v)| v.get()) else { continue };
+            let Some(flat) = self.heap.array(a) else { continue };
+            let flat: Vec<i64> = flat.iter().filter_map(|x| match x.get() { Value::Int(i) => Some(i), _ => None }).collect();
+            if flat.chunks(3).any(|f| f[0] >= 0 && (start..end).contains(&(f[0] as usize))) { records.push((o, flat)); }
+        }
+        for (o, flat) in records {
+            let text: Vec<Value> = self.backtrace_text(&flat).into_iter().map(|t| self.str_from(t)).collect();
+            let a = self.ary_new(text);
+            self.heap.ivar_set(o, btstr, a);
+        }
+        for ir in &mut self.ireps[start..end] {
+            *ir = VmIrep { nlocals: 0, nregs: 0, iseq: Vec::new(), catch: Vec::new(), pool: Vec::new(), syms: Vec::new(),
+                reps: Vec::new(), lv: Vec::new(), lines: Vec::new(), filename: None };
+        }
+        self.irep_loads.remove(&irep);
+        Ok(())
+    }
+
+    /// Whether a frame of any context or a Proc on the heap names an irep in `start..end`.
+    fn irep_users(&self, start: IrepId, end: IrepId) -> bool {
+        let inside = |i: IrepId| start <= i && i < end;
+        if self.ci.iter().any(|ci| inside(ci.irep)) { return true; }
+        if self.contexts.iter().any(|c| c.ci.iter().any(|ci| inside(ci.irep))) { return true; }
+        self.heap.ids().any(|o| matches!(&self.heap.get(o).kind, ObjKind::Proc(pd) if inside(pd.irep)))
+    }
+
+    /// An irep that [`Vm::unload`] handed back (or an id past the end), which nothing may run.
+    pub(crate) fn irep_gone(&self, irep: IrepId) -> bool {
+        self.ireps.get(irep).is_none_or(|ir| ir.iseq.is_empty())
+    }
+
+    /// Loads and runs a binary to completion at the top level. The program is kept for good: its
+    /// id is not answered, so it cannot be [`Vm::unload`]ed — [`Vm::load`] and [`Vm::run_irep`]
+    /// are the pair for a program the host means to hand back.
     pub fn load_and_run(&mut self, bin: &[u8]) -> VmResult<Value> {
-        let irep = self.load(bin)?;
+        let irep = self.load_ireps(bin)?;
         self.run_irep(irep)
     }
 
@@ -2076,6 +2167,7 @@ impl Vm {
     }
     /// Runs a top-level irep with `self` = main.
     pub fn run_irep(&mut self, irep: IrepId) -> VmResult<Value> {
+        if self.irep_gone(irep) { return Err(self.raise(self.core.argument_error, "the program was unloaded")); }
         let proc_ = self.heap.alloc(self.core.proc_, ObjKind::Proc(ProcData {
             irep, upper: None, env: None, target_class: Some(self.core.object), strict: false, scope: true, orphan: false, mid: None,
         }));
@@ -2091,7 +2183,12 @@ impl Vm {
     }
 
     /// Prepares a top-level irep for stepped execution ([`Vm::step`]).
+    ///
+    /// # Panics
+    ///
+    /// On an id [`Vm::load`] did not answer, or one [`Vm::unload`] handed back.
     pub fn start(&mut self, irep: IrepId) {
+        assert!(!self.irep_gone(irep), "Vm::start: irep {irep} was unloaded or never loaded");
         let proc_ = self.heap.alloc(self.core.proc_, ObjKind::Proc(ProcData {
             irep, upper: None, env: None, target_class: Some(self.core.object), strict: false, scope: true, orphan: false, mid: None,
         }));

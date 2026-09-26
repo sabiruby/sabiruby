@@ -245,6 +245,7 @@ pub(crate) fn advance_ticks(vm: &mut Vm, n: u32) {
 /// (`mrb_create_task`, which takes an `RProc`). Ready at once; nothing runs until the scheduler
 /// is asked to.
 pub(crate) fn task_spawn(vm: &mut Vm, irep: crate::object::IrepId, priority: u8, name: Option<&str>) -> VmResult<ObjId> {
+    if vm.irep_gone(irep) { return Err(vm.raise(vm.core.argument_error, "the program was unloaded")); }
     let proc_ = vm.heap.alloc(vm.core.proc_, ObjKind::Proc(crate::object::ProcData {
         irep, upper: None, env: None, target_class: Some(vm.core.object),
         strict: false, scope: true, orphan: false, mid: None,
