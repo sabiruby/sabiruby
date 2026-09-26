@@ -319,3 +319,20 @@ fn a_nil_block_is_an_argument_error_as_check_block_says() {
     let e = vm.call_block(Value::Nil, &[]).expect_err("no block");
     assert_eq!(vm.describe_error(&e), "no block given (ArgumentError)");
 }
+
+#[test]
+fn a_closure_method_missing_sees_its_own_name_by_send_and_by_funcall() {
+    // `Vm::native_mid` is the name the running native was called by (Struct's accessors read
+    // it). A closure `method_missing` is running as `method_missing` whichever way it was
+    // reached: a SEND that found no method, or `funcall` from another native.
+    let mut vm = Vm::with_mrblib().expect("vm");
+    let object = vm.core.object;
+    let ghost = vm.define_class("Ghost", object);
+    vm.define_closure(ghost, "method_missing", |vm, _self_, _args, _blk| Ok(vm.native_mid.map(Value::Sym).unwrap_or(Value::Nil)));
+    vm.define_closure(object, "relay", |vm, _self_, args, _blk| {
+        let nope = vm.intern("nope");
+        vm.funcall(args[0], nope, &[], Value::Nil)
+    });
+    let out = run(&mut vm, "g = Ghost.new\n1.to_s; p g.nope\n1.to_s; p relay(g)\n");
+    assert_eq!(out, ":method_missing\n:method_missing\n");
+}

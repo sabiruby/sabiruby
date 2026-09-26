@@ -5202,7 +5202,7 @@ impl Vm {
                             return self.op_send_vis(base, a, mm, c, has_blk, false, false);
                         }
                         let r = match m {
-                            Method::Closure(f) => { let kd = self.kdict_nonempty(kd); if let Some(k) = kd { nargs.push(k); } let (v, sw) = self.call_closure_direct(&f, Some(mm), recv, &nargs, blk, base + a)?; if sw { return Ok(()); } v }
+                            Method::Closure(f) => { let kd = self.kdict_nonempty(kd); if let Some(k) = kd { nargs.push(k); } self.native_mid = Some(mm); let (v, sw) = self.call_closure_direct(&f, Some(mm), recv, &nargs, blk, base + a)?; if sw { return Ok(()); } v }
                             _ => Value::Nil,
                         };
                         self.stack[base + a] = Slot::from(r);
