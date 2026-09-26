@@ -224,6 +224,13 @@ that names the boundary, worked out from the frame below it only when it is rais
 measurements: the A/A that set the line, the Ruby loops that were 2.5–3 times slower and the native
 loop frames that replaced them, `Cci::KeepSelf`, and the one path left over the line (`sort { }`, +8%).
 
+[2026-09-26-release-0.7-b](worklog/2026-09-26-release-0.7-b.md) is stage B of `release-0.7-plan.md`
+(Japanese): the natives in `Exception#backtrace` as the reference's C frames are, found where they
+left a trace (the native that raised, the frame a native's block runs in, a native loop frame), and
+what is still different; the scheduler's queues as ordered maps so that a waiting task costs
+nothing per turn, with the walked elements counted before and after; and handing a program's
+ireps back (`Vm::unload`) where nothing can still run them.
+
 ## Where things were (before 2026-09-15)
 
 Every document above sat directly under `docs/`; references in older commits, in the book's notes

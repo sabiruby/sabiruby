@@ -2672,11 +2672,12 @@ impl Vm {
     /// delivered to the register the new context waits on (or, when the fiber
     /// that yielded had been resumed by native code, the run loop is told to
     /// return it) and the caller must not write it to its own register.
-    fn call_native_direct(&mut self, f: crate::object::NativeFn, recv: Value, args: &[Value], blk: Value, ret_reg: usize) -> VmResult<(Value, bool)> {
+    fn call_native_direct(&mut self, f: crate::object::NativeFn, mid: Option<Sym>, recv: Value, args: &[Value], blk: Value, ret_reg: usize) -> VmResult<(Value, bool)> {
         let ctx0 = self.cur;
         let direct = core::mem::replace(&mut self.direct_send, true);
         let reg0 = core::mem::replace(&mut self.native_ret_reg, ret_reg);
         let r = self.call_native(f, recv, args, blk);
+        if r.is_err() { self.keep_native_backtrace(&r, Some(f), mid, ctx0); }
         self.native_ret_reg = reg0;
         self.direct_send = direct;
         self.orphan_block_of_native(blk);
@@ -2710,11 +2711,12 @@ impl Vm {
     }
 
     /// [`Vm::call_native_direct`](Vm::call_native) for a closure method.
-    fn call_closure_direct(&mut self, f: &crate::object::NativeClosure, recv: Value, args: &[Value], blk: Value, ret_reg: usize) -> VmResult<(Value, bool)> {
+    fn call_closure_direct(&mut self, f: &crate::object::NativeClosure, mid: Option<Sym>, recv: Value, args: &[Value], blk: Value, ret_reg: usize) -> VmResult<(Value, bool)> {
         let ctx0 = self.cur;
         let direct = core::mem::replace(&mut self.direct_send, true);
         let reg0 = core::mem::replace(&mut self.native_ret_reg, ret_reg);
         let r = self.call_closure(f, recv, args, blk);
+        if r.is_err() { self.keep_native_backtrace(&r, None, mid, ctx0); }
         self.native_ret_reg = reg0;
         self.direct_send = direct;
         self.orphan_block_of_native(blk);
@@ -2985,63 +2987,107 @@ impl Vm {
     }
 
     /// `mrb_get_backtrace` as `caller` sees it: one `file:line:in method` entry per Ruby
-    /// frame of the running context, innermost first. Frames without debug info are left
-    /// out, as the reference leaves them out. `native` names the native being run: it
-    /// comes first, located at the frame that called it (the reference's C frames are
-    /// located at the nearest Ruby frame below them the same way).
+    /// frame of the running context, innermost first, and one per native between them.
+    /// Frames without debug info are left out, as the reference leaves them out. `native`
+    /// names the native being run: it comes first. A native is located at the nearest frame
+    /// below it that has debug info, as the reference locates its C frames
+    /// (`pack_backtrace`, src/backtrace.c), and is `(unknown):0` where there is none.
+    /// [`Vm::backtrace_record`] says which natives are seen.
     pub fn backtrace(&self, native: Option<Sym>) -> Vec<String> {
-        let loc = |ci: &CallInfo| -> Option<String> {
-            let ir = self.ireps.get(ci.irep)?;
-            if ir.lines.is_empty() { return None; }
-            let file = ir.filename.as_deref().unwrap_or("(unknown)");
-            // `ci.pc` is past the instruction being executed
-            Some(match ir.line_of(ci.pc.saturating_sub(1)) { Some(l) => format!("{file}:{l}"), None => format!("{file}:0") })
-        };
-        let mut out = Vec::new();
-        if let Some(m) = native {
-            if let Some(top) = self.ci.iter().rev().find_map(|ci| loc(ci)) {
-                out.push(format!("{top}:in {}", self.syms.name_str(m)));
+        let natives: &[Sym] = match &native { Some(m) => core::slice::from_ref(m), None => &[] };
+        self.backtrace_text(&self.backtrace_record(natives))
+    }
+
+    /// The running context's frames as the flat record [`Vm::backtrace_text`] reads: `[irep,
+    /// pc, mid]` per frame, innermost first, `mid` `-1` for a frame with no method name (a
+    /// block), and `[-1, 0, mid]` for a native. The reference gives every C function a
+    /// callinfo of its own, so its backtrace names them (`Integer`, `sort!`, `gsub`); a
+    /// SabiRuby native has no frame, and the natives are found where they left a trace:
+    ///
+    /// * `natives`, innermost first: what the caller knows is running (the native that raised,
+    ///   or the one asking for `caller`);
+    /// * a native loop frame (`Vm::push_loop_frame`: `index { }`, `Array.new(n) { }`) stands
+    ///   for its native, by the name it was called by — except `catch`'s, which is bytecode
+    ///   without debug info in the reference (`catch_iseq`) and so never shows there;
+    /// * a frame a native started (`Cci::Skip`: the block `sort { }` or `gsub { }` calls) has
+    ///   that native right below it, and the frame below that is still at the call that reached
+    ///   it (`Vm::boundary_name`), which names it.
+    ///
+    /// A native another native called through [`Vm::funcall`] leaves no trace and is not seen.
+    pub fn backtrace_record(&self, natives: &[Sym]) -> Vec<i64> {
+        let mut flat: Vec<i64> = Vec::with_capacity((self.ci.len() + natives.len()) * 3);
+        for m in natives { flat.extend_from_slice(&[-1, 0, m.0 as i64]); }
+        for i in (0..self.ci.len()).rev() {
+            let ci = &self.ci[i];
+            let mid = ci.mid.map(|m| m.0 as i64).unwrap_or(-1);
+            if ci.irep == LOOP_IREP {
+                let kind = self.stack.get(ci.base + 2).map(|s| s.get());
+                if mid >= 0 && kind != Some(Value::Int(crate::builtins::ext_catch::LOOP_CATCH)) { flat.extend_from_slice(&[-1, 0, mid]); }
+            } else {
+                flat.extend_from_slice(&[ci.irep as i64, ci.pc as i64, mid]);
+            }
+            if ci.cci == Cci::Skip && i > 0 {
+                let below = &self.ci[i - 1];
+                if let Some((_, m)) = self.send_before(below.irep, below.pc) { flat.extend_from_slice(&[-1, 0, m.0 as i64]); }
             }
         }
-        for ci in self.ci.iter().rev() {
-            let Some(mut s) = loc(ci) else { continue };
-            if let Some(m) = ci.mid { s.push_str(":in "); s.push_str(&self.syms.name_str(m)); }
-            out.push(s);
-        }
-        out
+        flat
     }
 
     /// Where an exception was raised, kept as the frames rather than as text (`mrb_keep_backtrace`):
     /// a program that uses exceptions for control raises far more often than it reads
     /// `Exception#backtrace`, so the strings are built only when they are asked for. The record is
-    /// a flat Array of `[irep, pc, mid]` triples, innermost frame first; `mid` is `-1` for a frame
-    /// with no method name (a block). An exception that carries one already keeps it: a re-raise
-    /// does not move where it came from.
-    fn keep_backtrace(&mut self, exc: ObjId) {
+    /// [`Vm::backtrace_record`]'s, as an Array of Integers. `native` is the native that raised,
+    /// where the record is made on its way out (`Vm::call_native_direct`). An exception that
+    /// carries one already keeps it: a re-raise does not move where it came from.
+    fn keep_backtrace(&mut self, exc: ObjId, native: Option<Sym>) {
         let k = self.intern("@__bt");
         if self.heap.get(exc).ivars.iter().any(|(n, _)| *n == k) { return; }
-        let mut flat: Vec<Value> = Vec::with_capacity(self.ci.len() * 3);
-        for ci in self.ci.iter().rev() {
-            flat.push(Value::Int(ci.irep as i64));
-            flat.push(Value::Int(ci.pc as i64));
-            flat.push(Value::Int(ci.mid.map(|m| m.0 as i64).unwrap_or(-1)));
-        }
+        let natives: &[Sym] = match &native { Some(m) => core::slice::from_ref(m), None => &[] };
+        let flat: Vec<Value> = self.backtrace_record(natives).into_iter().map(Value::Int).collect();
         let a = self.ary_new(flat);
         self.heap.ivar_set(exc, k, a);
     }
 
-    /// The text of the record `keep_backtrace` made, in the format `caller` uses. Frames the
-    /// build kept no line numbers for are left out, as they are there.
+    /// The record of an exception a native raised, made as the native returns to the SEND that
+    /// called it, while the frames are still those of the call — at the run loop the native's
+    /// name is gone. `Kernel#raise` is not named, as the reference's clears its own
+    /// (`mrb_f_raise`: `ci->mid = 0`). Only where the native is still in the context it was
+    /// called from: one that switched fibers left its frames behind.
+    #[cold]
+    fn keep_native_backtrace(&mut self, r: &VmResult<Value>, f: Option<crate::object::NativeFn>, mid: Option<Sym>, ctx0: usize) {
+        let Err(VmError::Raise(Value::Obj(e))) = r else { return };
+        if self.cur != ctx0 || !matches!(self.heap.get(*e).kind, ObjKind::Exception) { return; }
+        let raise = f.is_some_and(|f| core::ptr::fn_addr_eq(f, crate::builtins::kernel::raise as crate::object::NativeFn));
+        self.keep_backtrace(*e, if raise { None } else { mid });
+    }
+
+    /// The text of a record [`Vm::backtrace_record`] made, in the format `caller` uses. Frames
+    /// the build kept no line numbers for are left out, as they are there; a native is placed
+    /// at the next frame that has them (`pack_backtrace`), or is `(unknown):0` with no name where
+    /// none has (`decode_location`, src/backtrace.c).
     pub fn backtrace_text(&self, flat: &[i64]) -> Vec<String> {
-        let mut out = Vec::new();
-        for f in flat.chunks(3) {
-            let [irep, pc, mid] = *f else { continue };
-            let Some(ir) = self.ireps.get(irep as usize) else { continue };
-            if ir.lines.is_empty() { continue; }
+        let place = |irep: i64, pc: i64| -> Option<String> {
+            let ir = self.ireps.get(usize::try_from(irep).ok()?)?;
+            if ir.lines.is_empty() { return None; }
             let file = ir.filename.as_deref().unwrap_or("(unknown)");
             // `pc` is past the instruction that raised
             let line = ir.line_of((pc as usize).saturating_sub(1)).unwrap_or(0);
-            let mut s = format!("{file}:{line}");
+            Some(format!("{file}:{line}"))
+        };
+        let mut out = Vec::new();
+        let frames: Vec<&[i64]> = flat.chunks(3).filter(|f| f.len() == 3).collect();
+        for (i, f) in frames.iter().enumerate() {
+            let [irep, pc, mid] = **f else { continue };
+            let at = if irep >= 0 {
+                match place(irep, pc) { Some(s) => s, None => continue }
+            } else {
+                match frames[i + 1..].iter().find_map(|g| if g[0] >= 0 { place(g[0], g[1]) } else { None }) {
+                    Some(s) => s,
+                    None => { out.push(String::from("(unknown):0")); continue; }
+                }
+            };
+            let mut s = at;
             if mid >= 0 { s.push_str(":in "); s.push_str(&self.syms.name_str(crate::symbol::Sym(mid as u32))); }
             out.push(s);
         }
@@ -3652,7 +3698,7 @@ impl Vm {
                         if matches!(self.heap.get(o).kind, ObjKind::Exception) {
                             let k = self.intern("@__raised");
                             self.heap.ivar_set(o, k, Value::True);
-                            self.keep_backtrace(o);
+                            self.keep_backtrace(o, None);
                         }
                     }
                     // Unwind: look for a catch handler in frames >= stop_depth.
@@ -4920,7 +4966,7 @@ impl Vm {
                             return self.op_send_vis(base, a, mm, c, has_blk, false, false);
                         }
                         let r = match m {
-                            Method::Closure(f) => { let kd = self.kdict_nonempty(kd); if let Some(k) = kd { nargs.push(k); } let (v, sw) = self.call_closure_direct(&f, recv, &nargs, blk, base + a)?; if sw { return Ok(()); } v }
+                            Method::Closure(f) => { let kd = self.kdict_nonempty(kd); if let Some(k) = kd { nargs.push(k); } let (v, sw) = self.call_closure_direct(&f, Some(mm), recv, &nargs, blk, base + a)?; if sw { return Ok(()); } v }
                             _ => Value::Nil,
                         };
                         self.stack[base + a] = Slot::from(r);
@@ -4947,7 +4993,7 @@ impl Vm {
                 }
                 let (args, kd) = self.native_call_args(base + a, argc, kw);
                 let saved = self.pending_kw.replace(kd.unwrap_or(Value::Nil));
-                let r = self.call_native_direct(f, recv, &args, blk, base + a);
+                let r = self.call_native_direct(f, Some(mid), recv, &args, blk, base + a);
                 self.pending_kw = saved;
                 let (v, switched) = r?;
                 if !switched { self.stack[base + a] = Slot::from(v); }
@@ -4957,7 +5003,7 @@ impl Vm {
                 let f = match self.closure_of(owner, mid) { Some(f) => f, None => return Err(VmError::Internal("closure vanished between lookup and call".into())) };
                 let (args, kd) = self.native_call_args(base + a, argc, kw);
                 let saved = self.pending_kw.replace(kd.unwrap_or(Value::Nil));
-                let r = self.call_closure_direct(&f, recv, &args, blk, base + a);
+                let r = self.call_closure_direct(&f, Some(mid), recv, &args, blk, base + a);
                 self.pending_kw = saved;
                 let (v, switched) = r?;
                 if !switched { self.stack[base + a] = Slot::from(v); }

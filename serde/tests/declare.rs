@@ -39,6 +39,8 @@ fn raised(vm: &mut Vm, e: &VmError) -> String {
 /// complaints have to match.
 fn raised_at(vm: &mut Vm, e: &VmError) -> u32 {
     let at = raised(vm, e);
+    // `file:line:in unit`: the first frame is the native the script called, placed at its line
+    let at = at.rsplit_once(":in ").map(|(place, _)| place.to_string()).unwrap_or(at);
     let (_, line) = at.rsplit_once(':').expect("a line");
     line.parse().expect("a number")
 }
@@ -85,7 +87,7 @@ fn a_missing_field_says_where_in_the_ruby_file_it_is() {
     let mut vm = vm();
     Declarations::<Unit>::install(&mut vm).define(&mut vm, "unit");
     let e = run(&mut vm, "data.rb", "# a data file\nunit :metre, symbol: \"m\"\n").expect_err("no scale");
-    assert_eq!(raised(&mut vm, &e), "missing field `scale` (TypeError) at data.rb:2");
+    assert_eq!(raised(&mut vm, &e), "missing field `scale` (TypeError) at data.rb:2:in unit");
 }
 
 #[test]
@@ -94,7 +96,7 @@ fn a_field_of_the_wrong_type_says_where_it_is() {
     Declarations::<Unit>::install(&mut vm).define(&mut vm, "unit");
     let e = run(&mut vm, "data.rb", "unit :metre, symbol: \"m\", scale: 1.0\nunit :inch, symbol: 5, scale: 1.0\n")
         .expect_err("symbol is not a String");
-    assert_eq!(raised(&mut vm, &e), "cannot deserialize Integer as String (TypeError) at data.rb:2");
+    assert_eq!(raised(&mut vm, &e), "cannot deserialize Integer as String (TypeError) at data.rb:2:in unit");
 }
 
 #[test]
@@ -106,7 +108,7 @@ fn an_unknown_field_says_where_it_is() {
     // a call spread over four lines is located at its last one, which is the line the SEND
     // instruction carries — the offending field is on that line here, which is the useful half
     assert_eq!(raised(&mut vm, &e),
-        "unknown field `colour`, expected `symbol` or `scale` (TypeError) at data.rb:4");
+        "unknown field `colour`, expected `symbol` or `scale` (TypeError) at data.rb:4:in unit");
 }
 
 #[test]
@@ -118,7 +120,7 @@ fn a_name_declared_twice_is_an_argument_error_at_the_second_one() {
         "unit :inch, symbol: \"in\", scale: 0.0254\n",
         "unit :metre, symbol: \"M\", scale: 1.0\n",
     )).expect_err("declared twice");
-    assert_eq!(raised(&mut vm, &e), "unit \"metre\" is already declared (ArgumentError) at data.rb:3");
+    assert_eq!(raised(&mut vm, &e), "unit \"metre\" is already declared (ArgumentError) at data.rb:3:in unit");
     // the first two are still there, and the second `metre` did not overwrite the first
     let table = units.take(&mut vm);
     assert_eq!(table.len(), 2);
@@ -150,7 +152,7 @@ fn a_name_that_is_not_a_symbol_or_a_string_is_a_type_error() {
     Declarations::<Unit>::install(&mut vm).define_on(&mut vm, object, "unit", OnDuplicate::Raise);
     let e = run(&mut vm, "data.rb", "unit 7, symbol: \"m\", scale: 1.0\n").expect_err("not a name");
     assert_eq!(raised(&mut vm, &e),
-        "wrong argument type Integer (expected Symbol or String) (TypeError) at data.rb:1");
+        "wrong argument type Integer (expected Symbol or String) (TypeError) at data.rb:1:in unit");
 }
 
 #[test]
@@ -172,7 +174,7 @@ fn declaring_after_the_table_was_taken_raises_rather_than_being_dropped() {
     units.take(&mut vm);
     let e = run(&mut vm, "more.rb", "unit :inch, symbol: \"in\", scale: 0.0254\n").expect_err("gone");
     assert_eq!(raised(&mut vm, &e),
-        "unit: the host has already taken this table out of the VM (RuntimeError) at more.rb:1");
+        "unit: the host has already taken this table out of the VM (RuntimeError) at more.rb:1:in unit");
 }
 
 // ------------------------------------------------------------------ the line a declaration was on
@@ -252,7 +254,7 @@ fn a_declaration_from_bytecode_without_debug_information_has_no_line() {
         .expect("compile");
     vm.load_and_run(&bin).expect("run");
     let table = units.take_with_lines(&mut vm);
-    // there is no line to give, and `Exception#backtrace` is empty in such a file too: an
+    // there is no line to give, and `Exception#backtrace` places nothing in such a file either: an
     // absent line is `None` rather than a 0 a host might print
     assert_eq!(table[0].line, None);
     assert_eq!(table[0].name, "metre");
@@ -323,7 +325,7 @@ fn a_host_table_is_read_back_from_ruby_with_symbol_keys() {
     assert_eq!(back.len(), 2);
     let e = run(&mut vm, "control.rb", "unit_of(:metre)\n").expect_err("gone");
     assert_eq!(raised(&mut vm, &e),
-        "unit_of: the host has already taken this table out of the VM (RuntimeError) at control.rb:1");
+        "unit_of: the host has already taken this table out of the VM (RuntimeError) at control.rb:1:in unit_of");
 }
 
 /// A published entry with a map in it: the shape Factory's recipes have — the ingredients are

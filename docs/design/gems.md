@@ -64,8 +64,18 @@ How a gem of the reference tree becomes part of SabiRuby, and what each ported o
 * `Exception#backtrace` is kept as the frames rather than as text (`Vm::keep_backtrace`, the
   hidden `@__bt`): a program that uses exceptions for control raises far more often than it reads
   the backtrace, so the strings are built only when `backtrace` is called. The text is the format
-  `caller` uses and matches the reference's byte for byte on the same script; a re-raise keeps the
-  first record, as `mrb_keep_backtrace` does. `MRUBY_REVISION` is this repository's commit
+  `caller` uses; a re-raise keeps the first record, as `mrb_keep_backtrace` does. The natives on
+  the way to the raise are in it as the reference's C frames are (0.7.0, `Vm::backtrace_record`),
+  located at the nearest Ruby frame below them: the native that raised (`in Integer`), a native
+  whose block raised (`in sort!`, `in gsub`) and a native loop frame (`in index`); `raise` is not
+  named, and a frame with no debug info is left out, as there. `Exception#backtrace` and `caller`
+  build the same record. What is still different from the reference (checked in
+  `tests/custom/native_backtrace.rb`): a block a native runs in a frame of its own
+  (`Class.new { }`, `Module.new { }`, `Struct.new { }`, `delete(x) { }`) has no native below it,
+  `instance_exec`'s block and `eval`'s code do not carry the native's name (the reference rewrites
+  the C function's frame into them), and a native called by another native through `funcall`
+  (`Method#call` of `+`) is named by the one the SEND called (`in call`, where the reference says
+  `in +`). `MRUBY_REVISION` is this repository's commit
   (`build.rs`), `HEAD` where the build had no git — the reference's own default.
 * `RUBY_ENGINE` is `"mruby"` and `RUBY_ENGINE_VERSION`/`MRUBY_VERSION` are the reference's
   version (decided 2026-09-16): the reference's own tests branch on `RUBY_ENGINE == "mruby"` to
@@ -202,8 +212,9 @@ How a gem of the reference tree becomes part of SabiRuby, and what each ported o
   ported byte for byte (`mrb_str_len_to_integer`, `mrb_str_len_to_dbl`, `mrb_read_float`; the
   float's value is parsed by `core` from the exact span, so rounding is right). `caller` is the
   reference's arithmetic over `Vm::backtrace`, new here: one `file:line:in method` entry per Ruby
-  frame with debug info, the native itself first, located at the frame that called it (the
-  reference locates a C frame at the nearest Ruby frame below it the same way). `__method__`
+  frame with debug info and per native between them, the native itself first, each native
+  located at the nearest frame below it with debug info (the reference locates a C frame the same
+  way) or `(unknown):0` where there is none. `__method__`
   reads the frame: its `mid`, else the environment's (a block answers the method it was written
   in). Two things came with it: **an alias is a proc of its own** (`ProcData::mid`, the
   reference's `MRB_PROC_ALIAS` with `body.mid`) so a frame of `alias m3 m1` has `mid` `:m1`,
