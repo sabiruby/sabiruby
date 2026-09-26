@@ -127,6 +127,16 @@ impl Vm {
         let r = self.funcall(v, self.s.inspect, &[], Value::Nil)?;
         Ok(self.str_bytes(r).map(|b| b.to_vec()).unwrap_or_default())
     }
+    /// For an `inspect` that marks its own recursion (Set, Struct): whether `o` is already being
+    /// inspected further out. [`Vm::inspect`] pushes the receiver before it sends `inspect`, so
+    /// an entry for `o` on top of the guard is the call being answered, not an outer one; only
+    /// an entry below it means `o` contains itself. (Counting that top entry made every
+    /// `p set` answer `Set[...]`.)
+    pub(crate) fn inspect_recursing(&self, o: ObjId) -> bool {
+        let g = &self.inspect_guard;
+        let below = if g.last() == Some(&o) { &g[..g.len() - 1] } else { &g[..] };
+        below.contains(&o)
+    }
     pub fn inspect_str(&mut self, v: Value) -> VmResult<String> {
         Ok(String::from_utf8_lossy(&self.inspect(v)?).into_owned())
     }

@@ -1,0 +1,603 @@
+irep 0xADDR nregs=11 nlocals=4 pools=0 syms=38 reps=28 ilen=479
+local variable names:
+  R1:s
+  R2:t
+  R3:b
+file: /w/set_elements.rb
+   11 000 GETCONST	R4	Struct
+   11 003 LOADSYM	R5	:a
+   11 006 SEND		R4	:new	n=1
+   11 010 SETCONST	S	R4
+   12 013 GETCONST	R5	S
+   12 016 LOADI_1	R6	(1)
+   12 018 SEND		R5	:new	n=1
+   12 022 SSEND		R4	:p	n=1
+   13 026 GETCONST	R5	Set
+   13 029 LOADI_1	R6	(1)
+   13 031 LOADI_2	R7	(2)
+   13 033 ARRAY		R6	2
+   13 036 SEND		R5	:new	n=1
+   13 040 SSEND		R4	:p	n=1
+   14 044 GETCONST	R5	Set
+   14 047 LOADI_1	R6	(1)
+   14 049 ARRAY		R6	1
+   14 052 SEND		R5	:new	n=1
+   14 056 ARRAY		R5	1
+   14 059 SSEND		R4	:p	n=1
+   15 063 LOADSYM	R5	:k
+   15 066 GETCONST	R6	Set
+   15 069 LOADI_1	R7	(1)
+   15 071 GETIDX	R6	(R7)
+   15 073 HASH		R5	1
+   15 076 SSEND		R4	:p	n=1
+   16 080 GETCONST	R5	Set
+   16 083 GETCONST	R6	Set
+   16 086 LOADI_1	R7	(1)
+   16 088 GETIDX	R6	(R7)
+   16 090 GETCONST	R7	S
+   16 093 GETCONST	R8	Set
+   16 096 LOADI_2	R9	(2)
+   16 098 GETIDX	R8	(R9)
+   16 100 SEND		R7	:new	n=1
+   16 104 SEND		R5	:[]	n=2
+   16 108 SSEND		R4	:p	n=1
+   17 112 GETCONST	R4	Set
+   17 115 LOADI_1	R5	(1)
+   17 117 ARRAY		R5	1
+   17 120 SEND		R4	:new	n=1
+   17 124 MOVE		R1	R4	; R1:s
+   17 127 MOVE		R4	R1	; R1:s
+   17 130 MOVE		R5	R1	; R1:s
+   17 133 SEND		R4	:<<	n=1
+   18 137 MOVE		R5	R1	; R1:s
+   18 140 SSEND		R4	:p	n=1
+   19 144 MOVE		R5	R1	; R1:s
+   19 147 SEND0		R5	:inspect
+   19 150 SSEND		R4	:puts	n=1
+   20 154 GETCONST	R4	S
+   20 157 LOADNIL	R5	(nil)
+   20 159 SEND		R4	:new	n=1
+   20 163 MOVE		R2	R4	; R2:t
+   20 166 MOVE		R4	R2	; R2:t
+   20 169 MOVE		R5	R2	; R2:t
+   20 172 SEND		R4	:a=	n=1
+   21 176 MOVE		R5	R2	; R2:t
+   21 179 SSEND		R4	:p	n=1
+   22 183 GETCONST	R5	Set
+   22 186 SEND0		R5	:new
+   22 189 SSEND		R4	:p	n=1
+   24 193 LOADNIL	R4	(nil)
+   24 195 LOADNIL	R5	(nil)
+   24 197 CLASS		R4	:Bad
+   24 200 EXEC		R4	I[0]
+   28 203 LOADNIL	R4	(nil)
+   28 205 LOADNIL	R5	(nil)
+   28 207 CLASS		R4	:BadHash
+   28 210 EXEC		R4	I[1]
+   31 213 TDEF		R4	:t	I[2]
+   37 217 GETCONST	R4	Bad
+   37 220 SEND0		R4	:new
+   37 223 MOVE		R3	R4	; R3:b
+   38 226 LOADSYM	R5	:add
+   38 229 BLOCK		R6	I[3]
+   38 232 SSENDB	R4	:t	n=1
+   39 236 LOADSYM	R5	:add?
+   39 239 BLOCK		R6	I[4]
+   39 242 SSENDB	R4	:t	n=1
+   40 246 LOADSYM	R5	:add_twice
+   40 249 BLOCK		R6	I[5]
+   40 252 SSENDB	R4	:t	n=1
+   41 256 LOADSYM	R5	:new
+   41 259 BLOCK		R6	I[6]
+   41 262 SSENDB	R4	:t	n=1
+   42 266 LOADSYM	R5	:merge
+   42 269 BLOCK		R6	I[7]
+   42 272 SSENDB	R4	:t	n=1
+   43 276 LOADSYM	R5	:or
+   43 279 BLOCK		R6	I[8]
+   43 282 SSENDB	R4	:t	n=1
+   44 286 LOADSYM	R5	:include
+   44 289 BLOCK		R6	I[9]
+   44 292 SSENDB	R4	:t	n=1
+   45 296 LOADSYM	R5	:include_other
+   45 299 BLOCK		R6	I[10]
+   45 302 SSENDB	R4	:t	n=1
+   46 306 LOADSYM	R5	:delete
+   46 309 BLOCK		R6	I[11]
+   46 312 SSENDB	R4	:t	n=1
+   47 316 LOADSYM	R5	:delete_self
+   47 319 BLOCK		R6	I[12]
+   47 322 SSENDB	R4	:t	n=1
+   48 326 LOADSYM	R5	:hash_add
+   48 329 BLOCK		R6	I[13]
+   48 332 SSENDB	R4	:t	n=1
+   49 336 LOADSYM	R5	:hash_include
+   49 339 BLOCK		R6	I[14]
+   49 342 SSENDB	R4	:t	n=1
+   50 346 LOADSYM	R5	:hash_delete
+   50 349 BLOCK		R6	I[15]
+   50 352 SSENDB	R4	:t	n=1
+   51 356 LOADSYM	R5	:hash_new
+   51 359 BLOCK		R6	I[16]
+   51 362 SSENDB	R4	:t	n=1
+   52 366 LOADSYM	R5	:hash_self
+   52 369 BLOCK		R6	I[17]
+   52 372 SSENDB	R4	:t	n=1
+   54 376 LOADSYM	R5	:inc
+   54 379 BLOCK		R6	I[18]
+   54 382 SSENDB	R4	:t	n=1
+   55 386 LOADSYM	R5	:inc2
+   55 389 BLOCK		R6	I[19]
+   55 392 SSENDB	R4	:t	n=1
+   56 396 LOADSYM	R5	:add
+   56 399 BLOCK		R6	I[20]
+   56 402 SSENDB	R4	:t	n=1
+   57 406 LOADSYM	R5	:del
+   57 409 BLOCK		R6	I[21]
+   57 412 SSENDB	R4	:t	n=1
+   58 416 LOADSYM	R5	:new2
+   58 419 BLOCK		R6	I[22]
+   58 422 SSENDB	R4	:t	n=1
+   59 426 LOADSYM	R5	:hinc
+   59 429 BLOCK		R6	I[23]
+   59 432 SSENDB	R4	:t	n=1
+   60 436 LOADSYM	R5	:hinc2
+   60 439 BLOCK		R6	I[24]
+   60 442 SSENDB	R4	:t	n=1
+   61 446 LOADSYM	R5	:hadd
+   61 449 BLOCK		R6	I[25]
+   61 452 SSENDB	R4	:t	n=1
+   62 456 LOADSYM	R5	:hadd2
+   62 459 BLOCK		R6	I[26]
+   62 462 SSENDB	R4	:t	n=1
+   63 466 LOADSYM	R5	:hlit
+   63 469 BLOCK		R6	I[27]
+   63 472 SSENDB	R4	:t	n=1
+   63 476 RETURN	R4	
+   63 478 STOP
+
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=2 reps=2 ilen=10
+file: /w/set_elements.rb
+   25 000 TDEF		R1	:eql?	I[0]
+   26 004 TDEF		R1	:hash	I[1]
+   26 008 RETURN	R1	
+
+irep 0xADDR nregs=7 nlocals=3 pools=1 syms=2 reps=0 ilen=16
+local variable names:
+  R1:o
+file: /w/set_elements.rb
+   25 000 ENTER		1:0:0:0:0:0:0:0 (0x40000)
+   25 004 GETCONST	R4	ArgumentError
+   25 007 STRING	R5	L[0]	; boom
+   25 010 SSEND		R3	:raise	n=2
+   25 014 RETURN	R3	
+
+irep 0xADDR nregs=4 nlocals=2 pools=1 syms=1 reps=0 ilen=12
+file: /w/set_elements.rb
+   26 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   26 004 STRING	R2	L[0]	; k0
+   26 007 SEND0		R2	:hash
+   26 010 RETURN	R2	
+
+irep 0xADDR nregs=2 nlocals=1 pools=0 syms=1 reps=1 ilen=6
+file: /w/set_elements.rb
+   29 000 TDEF		R1	:hash	I[0]
+   29 004 RETURN	R1	
+
+irep 0xADDR nregs=6 nlocals=2 pools=1 syms=2 reps=0 ilen=16
+file: /w/set_elements.rb
+   29 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   29 004 GETCONST	R3	ArgumentError
+   29 007 STRING	R4	L[0]	; no hash
+   29 010 SSEND		R2	:raise	n=2
+   29 014 RETURN	R2	
+
+irep 0xADDR nregs=9 nlocals=5 pools=2 syms=5 reps=0 ilen=105
+local variable names:
+  R1:name
+  R3:r
+  R4:e
+catch type: rescue   begin: 0004 end: 0039 target: 0042
+file: /w/set_elements.rb
+   31 000 ENTER		1:0:0:0:0:0:0:0 (0x40000)
+   32 004 BLKPUSH	R5	1:0:0:0 (0)
+   32 008 BLKCALL		R5	0
+   32 011 MOVE		R3	R5	; R3:r
+   33 014 STRING	R6	L[0]
+   33 017 MOVE		R7	R1	; R1:name
+   33 020 STRCAT	R6	(R7)
+   33 022 STRING	R7	L[1]	; : 
+   33 025 STRCAT	R6	(R7)
+   33 027 MOVE		R7	R3	; R3:r
+   33 030 SEND0		R7	:inspect
+   33 033 STRCAT	R6	(R7)
+   33 035 SSEND		R5	:puts	n=1
+   33 039 JMP		103
+   33 042 EXCEPT	R5	
+   33 044 GETCONST	R6	StandardError
+   33 047 RESCUE	R5	R6
+   33 050 JMPIF		R6	057
+   33 054 JMP		101
+   33 057 MOVE		R4	R5	; R4:e
+   35 060 STRING	R6	L[0]
+   35 063 MOVE		R7	R1	; R1:name
+   35 066 STRCAT	R6	(R7)
+   35 068 STRING	R7	L[1]	; : 
+   35 071 STRCAT	R6	(R7)
+   35 073 MOVE		R7	R4	; R4:e
+   35 076 SEND0		R7	:class
+   35 079 STRCAT	R6	(R7)
+   35 081 STRING	R7	L[1]	; : 
+   35 084 STRCAT	R6	(R7)
+   35 086 MOVE		R7	R4	; R4:e
+   35 089 SEND0		R7	:message
+   35 092 STRCAT	R6	(R7)
+   35 094 SSEND		R5	:puts	n=1
+   35 098 JMP		103
+   35 101 RAISEIF	R5	
+   35 103 RETURN	R5	
+
+irep 0xADDR nregs=6 nlocals=2 pools=1 syms=5 reps=0 ilen=53
+file: /w/set_elements.rb
+   38 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   38 004 GETCONST	R2	Set
+   38 007 STRING	R3	L[0]	; k0
+   38 010 ARRAY		R3	1
+   38 013 SEND		R2	:new	n=1
+   38 017 SETUPVAR	R2	1	0
+   38 021 GETUPVAR	R3	3	0
+   38 025 SEND		R2	:add	n=1
+   38 029 GETUPVAR	R2	1	0
+   38 033 SEND0		R2	:size
+   38 036 GETUPVAR	R3	1	0
+   38 040 GETUPVAR	R4	3	0
+   38 044 SEND		R3	:include?	n=1
+   38 048 ARRAY		R2	2
+   38 051 RETURN	R2	
+
+irep 0xADDR nregs=6 nlocals=3 pools=1 syms=5 reps=0 ilen=50
+local variable names:
+  R2:r
+file: /w/set_elements.rb
+   39 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   39 004 GETCONST	R3	Set
+   39 007 STRING	R4	L[0]	; k0
+   39 010 ARRAY		R4	1
+   39 013 SEND		R3	:new	n=1
+   39 017 SETUPVAR	R3	1	0
+   39 021 GETUPVAR	R4	3	0
+   39 025 SEND		R3	:add?	n=1
+   39 029 MOVE		R2	R3	; R2:r
+   39 032 MOVE		R3	R2	; R2:r
+   39 035 SEND0		R3	:class
+   39 038 GETUPVAR	R4	1	0
+   39 042 SEND0		R4	:size
+   39 045 ARRAY		R3	2
+   39 048 RETURN	R3	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=4 reps=0 ilen=50
+file: /w/set_elements.rb
+   40 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   40 004 GETCONST	R2	Set
+   40 007 STRING	R3	L[0]	; k0
+   40 010 ARRAY		R3	1
+   40 013 SEND		R2	:new	n=1
+   40 017 SETUPVAR	R2	1	0
+   40 021 GETUPVAR	R3	3	0
+   40 025 SEND		R2	:add	n=1
+   40 029 GETUPVAR	R2	1	0
+   40 033 GETUPVAR	R3	3	0
+   40 037 SEND		R2	:add	n=1
+   40 041 GETUPVAR	R2	1	0
+   40 045 SEND0		R2	:size
+   40 048 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=3 reps=0 ilen=26
+file: /w/set_elements.rb
+   41 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   41 004 GETCONST	R2	Set
+   41 007 STRING	R3	L[0]	; k0
+   41 010 GETUPVAR	R4	3	0
+   41 014 ARRAY		R3	2
+   41 017 SEND		R2	:new	n=1
+   41 021 SEND0		R2	:size
+   41 024 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=4 reps=0 ilen=41
+file: /w/set_elements.rb
+   42 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   42 004 GETCONST	R2	Set
+   42 007 STRING	R3	L[0]	; k0
+   42 010 ARRAY		R3	1
+   42 013 SEND		R2	:new	n=1
+   42 017 SETUPVAR	R2	1	0
+   42 021 GETUPVAR	R3	3	0
+   42 025 ARRAY		R3	1
+   42 028 SEND		R2	:merge	n=1
+   42 032 GETUPVAR	R2	1	0
+   42 036 SEND0		R2	:size
+   42 039 RETURN	R2	
+
+irep 0xADDR nregs=6 nlocals=2 pools=1 syms=4 reps=0 ilen=40
+file: /w/set_elements.rb
+   43 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   43 004 GETCONST	R2	Set
+   43 007 STRING	R3	L[0]	; k0
+   43 010 ARRAY		R3	1
+   43 013 SEND		R2	:new	n=1
+   43 017 GETCONST	R3	Set
+   43 020 GETUPVAR	R4	3	0
+   43 024 ARRAY		R4	1
+   43 027 SEND		R3	:new	n=1
+   43 031 SEND		R2	:|	n=1
+   43 035 SEND0		R2	:size
+   43 038 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=3 reps=0 ilen=27
+file: /w/set_elements.rb
+   44 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   44 004 GETCONST	R2	Set
+   44 007 STRING	R3	L[0]	; k0
+   44 010 ARRAY		R3	1
+   44 013 SEND		R2	:new	n=1
+   44 017 GETUPVAR	R3	3	0
+   44 021 SEND		R2	:include?	n=1
+   44 025 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=4 reps=0 ilen=30
+file: /w/set_elements.rb
+   45 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   45 004 GETCONST	R2	Set
+   45 007 GETUPVAR	R3	3	0
+   45 011 ARRAY		R3	1
+   45 014 SEND		R2	:new	n=1
+   45 018 GETCONST	R3	Bad
+   45 021 SEND0		R3	:new
+   45 024 SEND		R2	:include?	n=1
+   45 028 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=4 reps=0 ilen=30
+file: /w/set_elements.rb
+   46 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   46 004 GETCONST	R2	Set
+   46 007 STRING	R3	L[0]	; k0
+   46 010 ARRAY		R3	1
+   46 013 SEND		R2	:new	n=1
+   46 017 GETUPVAR	R3	3	0
+   46 021 SEND		R2	:delete	n=1
+   46 025 SEND0		R2	:size
+   46 028 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=4 reps=0 ilen=34
+file: /w/set_elements.rb
+   47 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   47 004 GETCONST	R2	Set
+   47 007 STRING	R3	L[0]	; k0
+   47 010 GETUPVAR	R4	3	0
+   47 014 ARRAY		R3	2
+   47 017 SEND		R2	:new	n=1
+   47 021 GETUPVAR	R3	3	0
+   47 025 SEND		R2	:delete	n=1
+   47 029 SEND0		R2	:size
+   47 032 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=5 reps=0 ilen=40
+file: /w/set_elements.rb
+   48 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   48 004 GETCONST	R2	Set
+   48 007 STRING	R3	L[0]	; k0
+   48 010 ARRAY		R3	1
+   48 013 SEND		R2	:new	n=1
+   48 017 SETUPVAR	R2	1	0
+   48 021 GETCONST	R3	BadHash
+   48 024 SEND0		R3	:new
+   48 027 SEND		R2	:add	n=1
+   48 031 GETUPVAR	R2	1	0
+   48 035 SEND0		R2	:size
+   48 038 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=4 reps=0 ilen=29
+file: /w/set_elements.rb
+   49 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   49 004 GETCONST	R2	Set
+   49 007 STRING	R3	L[0]	; k0
+   49 010 ARRAY		R3	1
+   49 013 SEND		R2	:new	n=1
+   49 017 GETCONST	R3	BadHash
+   49 020 SEND0		R3	:new
+   49 023 SEND		R2	:include?	n=1
+   49 027 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=5 reps=0 ilen=32
+file: /w/set_elements.rb
+   50 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   50 004 GETCONST	R2	Set
+   50 007 STRING	R3	L[0]	; k0
+   50 010 ARRAY		R3	1
+   50 013 SEND		R2	:new	n=1
+   50 017 GETCONST	R3	BadHash
+   50 020 SEND0		R3	:new
+   50 023 SEND		R2	:delete	n=1
+   50 027 SEND0		R2	:size
+   50 030 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=4 reps=0 ilen=25
+file: /w/set_elements.rb
+   51 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   51 004 GETCONST	R2	Set
+   51 007 GETCONST	R3	BadHash
+   51 010 SEND0		R3	:new
+   51 013 ARRAY		R3	1
+   51 016 SEND		R2	:new	n=1
+   51 020 SEND0		R2	:size
+   51 023 RETURN	R2	
+
+irep 0xADDR nregs=7 nlocals=3 pools=0 syms=6 reps=0 ilen=56
+local variable names:
+  R2:x
+file: /w/set_elements.rb
+   52 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   52 004 GETCONST	R3	BadHash
+   52 007 SEND0		R3	:new
+   52 010 MOVE		R2	R3	; R2:x
+   52 013 GETCONST	R3	Set
+   52 016 MOVE		R4	R2	; R2:x
+   52 019 ARRAY		R4	1
+   52 022 SEND		R3	:new	n=1
+   52 026 SETUPVAR	R3	1	0
+   52 030 MOVE		R4	R2	; R2:x
+   52 033 SEND		R3	:include?	n=1
+   52 037 GETUPVAR	R4	1	0
+   52 041 MOVE		R5	R2	; R2:x
+   52 044 SEND		R4	:delete	n=1
+   52 048 SEND0		R4	:size
+   52 051 ARRAY		R3	2
+   52 054 RETURN	R3	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=4 reps=0 ilen=32
+file: /w/set_elements.rb
+   54 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   54 004 GETCONST	R2	Set
+   54 007 GETCONST	R3	Bad
+   54 010 SEND0		R3	:new
+   54 013 ARRAY		R3	1
+   54 016 SEND		R2	:new	n=1
+   54 020 GETCONST	R3	Bad
+   54 023 SEND0		R3	:new
+   54 026 SEND		R2	:include?	n=1
+   54 030 RETURN	R2	
+
+irep 0xADDR nregs=6 nlocals=3 pools=0 syms=4 reps=0 ilen=47
+local variable names:
+  R2:x
+file: /w/set_elements.rb
+   55 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   55 004 GETCONST	R3	Set
+   55 007 GETCONST	R4	Bad
+   55 010 SEND0		R4	:new
+   55 013 ARRAY		R4	1
+   55 016 SEND		R3	:new	n=1
+   55 020 SETUPVAR	R3	1	0
+   55 024 GETCONST	R4	Bad
+   55 027 SEND0		R4	:new
+   55 030 SEND		R3	:include?	n=1
+   55 034 MOVE		R2	R3	; R2:x
+   55 037 MOVE		R3	R2	; R2:x
+   55 040 LOADI_1	R4	(1)
+   55 042 ARRAY		R3	2
+   55 045 RETURN	R3	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=5 reps=0 ilen=43
+file: /w/set_elements.rb
+   56 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   56 004 GETCONST	R2	Set
+   56 007 GETCONST	R3	Bad
+   56 010 SEND0		R3	:new
+   56 013 ARRAY		R3	1
+   56 016 SEND		R2	:new	n=1
+   56 020 SETUPVAR	R2	1	0
+   56 024 GETCONST	R3	Bad
+   56 027 SEND0		R3	:new
+   56 030 SEND		R2	:add	n=1
+   56 034 GETUPVAR	R2	1	0
+   56 038 SEND0		R2	:size
+   56 041 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=5 reps=0 ilen=43
+file: /w/set_elements.rb
+   57 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   57 004 GETCONST	R2	Set
+   57 007 GETCONST	R3	Bad
+   57 010 SEND0		R3	:new
+   57 013 ARRAY		R3	1
+   57 016 SEND		R2	:new	n=1
+   57 020 SETUPVAR	R2	1	0
+   57 024 GETCONST	R3	Bad
+   57 027 SEND0		R3	:new
+   57 030 SEND		R2	:delete	n=1
+   57 034 GETUPVAR	R2	1	0
+   57 038 SEND0		R2	:size
+   57 041 RETURN	R2	
+
+irep 0xADDR nregs=6 nlocals=2 pools=0 syms=4 reps=0 ilen=31
+file: /w/set_elements.rb
+   58 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   58 004 GETCONST	R2	Set
+   58 007 GETCONST	R3	Bad
+   58 010 SEND0		R3	:new
+   58 013 GETCONST	R4	Bad
+   58 016 SEND0		R4	:new
+   58 019 ARRAY		R3	2
+   58 022 SEND		R2	:new	n=1
+   58 026 SEND0		R2	:size
+   58 029 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=4 reps=0 ilen=29
+file: /w/set_elements.rb
+   59 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   59 004 GETCONST	R2	Set
+   59 007 STRING	R3	L[0]	; a
+   59 010 ARRAY		R3	1
+   59 013 SEND		R2	:new	n=1
+   59 017 GETCONST	R3	BadHash
+   59 020 SEND0		R3	:new
+   59 023 SEND		R2	:include?	n=1
+   59 027 RETURN	R2	
+
+irep 0xADDR nregs=6 nlocals=3 pools=1 syms=4 reps=0 ilen=44
+local variable names:
+  R2:x
+file: /w/set_elements.rb
+   60 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   60 004 GETCONST	R3	Set
+   60 007 STRING	R4	L[0]	; a
+   60 010 ARRAY		R4	1
+   60 013 SEND		R3	:new	n=1
+   60 017 SETUPVAR	R3	1	0
+   60 021 GETCONST	R4	BadHash
+   60 024 SEND0		R4	:new
+   60 027 SEND		R3	:include?	n=1
+   60 031 MOVE		R2	R3	; R2:x
+   60 034 MOVE		R3	R2	; R2:x
+   60 037 LOADI_1	R4	(1)
+   60 039 ARRAY		R3	2
+   60 042 RETURN	R3	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=5 reps=0 ilen=40
+file: /w/set_elements.rb
+   61 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   61 004 GETCONST	R2	Set
+   61 007 STRING	R3	L[0]	; a
+   61 010 ARRAY		R3	1
+   61 013 SEND		R2	:new	n=1
+   61 017 SETUPVAR	R2	1	0
+   61 021 GETCONST	R3	BadHash
+   61 024 SEND0		R3	:new
+   61 027 SEND		R2	:add	n=1
+   61 031 GETUPVAR	R2	1	0
+   61 035 SEND0		R2	:size
+   61 038 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=5 reps=0 ilen=33
+file: /w/set_elements.rb
+   62 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   62 004 GETCONST	R2	Set
+   62 007 SEND0		R2	:new
+   62 010 SETUPVAR	R2	1	0
+   62 014 GETCONST	R3	BadHash
+   62 017 SEND0		R3	:new
+   62 020 SEND		R2	:add	n=1
+   62 024 GETUPVAR	R2	1	0
+   62 028 SEND0		R2	:size
+   62 031 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=4 reps=0 ilen=20
+file: /w/set_elements.rb
+   63 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   63 004 GETCONST	R2	Set
+   63 007 GETCONST	R3	BadHash
+   63 010 SEND0		R3	:new
+   63 013 GETIDX	R2	(R3)
+   63 015 SEND0		R2	:size
+   63 018 RETURN	R2	
+

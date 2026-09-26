@@ -4587,8 +4587,11 @@ impl Vm {
             _ => Ok(self.eql(a, b)),
         }
     }
-    /// The half of [`Vm::key_eql`] that sends `eql?`, which can be Ruby.
+    /// The half of [`Vm::key_eql`] that sends `eql?`, which can be Ruby. The same object is the
+    /// same key without asking (mruby's `mrb_eql` answers identity first), so a key whose `eql?`
+    /// says false, or raises, still finds itself.
     fn key_eql_send(&mut self, a: Value, b: Value) -> VmResult<bool> {
+        if a == b { return Ok(true); }
         let eql = self.s.eql;
         self.native_active += 1; // as in key_hash
         let r = self.funcall(a, eql, &[b], Value::Nil);
@@ -4648,6 +4651,55 @@ impl Vm {
             cand = match &self.heap.get(o).kind { ObjKind::Hash(hd) => hd.next_candidate(p, kh), _ => None };
         }
         Ok(None)
+    }
+    /// The lookup of a `Set` (Hash-shaped, element => true), as mruby-set's khash does it
+    /// (`mrbgems/mruby-set/src/set.c`, `kset_hash_value`/`kset_equal_value`): an element's
+    /// `hash` that raises counts as hash code 0 and the element is still added or looked for;
+    /// `eql?` is asked of the element already in the set (`kset_equal_value(keys[k], key)`, so
+    /// a String there answers natively), identity first (`mrb_eql`), and what it raises reaches
+    /// the caller — the reference keeps it in `mrb->exc` and raises it once the method returns.
+    /// Checked against `kishima/mruby:4.1.0-rc2` (`tests/custom/set_elements.rb`).
+    fn set_key_hash(&mut self, k: Value) -> i64 { self.key_hash(k).unwrap_or(0) }
+    fn set_prepare(&mut self, s: Value, k: Value) -> Option<(ObjId, i64)> {
+        let o = s.obj()?;
+        if !matches!(&self.heap.get(o).kind, ObjKind::Hash(_)) { return None; }
+        if matches!(&self.heap.get(o).kind, ObjKind::Hash(hd) if hd.hashes_stale()) {
+            let keys: Vec<Value> = match &self.heap.get(o).kind { ObjKind::Hash(hd) => hd.entries().iter().map(|e| e.0.get()).collect(), _ => Vec::new() };
+            let hs = keys.into_iter().map(|k| self.set_key_hash(k)).collect();
+            if let ObjKind::Hash(hd) = &mut self.heap.get_mut(o).kind { hd.set_hashes(hs); }
+        }
+        let kh = self.set_key_hash(k);
+        Some((o, kh))
+    }
+    fn set_index_at(&mut self, o: ObjId, k: Value, kh: i64) -> VmResult<Option<usize>> {
+        let mut cand = match &self.heap.get(o).kind { ObjKind::Hash(hd) => hd.first_candidate(kh), _ => None };
+        while let Some((p, ek)) = cand {
+            if self.key_eql(ek.get(), k)? { return Ok(Some(p)); }
+            // an `eql?` may have changed the set; the walk reads the entries as they are now
+            cand = match &self.heap.get(o).kind { ObjKind::Hash(hd) => hd.next_candidate(p, kh), _ => None };
+        }
+        Ok(None)
+    }
+    /// `Set#include?`: whether `k` is an element ([`Vm::set_key_hash`] for what an error means).
+    pub(crate) fn set_contains(&mut self, s: Value, k: Value) -> VmResult<bool> {
+        match self.set_prepare(s, k) { Some((o, kh)) => Ok(self.set_index_at(o, k, kh)?.is_some()), None => Ok(false) }
+    }
+    /// `Set#add`: adds `k` unless an element is `eql?` to it. An unfrozen String is stored as a
+    /// frozen copy, as a Hash key is ([`Vm::hash_set`]).
+    pub(crate) fn set_insert(&mut self, s: Value, k: Value) -> VmResult<()> {
+        let o = match s.obj() { Some(o) => o, None => return Err(self.raise_type("not a set")) };
+        if self.heap.get(o).frozen { return Err(self.frozen_error(s)); }
+        let Some((o, kh)) = self.set_prepare(s, k) else { return Err(self.raise_type("not a set")) };
+        if self.set_index_at(o, k, kh)?.is_some() { return Ok(()); }
+        let k = match k { Value::Obj(ko) if self.heap.string(ko).is_some() && !self.heap.get(ko).frozen => { let b = self.heap.string(ko).unwrap().to_vec(); let nk = Value::Obj(self.heap.alloc(self.core.string, ObjKind::String(b))); if let Some(no) = nk.obj() { self.heap.get_mut(no).frozen = true; } nk } _ => k };
+        if let ObjKind::Hash(hd) = &mut self.heap.get_mut(o).kind { hd.push_entry(Slot::from(k), Slot::from(Value::True), kh); }
+        Ok(())
+    }
+    /// `Set#delete`: removes `k`; whether it was there.
+    pub(crate) fn set_remove(&mut self, s: Value, k: Value) -> VmResult<bool> {
+        let Some((o, kh)) = self.set_prepare(s, k) else { return Ok(false) };
+        let Some(pos) = self.set_index_at(o, k, kh)? else { return Ok(false) };
+        Ok(match &mut self.heap.get_mut(o).kind { ObjKind::Hash(hd) => { hd.remove_entry(pos); true } _ => false })
     }
     /// `h[k]` without the default: the value stored under `k`, or `None`.
     ///

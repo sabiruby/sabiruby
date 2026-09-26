@@ -42,20 +42,20 @@ fn size(vm: &Vm, s: Value) -> usize {
     match s.obj().map(|o| &vm.heap.get(o).kind) { Some(ObjKind::Hash(hd)) => hd.len(), _ => 0 }
 }
 
-/// Membership. What `hash`/`eql?` raise counts as "not the same element": mruby-set calls
-/// `eql?` under `mrb_protect_error` and answers not-equal on an error (`kset_equal_value`),
-/// unlike Hash, which raises it.
-fn has(vm: &mut Vm, s: Value, v: Value) -> bool {
-    matches!(vm.hash_get(s, v), Ok(Some(_)))
+/// Membership, as mruby-set's khash answers it ([`Vm::set_contains`]): what an element's
+/// `hash` raises is hash code 0, what `eql?` raises is raised.
+fn has(vm: &mut Vm, s: Value, v: Value) -> VmResult<bool> {
+    vm.set_contains(s, v)
 }
 
+/// Adds `v` ([`Vm::set_insert`]).
 fn put(vm: &mut Vm, s: Value, v: Value) -> VmResult<()> {
-    vm.hash_set(s, v, Value::True)
+    vm.set_insert(s, v)
 }
 
-/// As [`has`]: an error in `hash`/`eql?` is "not there".
-fn del(vm: &mut Vm, s: Value, v: Value) -> bool {
-    matches!(vm.hash_delete(s, v), Ok(Some(_)))
+/// Removes `v`; whether it was there ([`Vm::set_remove`]).
+fn del(vm: &mut Vm, s: Value, v: Value) -> VmResult<bool> {
+    vm.set_remove(s, v)
 }
 
 fn clear(vm: &mut Vm, s: Value) {
@@ -84,7 +84,7 @@ fn set_init_copy(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Valu
 
 fn set_include_p(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
     argc!(vm, a, 1);
-    Ok(Value::bool(has(vm, s, a[0])))
+    Ok(Value::bool(has(vm, s, a[0])?))
 }
 
 fn set_add(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
@@ -97,7 +97,7 @@ fn set_add(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
 fn set_add_p(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
     argc!(vm, a, 1);
     super::ext_array::check_frozen(vm, s)?;
-    if has(vm, s, a[0]) { return Ok(Value::Nil); }
+    if has(vm, s, a[0])? { return Ok(Value::Nil); }
     put(vm, s, a[0])?;
     Ok(s)
 }
@@ -105,14 +105,14 @@ fn set_add_p(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
 fn set_delete(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
     argc!(vm, a, 1);
     super::ext_array::check_frozen(vm, s)?;
-    del(vm, s, a[0]);
+    del(vm, s, a[0])?;
     Ok(s)
 }
 
 fn set_delete_p(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
     argc!(vm, a, 1);
     super::ext_array::check_frozen(vm, s)?;
-    Ok(if del(vm, s, a[0]) { s } else { Value::Nil })
+    Ok(if del(vm, s, a[0])? { s } else { Value::Nil })
 }
 
 /// `__merge(other)`: true when `other` is a Set (merged in place), false otherwise
@@ -126,7 +126,7 @@ fn core_merge(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> 
 fn core_subtract(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
     argc!(vm, a, 1);
     if !is_set(vm, a[0]) { return Ok(Value::False); }
-    for e in elems(vm, a[0]) { del(vm, s, e); }
+    for e in elems(vm, a[0]) { del(vm, s, e)?; }
     Ok(Value::True)
 }
 
@@ -143,7 +143,7 @@ fn core_difference(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Va
     argc!(vm, a, 1);
     if !is_set(vm, a[0]) { return Ok(Value::Nil); }
     let r = dup(vm, s)?;
-    for e in elems(vm, a[0]) { del(vm, r, e); }
+    for e in elems(vm, a[0]) { del(vm, r, e)?; }
     Ok(r)
 }
 
@@ -151,7 +151,7 @@ fn core_intersection(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<
     argc!(vm, a, 1);
     if !is_set(vm, a[0]) { return Ok(Value::Nil); }
     let r = new_like(vm, s)?;
-    for e in elems(vm, a[0]) { if has(vm, s, e) { put(vm, r, e)?; } }
+    for e in elems(vm, a[0]) { if has(vm, s, e)? { put(vm, r, e)?; } }
     Ok(r)
 }
 
@@ -159,8 +159,8 @@ fn core_xor(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
     argc!(vm, a, 1);
     if !is_set(vm, a[0]) { return Ok(Value::Nil); }
     let r = new_like(vm, s)?;
-    for e in elems(vm, s) { if !has(vm, a[0], e) { put(vm, r, e)?; } }
-    for e in elems(vm, a[0]) { if !has(vm, s, e) { put(vm, r, e)?; } }
+    for e in elems(vm, s) { if !has(vm, a[0], e)? { put(vm, r, e)?; } }
+    for e in elems(vm, a[0]) { if !has(vm, s, e)? { put(vm, r, e)?; } }
     Ok(r)
 }
 
@@ -169,7 +169,7 @@ fn set_equal(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
     if same_object(s, a[0]) { return Ok(Value::True); }
     if !is_set(vm, a[0]) { return Ok(Value::False); }
     if size(vm, s) != size(vm, a[0]) { return Ok(Value::False); }
-    for e in elems(vm, s) { if !has(vm, a[0], e) { return Ok(Value::False); } }
+    for e in elems(vm, s) { if !has(vm, a[0], e)? { return Ok(Value::False); } }
     Ok(Value::True)
 }
 
@@ -186,8 +186,9 @@ fn set_hash_m(vm: &mut Vm, s: Value, _a: &[Value], _b: Value) -> VmResult<Value>
 }
 
 /// every element of `sub` is in `sup`
-fn all_in(vm: &mut Vm, sub: Value, sup: Value) -> bool {
-    elems(vm, sub).into_iter().all(|e| has(vm, sup, e))
+fn all_in(vm: &mut Vm, sub: Value, sup: Value) -> VmResult<bool> {
+    for e in elems(vm, sub) { if !has(vm, sup, e)? { return Ok(false); } }
+    Ok(true)
 }
 
 fn set_superset_p(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
@@ -195,7 +196,7 @@ fn set_superset_p(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Val
     check_set(vm, a[0])?;
     if size(vm, a[0]) == 0 { return Ok(Value::True); }
     if size(vm, s) < size(vm, a[0]) { return Ok(Value::False); }
-    Ok(Value::bool(all_in(vm, a[0], s)))
+    Ok(Value::bool(all_in(vm, a[0], s)?))
 }
 
 fn set_proper_superset_p(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
@@ -203,7 +204,7 @@ fn set_proper_superset_p(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmRes
     check_set(vm, a[0])?;
     if size(vm, a[0]) == 0 { return Ok(Value::bool(size(vm, s) != 0)); }
     if size(vm, s) <= size(vm, a[0]) { return Ok(Value::False); }
-    Ok(Value::bool(all_in(vm, a[0], s)))
+    Ok(Value::bool(all_in(vm, a[0], s)?))
 }
 
 fn set_subset_p(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
@@ -211,7 +212,7 @@ fn set_subset_p(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value
     check_set(vm, a[0])?;
     if size(vm, s) == 0 { return Ok(Value::True); }
     if size(vm, a[0]) < size(vm, s) { return Ok(Value::False); }
-    Ok(Value::bool(all_in(vm, s, a[0])))
+    Ok(Value::bool(all_in(vm, s, a[0])?))
 }
 
 fn set_proper_subset_p(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
@@ -219,7 +220,7 @@ fn set_proper_subset_p(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResul
     check_set(vm, a[0])?;
     if size(vm, s) == 0 { return Ok(Value::bool(size(vm, a[0]) != 0)); }
     if size(vm, a[0]) <= size(vm, s) { return Ok(Value::False); }
-    Ok(Value::bool(all_in(vm, s, a[0])))
+    Ok(Value::bool(all_in(vm, s, a[0])?))
 }
 
 fn set_intersect_p(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
@@ -227,7 +228,8 @@ fn set_intersect_p(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Va
     check_set(vm, a[0])?;
     if size(vm, s) == 0 || size(vm, a[0]) == 0 { return Ok(Value::False); }
     let (small, big) = if size(vm, s) < size(vm, a[0]) { (s, a[0]) } else { (a[0], s) };
-    Ok(Value::bool(elems(vm, small).into_iter().any(|e| has(vm, big, e))))
+    for e in elems(vm, small) { if has(vm, big, e)? { return Ok(Value::True); } }
+    Ok(Value::False)
 }
 
 fn set_disjoint_p(vm: &mut Vm, s: Value, a: &[Value], b: Value) -> VmResult<Value> {
@@ -242,9 +244,9 @@ fn set_cmp(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
     let (ns, no) = (size(vm, s), size(vm, a[0]));
     if ns == 0 { return Ok(Value::Int(if no == 0 { 0 } else { -1 })); }
     if no == 0 { return Ok(Value::Int(1)); }
-    if ns < no { return Ok(if all_in(vm, s, a[0]) { Value::Int(-1) } else { Value::Nil }); }
-    if ns > no { return Ok(if all_in(vm, a[0], s) { Value::Int(1) } else { Value::Nil }); }
-    Ok(if all_in(vm, s, a[0]) { Value::Int(0) } else { Value::Nil })
+    if ns < no { return Ok(if all_in(vm, s, a[0])? { Value::Int(-1) } else { Value::Nil }); }
+    if ns > no { return Ok(if all_in(vm, a[0], s)? { Value::Int(1) } else { Value::Nil }); }
+    Ok(if all_in(vm, s, a[0])? { Value::Int(0) } else { Value::Nil })
 }
 
 fn set_join(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
@@ -264,7 +266,7 @@ fn set_inspect(vm: &mut Vm, s: Value, _a: &[Value], _b: Value) -> VmResult<Value
     let name = vm.class_name(c);
     let o = s.obj().unwrap();
     if size(vm, s) == 0 { return Ok(vm.str_from(format!("{name}[]"))); }
-    if vm.inspect_guard.contains(&o) { return Ok(vm.str_from(format!("{name}[...]"))); }
+    if vm.inspect_recursing(o) { return Ok(vm.str_from(format!("{name}[...]"))); }
     vm.inspect_guard.push(o);
     let mut out = format!("{name}[");
     let mut r = Ok(());
@@ -289,17 +291,19 @@ fn set_add_all(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value>
 }
 
 fn set_delete_all(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
-    for v in a { del(vm, s, *v); }
+    for v in a { del(vm, s, *v)?; }
     Ok(s)
 }
 
 fn set_include_all_p(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
-    Ok(Value::bool(a.iter().all(|v| has(vm, s, *v))))
+    for v in a { if !has(vm, s, *v)? { return Ok(Value::False); } }
+    Ok(Value::True)
 }
 
 fn set_include_any_p(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
     if size(vm, s) == 0 { return Ok(Value::False); }
-    Ok(Value::bool(a.iter().any(|v| has(vm, s, *v))))
+    for v in a { if has(vm, s, *v)? { return Ok(Value::True); } }
+    Ok(Value::False)
 }
 
 const MAX_NESTED_DEPTH: usize = 16;

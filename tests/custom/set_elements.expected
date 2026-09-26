@@ -1,0 +1,34 @@
+#<struct S a=1>
+Set[1, 2]
+[Set[1]]
+{k: Set[1]}
+Set[Set[1], #<struct S a=Set[2]>]
+Set[1, Set[...]]
+Set[1, Set[...]]
+#<struct S a=#<struct S ...>>
+Set[]
+add: [2, true]
+add?: [Set, 2]
+add_twice: 2
+new: 2
+merge: 2
+or: 2
+include: false
+include_other: ArgumentError: boom
+delete: 1
+delete_self: 1
+hash_add: 2
+hash_include: false
+hash_delete: 1
+hash_new: 1
+hash_self: [true, 0]
+inc: ArgumentError: boom
+inc2: ArgumentError: boom
+add: ArgumentError: boom
+del: ArgumentError: boom
+new2: ArgumentError: boom
+hinc: false
+hinc2: [false, 1]
+hadd: 2
+hadd2: 1
+hlit: 1

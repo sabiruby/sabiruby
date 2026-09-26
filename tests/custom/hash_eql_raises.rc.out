@@ -49,6 +49,9 @@ hash raises 20 key?: ArgumentError: no hash
 true
 5
 {}
-set_include?: false
-set_delete: Set["k0"]
-Set["k0"]
+1
+true
+1
+2
+2
+0

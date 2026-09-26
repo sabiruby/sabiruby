@@ -383,7 +383,7 @@ fn to_s(vm: &mut Vm, s: Value, _a: &[Value], _b: Value) -> VmResult<Value> {
     let mut out = alloc::string::String::from("#<struct ");
     let c = vm.real_class_of(s);
     if vm.heap.class(c).name.is_some() { out.push_str(&vm.class_name(c)); out.push(' '); }
-    if vm.inspect_guard.contains(&o) { out.push_str("...>"); return Ok(vm.str_from(out)); }
+    if vm.inspect_recursing(o) { out.push_str("...>"); return Ok(vm.str_from(out)); }
     let m = members(vm, s)?;
     vm.inspect_guard.push(o);
     let mut r = Ok(());
