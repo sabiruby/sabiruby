@@ -4176,14 +4176,16 @@ impl Vm {
                 }
                 Op::Call => {
                     // `Proc#call`: replace this frame (pushed by SEND) with the proc's body.
-                    let p = match reg!(0) { Value::Obj(o) if matches!(self.heap.get(o).kind, ObjKind::Proc(_)) => o, _ => return Err(self.raise_type("wrong type (expected Proc)")) };
+                    // mruby 4.1.0-rc2 asks too (vm.c, 78a055595): only a forged irep reaches
+                    // here without a Proc, and the message names what it found (`%T`)
+                    let p = match reg!(0) { Value::Obj(o) if matches!(self.heap.get(o).kind, ObjKind::Proc(_)) => o, v => { let d = self.describe_for_error(v); return Err(self.raise_type(&format!("wrong type {d} (expected Proc)"))) } };
                     let n = self.ci[top].n as usize;
                     let nargs = (if n == 15 { 1 } else { n }) + (if self.ci[top].kw { 1 } else { 0 }) + 2;
                     self.vm_call_proc(p, nargs);
                 }
                 Op::Blkcall => {
                     // Direct block call: R[a] = R[a].call(R[a+1..a+b])
-                    let p = match reg!(a) { Value::Obj(o) if matches!(self.heap.get(o).kind, ObjKind::Proc(_)) => o, _ => return Err(self.raise_type("wrong type (expected Proc)")) };
+                    let p = match reg!(a) { Value::Obj(o) if matches!(self.heap.get(o).kind, ObjKind::Proc(_)) => o, v => { let d = self.describe_for_error(v); return Err(self.raise_type(&format!("wrong type {d} (expected Proc)"))) } };
                     let nbase = base + a;
                     let (n, kw, _) = self.prepare_call(nbase, b, false)?;
                     let npos = if n == 15 { 1 } else { n };

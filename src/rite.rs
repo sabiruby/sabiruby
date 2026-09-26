@@ -182,6 +182,13 @@ fn read_record(c: &mut Cur, out: &mut Vec<Irep>) -> VmResult<usize> {
     let _record_size = c.u32()?;
     let nlocals = c.u16()?;
     let nregs = c.u16()?;
+    // A frame has `nregs` registers and its locals are the first of them, so a record with
+    // more locals than registers describes a frame that cannot exist (`OP_ENTER` clears up to
+    // `nlocals`). The compiler never writes one; mruby 4.1.0-rc2 refuses it here, where the
+    // numbers arrive (`load.c`, 7ed51715e, GHSA-pmm3-g676-wxm7).
+    if nlocals > nregs {
+        return Err(VmError::Rite(format!("irep record with {nlocals} locals but {nregs} registers")));
+    }
     let rlen = c.u16()?;
     let clen = c.u16()?;
     let ilen = c.u32()? as usize;
