@@ -126,6 +126,18 @@ kept names nothing: `run_irep` and `task_spawn` refuse it. Nothing is added to t
 to the hot path; the cost is one walk of the frames and of the heap per `unload`, and one
 collection where something named the program.
 
+**Numbers are not reused (decided 2026-09-26, on principle).** A stale id must never run a
+different program: a host that forgot to drop an id it had unloaded gets `ArgumentError` from
+`run_irep`/`task_spawn`, never someone else's code. The price is accepted: each unloaded irep
+leaves its empty `VmIrep` entry behind, 208 bytes (`size_of::<VmIrep>()`, measured in
+`tests/unload.rs`; the `Vec`s it held are freed), so `Vm::ireps` grows by that much per irep a
+program had, for as long as the VM lives. Reusing the numbers would bring it to 0 and is the
+option this rules out.
+
+Not handed back (`docs/backlog.md`): the ireps of `eval` and of `binding` (no id is given to
+anyone, so only a collection could tell when they are free), and a program read by
+`load_and_run` (it gives no id; a program read once, as a host's start-up script, is fine).
+
 ## Decisions from review (2026-09-11)
 
 * **The two mark-time `assert!`s stay in release builds** (`Heap::mark_id`, `Heap::mark_drain`:

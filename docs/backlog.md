@@ -13,6 +13,10 @@
 | **`sort { }` の比較の中で待つ** | 著者の判断（2026-09-26）: 軽い block で 8.1% 遅くなるので払わない | 段階 3 をやるとき | `verification/bench.md`「After the author's decisions」 |
 | **Hash の小さい表でもハッシュ値の違うキーに `eql?` をかける**（rc2 の `hash` の assert、`worklog/2026-09-23-rc2.md` の案 (b)） | 0.7.0 の S1 で案 (a) を取った（2026-09-26）。(b) は探索の意味を表の大きさで変える本家の都合を真似ることになり、CRuby とも違う。探索の速さ（stage 2c）にも触れる | 本家が AR でもハッシュ値を比べるようになったとき、または利用者がこの違いに当たったとき | `worklog/2026-09-26-release-0.7-a.md`、`verification/mrbtest-notes.md` の `hash` |
 | **「hash modified」を世代の数で見る**（今は要素数だけ。`eql?` の中で 1 つ消して 1 つ足すと気づかない） | Hash を書き換える道（`[]=`、`delete`、`rehash`、`replace`、`clear`、`shift`、`compact!`、`select!` ほか）すべてで数を進める必要があり、1 つ漏れると検査が黙って効かなくなる。今でも範囲外は読まない（Rust の `Vec`）ので、困るのは本家と答えが違うことだけ | 本家のテストか利用者が、数の変わらない書き換えで違いに当たったとき | `worklog/2026-09-26-release-0.7-a.md` 気づいた点 5 |
+| **`eval` と `binding` の irep を返さない**（`ext_eval.rs`、`ext_binding.rs` の `wrap_lvspace`。呼ぶたびに `ireps` が伸びる） | 番号を誰にも渡さないので、いつ使われなくなったかは回収（GC）でしか分からない。GC に irep の印と掃除を足すことになり、`Vm::unload` の「GC の規則を変えない」を崩す | スクリプトが `eval` や `binding` をループの中で繰り返し呼ぶ例が出たとき | `worklog/2026-09-26-release-0.7-b.md` 気づいた点、`design/gc.md`「Programs」 |
+| **backtrace の残りの違い 7 つと、`instance_exec`・top level の `eval` の中の `__method__`**（本家は `:instance_exec`／`:eval`、ここは `nil`） | どちらも本家が C 関数のフレームを書き換えて名前を運ぶ形で、揃えるには `CallInfo` に 1 つ足すか `Cci` を増やす — フレームの形を変える | フレームの形を変える仕事（段階 3 の再開など）が来たとき、または利用者がこの違いに当たったとき | `worklog/2026-09-26-release-0.7-b.md` S5「残った違い」・気づいた点、`tests/custom/native_backtrace.rb`、`design/gems.md` |
+| **記録のイベント（`TraceEvent::Raise`／`CatchLook`）が `unload` した irep を指しうる** | 表示にしか使わず、行が `None` になるだけで壊れない | デバッガがこの行を必要としたとき | `worklog/2026-09-26-release-0.7-b.md` 気づいた点（`src/inspect.rs`） |
+| **`load_and_run` で読んだプログラムは `unload` できない** | 番号を返さない口なので当然。起動時に 1 度読む層やデータなら困らない。何度も読み直すのは rubevy（`ScriptWorld::load_and_run`）と Factory の側で `load` + `run_irep` + `unload` に替える話 | rubevy・games が同じものを何度も読み直すとき | `worklog/2026-09-26-release-0.7-b.md` 気づいた点 |
 | `gc_step(work)` とヒープの上限 | 設計の判断が要る（rubevy の outlook で「to do」） | ゲーム側で GC の停止時間かメモリの上限が問題になったとき | rubevy `docs/outlook.md:183-184` |
 
 ## 公開 API
