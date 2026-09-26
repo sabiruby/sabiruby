@@ -11,7 +11,8 @@
 # window. Two such runs, taken twenty minutes apart, then differ by more than any change to
 # the VM does.
 #
-# Alternating A and B *within* a round cancels that drift: both binaries meet the same
+# Alternating A and B *within* a round cancels that drift (and which one goes first alternates
+# too, run by run): both binaries meet the same
 # machine in the same minute, so the ratio stays put even when the milliseconds do not. Each
 # benchmark reports the best and the median of its N rounds, and the change between them.
 #
@@ -61,8 +62,11 @@ for mrb in $DIR/*.mrb; do
   [ -n "$FILTER" ] && [[ "$b" != *"$FILTER"* ]] && continue
   cat=$(category "$b"); [ -n "$cat" ] || cat=other
   ra=""; rb=""; fail=""
-  for _ in $(seq "$RUNS"); do
-    ta=$(one "$A" "$mrb"); tb=$(one "$B" "$mrb")
+  for i in $(seq "$RUNS"); do
+    # which of the two goes first alternates: running A first every time leaned the A/A of
+    # 2026-09-26 about +0.8% towards B (docs/worklog/2026-09-26-wait-anywhere.md)
+    if [ $((i % 2)) -eq 1 ]; then ta=$(one "$A" "$mrb"); tb=$(one "$B" "$mrb")
+    else tb=$(one "$B" "$mrb"); ta=$(one "$A" "$mrb"); fi
     if [ -z "$ta" ] || [ -z "$tb" ]; then fail="fail"; break; fi
     ra="$ra$ta"$'\n'; rb="$rb$tb"$'\n'
   done

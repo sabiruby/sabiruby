@@ -29,6 +29,9 @@ const KINDS: &[(&str, &str)] = &[
 const BOUNDARIES: &[(&str, &str)] = &[
     // the reference keeps this one too: the collector is walking the heap
     ("c_each_object", "ObjectSpace.each_object's call to a block"),
+    // `sort! { }` keeps its nested loop: the frame cost a light block 8% (the author's choice,
+    // 2026-09-26; `docs/design/wait-anywhere.md`)
+    ("c_sort", "Array#sort!'s call to a block"),
     // mruby-regexp's loops over the matches (left as they are: `docs/design/wait-anywhere.md`)
     ("c_sub", "String#sub's call to a block"),
     ("c_gsub", "String#gsub's call to a block"),
@@ -147,9 +150,9 @@ fn the_frame_a_wait_leaves_answers_where_the_call_was() {
 
 #[test]
 fn the_loops_handed_to_a_frame_do_what_the_natives_did() {
-    // `index { }`, `rindex { }`, `Array.new(n) { }` and `sort! { }` run their loop in Ruby when a
-    // SEND called them (`src/mrblib/block-frames.rb`); the answers are the natives', and a
-    // `break` now ends the call that took the block, as it does in the reference
+    // `index { }`, `rindex { }` and `Array.new(n) { }` run their loop in a native loop frame when a
+    // SEND called them (`Vm::push_loop_frame`); the answers are the natives', and a `break` now ends
+    // the call that took the block. `sort { }` keeps its nested loop and is checked here as it was.
     let mut vm = new_vm();
     let out = run_program(&mut vm, r#"
       a = [1, 2, 3, 2]

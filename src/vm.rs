@@ -5277,9 +5277,9 @@ pub(crate) const LOOP_IREP: IrepId = 2;
 /// The register of a native loop frame where the block's frame sits, so where the block's value
 /// lands. Below it: R0 the receiver, R1 the block, R2 the kind of loop, R3 how far it got
 /// (0: not started, 1: a block's value is waiting in this register), and R4.. the loop's own
-/// state — the most any loop keeps is `sort!`'s eleven (`builtins/array.rs`), which is what
-/// this number is.
-pub(crate) const LOOP_RESULT: usize = 16;
+/// state — the most any loop keeps is `Array.new(n) { }`'s three (`builtins/array.rs`), so
+/// R4..R6, which is what this number is.
+pub(crate) const LOOP_RESULT: usize = 7;
 /// Where the loop frame's `OP_RETURN` is ([`LoopNext::Tail`]).
 const LOOP_TAIL_PC: usize = 4;
 

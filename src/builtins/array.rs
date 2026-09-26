@@ -131,17 +131,16 @@ fn sort_values(vm: &mut Vm, list: &mut Vec<Value>, blk: Value) -> VmResult<()> {
 
 // ------------------------------------------------------------------ native loop frames
 
-// The loops of `index { }`, `rindex { }`, `Array.new(n) { }` and `sort! { }` when a SEND called
+// The loops of `index { }`, `rindex { }` and `Array.new(n) { }` when a SEND called
 // them: each keeps its state in the registers of a native loop frame (`Vm::push_loop_frame`) and
 // is stepped once per call of the block, which runs in an ordinary frame above (so a task can
 // wait inside it). Each step does what the native's own loop does between two calls of the
 // block, in the same order: the same elements, the array read again where the native reads it
-// again, the same comparisons in the same order for `sort!`.
+// again.
 
 pub(crate) const LOOP_INDEX: i64 = 0;
 pub(crate) const LOOP_RINDEX: i64 = 1;
 pub(crate) const LOOP_ARY_INIT: i64 = 2;
-pub(crate) const LOOP_SORT: i64 = 3;
 
 #[inline]
 fn reg(vm: &Vm, base: usize, i: usize) -> Value { vm.stack[base + i].get() }
@@ -156,7 +155,6 @@ pub(crate) fn loop_step(vm: &mut Vm, base: usize) -> VmResult<LoopNext> {
         LOOP_INDEX => index_step(vm, base),
         LOOP_RINDEX => rindex_step(vm, base),
         LOOP_ARY_INIT => ary_init_step(vm, base),
-        LOOP_SORT => sort_step(vm, base),
         super::ext_catch::LOOP_CATCH => super::ext_catch::catch_step(vm, base),
         k => Err(crate::error::VmError::Internal(format!("no native loop of kind {k}"))),
     }
@@ -212,79 +210,6 @@ fn ary_init_step(vm: &mut Vm, base: usize) -> VmResult<LoopNext> {
         return Ok(LoopNext::Call(1));
     }
     let v = items(vm, acc);
-    with_mut(vm, s, |arr| *arr = slots_of(&v).into())?;
-    Ok(LoopNext::Done(s))
-}
-
-/// `sort! { }` from a SEND: the elements go into the working Array the steps sort
-/// (`sort_step`), which then replaces the receiver's.
-fn sort_in_frame(vm: &mut Vm, s: Value, b: Value) -> VmResult<Value> {
-    let v = items(vm, s);
-    let n = v.len() as i64;
-    let src = vm.ary_new(v.clone());
-    let dst = vm.ary_new(v);
-    // R4 src, R5 dst, R6 n, R7 width, R8 i, R9 mid, R10 hi, R11 l, R12 r, R13 k, R14 in a merge
-    let z = Value::Int(0);
-    vm.push_loop_frame(LOOP_SORT, s, b, &[src, dst, Value::Int(n), Value::Int(1), z, z, z, z, z, z, Value::False])
-}
-
-fn ary_at(vm: &Vm, a: Value, i: i64) -> Value { vm.ary(a).and_then(|v| v.get(i as usize).map(|x| x.get())).unwrap_or(Value::Nil) }
-fn ary_put(vm: &mut Vm, a: Value, i: i64, v: Value) {
-    if let Some(o) = a.obj() { if let ObjKind::Array(arr) = &mut vm.heap.get_mut(o).kind { if let Some(x) = arr.as_mut_slice().get_mut(i as usize) { *x = Slot::from(v); } } }
-}
-
-/// `sort! { }`: the bottom-up merge sort of `sort_values`, stopped at every comparison. The
-/// block is called with `(src[r], src[l])` and `r` goes first where it answers "less", as there.
-/// Only what changed is written back: `l`, `r` and `k` at every comparison, the bounds of a merge
-/// when it starts, `width` when a pass ends.
-fn sort_step(vm: &mut Vm, base: usize) -> VmResult<LoopNext> {
-    let (mut src, mut dst) = (reg(vm, base, 4), reg(vm, base, 5));
-    let n = int(vm, base, 6);
-    let (mut width, mut i, mut mid, mut hi) = (int(vm, base, 7), int(vm, base, 8), int(vm, base, 9), int(vm, base, 10));
-    let (mut l, mut r, mut k) = (int(vm, base, 11), int(vm, base, 12), int(vm, base, 13));
-    let mut merging = reg(vm, base, 14).truthy();
-    if int(vm, base, 3) == 1 {
-        let (x, y) = (ary_at(vm, src, r), ary_at(vm, src, l));
-        let answer = reg(vm, base, LOOP_RESULT);
-        if sort_order(vm, answer, x, y)? == core::cmp::Ordering::Less { ary_put(vm, dst, k, x); r += 1; } else { ary_put(vm, dst, k, y); l += 1; }
-        k += 1;
-    }
-    loop {
-        if merging {
-            if l < mid && r < hi {
-                set(vm, base, 11, Value::Int(l));
-                set(vm, base, 12, Value::Int(r));
-                set(vm, base, 13, Value::Int(k));
-                set(vm, base, 3, Value::Int(1));
-                let (x, y) = (ary_at(vm, src, r), ary_at(vm, src, l));
-                vm.loop_arg(base, 0, x);
-                vm.loop_arg(base, 1, y);
-                return Ok(LoopNext::Call(2));
-            }
-            while l < mid { let v = ary_at(vm, src, l); ary_put(vm, dst, k, v); l += 1; k += 1; }
-            while r < hi { let v = ary_at(vm, src, r); ary_put(vm, dst, k, v); r += 1; k += 1; }
-            i += 2 * width;
-            merging = false;
-        }
-        if width >= n { break; }
-        if i < n {
-            mid = (i + width).min(n); hi = (i + 2 * width).min(n);
-            l = i; r = mid; k = i;
-            merging = true;
-            for (at, v) in [(8, i), (9, mid), (10, hi)] { set(vm, base, at, Value::Int(v)); }
-            set(vm, base, 14, Value::True);
-            continue;
-        }
-        // the pass is over: what was written is what the next one reads
-        core::mem::swap(&mut src, &mut dst);
-        set(vm, base, 4, src);
-        set(vm, base, 5, dst);
-        width *= 2;
-        i = 0;
-        set(vm, base, 7, Value::Int(width));
-    }
-    let s = reg(vm, base, 0);
-    let v = items(vm, src);
     with_mut(vm, s, |arr| *arr = slots_of(&v).into())?;
     Ok(LoopNext::Done(s))
 }
@@ -390,7 +315,10 @@ pub fn init(vm: &mut Vm) {
         ("uniq", |vm, s, _a, _b| { let list = items(vm, s); let mut out: Vec<Value> = vec![]; for it in list { let mut dup = false; for x in &out { if vm.eql(it, *x) || vm.equal(it, *x)? { dup = true; break; } } if !dup { out.push(it); } } Ok(vm.ary_new(out)) }),
         ("uniq!", |vm, s, _a, _b| { let list = items(vm, s); let n = list.len(); let mut out: Vec<Value> = vec![]; for it in list { let mut dup = false; for x in &out { if vm.eql(it, *x) || vm.equal(it, *x)? { dup = true; break; } } if !dup { out.push(it); } } let changed = out.len() != n; with_mut(vm, s, |arr| *arr = slots_of(&out).into())?; Ok(if changed { s } else { Value::Nil }) }),
         ("sort", |vm, s, _a, b| { let mut v = items(vm, s); sort_values(vm, &mut v, b)?; Ok(vm.ary_new(v)) }),
-        ("sort!", |vm, s, _a, b| { if !b.is_nil() && vm.in_frame() { return sort_in_frame(vm, s, b); } let mut v = items(vm, s); sort_values(vm, &mut v, b)?; with_mut(vm, s, |arr| *arr = slots_of(&v).into())?; Ok(s) }),
+        // `sort! { }` keeps its nested loop: a loop frame cost a light block 8% (`sort { |x, y| x <=> y }`,
+        // docs/verification/bench.md), and the author chose the speed (2026-09-26); it stays a named
+        // boundary (`docs/design/wait-anywhere.md`)
+        ("sort!", |vm, s, _a, b| { let mut v = items(vm, s); sort_values(vm, &mut v, b)?; with_mut(vm, s, |arr| *arr = slots_of(&v).into())?; Ok(s) }),
         ("sort_by", |vm, s, _a, b| { let v = items(vm, s); let mut keyed: Vec<(Value, Value)> = vec![]; for it in v { keyed.push((vm.call_block(b, &[it])?, it)); } let mut keys: Vec<Value> = keyed.iter().map(|(k, _)| *k).collect(); let idx: Vec<usize> = (0..keys.len()).collect(); let mut order: Vec<Value> = idx.iter().map(|i| Value::Int(*i as i64)).collect(); let _ = &mut keys; let cmp = vm.intern("<=>"); let mut err = None; order.sort_by(|x, y| { if err.is_some() { return core::cmp::Ordering::Equal; } let (i, j) = (match x { Value::Int(i) => *i as usize, _ => 0 }, match y { Value::Int(j) => *j as usize, _ => 0 }); match vm.funcall(keyed[i].0, cmp, &[keyed[j].0], Value::Nil) { Ok(Value::Int(r)) => r.cmp(&0), Ok(_) => { err = Some(vm.raise_arg("comparison failed")); core::cmp::Ordering::Equal } Err(e) => { err = Some(e); core::cmp::Ordering::Equal } } }); if let Some(e) = err { return Err(e); } let out: Vec<Value> = order.iter().map(|x| match x { Value::Int(i) => keyed[*i as usize].1, _ => Value::Nil }).collect(); Ok(vm.ary_new(out)) }),
         ("sum", |vm, s, a, _b| { let v = items(vm, s); let mut acc = a.first().copied().unwrap_or(Value::Int(0)); let plus = vm.s.plus; for it in v { acc = vm.funcall(acc, plus, &[it], Value::Nil)?; } Ok(acc) }),
         ("take", |vm, s, a, _b| { argc!(vm, a, 1); let n = vm.expect_int(a[0], "argument")?; if n < 0 { return Err(vm.raise_arg("attempt to take negative size")); } let v: Vec<Value> = slots(vm, s).iter().take(n as usize).map(|x| x.get()).collect(); Ok(vm.ary_new(v)) }),
