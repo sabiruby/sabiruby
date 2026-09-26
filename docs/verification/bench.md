@@ -380,6 +380,98 @@ tooling were alive during it and its best-to-median spread averaged 1.00% agains
 §4's own rule — over 1%, take it again — does not get an exception because the first number looked fine.
 
 
+### Waiting inside blocks: `wait-anywhere` (`3170b63` → `f3c7d9c`, 2026-09-26)
+
+What a task being able to wait inside `instance_exec`, `Method#call`, `Class#new`, `index { }`, `sort { }`, a
+Hash's default proc and the rest costs where nothing waits ([`../design/wait-anywhere.md`](../design/wait-anywhere.md);
+the whole story, with the builds that were measured and dropped, is
+[`../worklog/2026-09-26-wait-anywhere.md`](../worklog/2026-09-26-wait-anywhere.md), "計測").
+
+**How.** Interleaved A/B, 5 runs a round, `--core 2`, the order of A and B swapped every other round
+(`bench_ab.sh` always runs A first, and the A/A rounds leaned about +0.8% towards B). A number is the best of all
+runs of a side over all rounds. The 27 benchmarks of `bench/` and 21 micro-benchmarks (`bench/micro-wait/`: the
+paths the change touched and a few it did not). Another job ran on the PC from 13:24 on; `vmstat -t 10` was kept
+for the whole session and every round that saw the PC under 90% idle was dropped. The TSVs are in
+`bench/results/wait-anywhere/`.
+
+**The line.** Measured first, on the old binary against itself (A/A): 3 rounds of each set. The largest difference
+between the two sides was **2.7%** for the micro-benchmarks and **6.6%** for `bench/` (`gc_churn`; within one round,
+values up to 56.6% occur — `vmo_index` hit a slow window). A benchmark counts as slower when its difference is above
+that and every round points the same way. Nothing narrower has a measurement behind it on this PC.
+
+Micro-benchmarks, 2 rounds (ms):
+
+| benchmark | `3170b63` | `f3c7d9c` | change | rounds |
+|---|---:|---:|---:|---|
+| `m_array_new_block` | 143.397 | 140.954 | -1.7% | -1.7 -1.1 |
+| `m_catch` | 145.956 | 145.189 | -0.5% | -0.6 -0.5 |
+| `m_class_exec` | 82.428 | 76.216 | -7.5% | -7.1 -7.5 |
+| `m_class_new_block` | 54.815 | 53.630 | -2.2% | -5.6 -2.2 |
+| `m_hash_default_proc` | 73.695 | 54.797 | -25.6% | -25.6 -25.7 |
+| `m_hash_hit` | 141.146 | 135.209 | -4.2% | -4.3 -4.2 |
+| `m_hash_miss` | 174.862 | 138.392 | -20.9% | -21.1 -20.9 |
+| `m_index_arg` | 297.531 | 297.234 | -0.1% | +2.1 -0.1 |
+| `m_index_block` | 261.830 | 227.304 | -13.2% | -11.4 -13.2 |
+| `m_instance_eval` | 88.460 | 81.664 | -7.7% | -6.4 -7.7 |
+| `m_instance_exec` | 92.701 | 84.685 | -8.6% | -9.4 -8.6 |
+| `m_method_call` | 83.976 | 80.906 | -3.7% | -3.7 -3.7 |
+| `m_method_loop` | 81.839 | 84.226 | +2.9% | +3.5 +0.4 |
+| `m_new_plain` | 149.426 | 136.204 | -8.8% | -10.3 -7.2 |
+| `m_new_ruby_init` | 208.861 | 198.521 | -5.0% | -4.8 -7.2 |
+| `m_plain_loop` | 92.957 | 93.608 | +0.7% | +1.7 -1.7 |
+| `m_public_send` | 70.033 | 65.606 | -6.3% | -5.8 -6.3 |
+| `m_send` | 122.514 | 122.789 | +0.2% | +0.2 +1.3 |
+| `m_sort_block` | 272.629 | 294.657 | +8.1% | +8.7 +8.1 |
+| `m_sort_plain` | 242.366 | 250.387 | +3.3% | +3.4 +3.3 |
+| `m_yield_loop` | 161.558 | 163.849 | +1.4% | +2.4 +1.4 |
+
+`bench/`, 2 rounds (ms):
+
+| benchmark | `3170b63` | `f3c7d9c` | change | rounds |
+|---|---:|---:|---:|---|
+| app_json_hash | 1212.711 | 1213.254 | +0.0% | -0.0 +0.0 |
+| app_robot | 1133.318 | 1088.464 | -4.0% | -4.8 -3.5 |
+| app_tak | 1112.499 | 1131.858 | +1.7% | +0.7 +1.7 |
+| bm_ao_render | 5403.696 | 5287.048 | -2.2% | -2.2 -2.2 |
+| bm_fib | 5085.598 | 5161.792 | +1.5% | +1.5 +1.4 |
+| bm_mandel_term | 18.085 | 18.139 | +0.3% | -0.2 +0.3 |
+| bm_so_lists | 933.161 | 987.701 | +5.8% | +5.9 +5.8 |
+| bm_so_mandelbrot | 1274.874 | 1281.721 | +0.5% | +0.5 +0.6 |
+| call_args | 852.549 | 855.283 | +0.3% | -0.6 +0.9 |
+| call_block_yield | 982.258 | 989.729 | +0.8% | +1.0 +0.6 |
+| call_fiber | 879.955 | 892.631 | +1.4% | +1.4 +1.9 |
+| call_kwargs | 806.828 | 811.449 | +0.6% | +0.6 +0.1 |
+| ds_array | 821.587 | 838.725 | +2.1% | +2.2 +1.6 |
+| ds_hash | 218.884 | 213.141 | -2.6% | -2.6 -1.4 |
+| ds_string | 359.940 | 375.795 | +4.4% | +4.4 +3.4 |
+| gc_churn | 364.982 | 361.670 | -0.9% | -0.9 -0.8 |
+| loop_if_branch | 835.354 | 840.954 | +0.7% | +0.5 +2.3 |
+| loop_times | 835.046 | 843.119 | +1.0% | +1.0 +0.3 |
+| loop_while_add | 811.821 | 823.618 | +1.5% | +1.6 -1.4 |
+| mem_retained | 722.646 | 682.305 | -5.6% | -5.6 -5.7 |
+| mem_short_lived | 980.499 | 871.909 | -11.1% | -11.1 -11.4 |
+| vm_optimization_bench | 10698.981 | 11037.000 | +3.2% | +3.2 +2.3 |
+| vmo_arith | 3608.763 | 3648.287 | +1.1% | +1.7 +1.1 |
+| vmo_calls | 2817.807 | 2870.355 | +1.9% | +1.7 +2.2 |
+| vmo_dispatch | 2096.661 | 2158.294 | +2.9% | +2.9 +4.1 |
+| vmo_index | 499.364 | 495.782 | -0.7% | -1.1 -0.7 |
+| vmo_objects | 590.560 | 604.646 | +2.4% | +4.2 -1.5 |
+
+All 27 together: +0.9% and −0.7% in the two rounds (A/A: +0.3%, −0.1%, −0.0%).
+
+- **Over the line: `sort { |x, y| x <=> y }`, +8.1%.** The block now runs in a frame of its own and the sort is a
+  native loop frame that takes one more trip through the instruction loop per comparison (the instruction count goes
+  up by exactly the 2,400,000 comparisons). The same loop written in Ruby was +206%. Left as it is and reported:
+  the author decides between keeping it, putting `sort! { }` back behind a native boundary, or the plan's stage 3.
+- `m_method_loop` +2.9% and `m_sort_plain` +3.3% are over the micro line but run no code the change touched: their
+  instruction counts are the same before and after. `bm_so_lists` +5.8%, `ds_string` +4.4%, `vmo_dispatch` +2.9% and
+  `bm_fib` +1.5% are inside the line and have the same instruction counts too; only the time per instruction moved.
+  Measured one build at a time, `bm_fib` went −0.1%, +3.8%, +4.0%, +0.4%, +4.3% over five builds none of which
+  touched its path: this is where `exec_frames` lands ("The release profile", above), and `f3c7d9c` is one of the
+  better draws.
+- Faster: a Hash's default proc −25.6%, a Hash miss −20.9% (`Class#new` and `Hash#[]` look methods up through the
+  method cache now), `index { }` −13.2%, `Object.new` −8.8%, `instance_exec` −8.6%, `mem_short_lived` −11.1%.
+
 ## Earlier measurements (the five reference benchmarks, best of 3)
 
 

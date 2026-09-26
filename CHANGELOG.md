@@ -21,7 +21,7 @@ nothing is estimated.
   mruby 4.1.0-rc2 (`9eaf698`), and inside `index { }`, `rindex { }`, `Array.new(n) { }`,
   `sort { }`, `delete(x) { }`, a Hash's default proc, `Hash#default(k)`, `Class.new { }`,
   `Module.new { }`, `Struct.new { }`, `Data.define { }`, `catch { }` and `Regexp#match { }`,
-  where mruby cannot (`da68a3a`).
+  where mruby cannot (`da68a3a`, `33cc076`, `f3c7d9c`).
 - `sleep(n)`, `usleep` and `sleep_ms` in a task inside a native boundary raise `RuntimeError`;
   they returned at once without waiting (`9eaf698`).
 - The error of a wait inside a native boundary names it: `can't wait inside Array#join's call to
@@ -33,10 +33,12 @@ nothing is estimated.
   `Foo.new { break 1 }` with an `initialize` that yields is `1`, was the object).
 - Recursion through `instance_exec` and its relatives stops at 512 frames
   (`SystemStackError`), not at 96 nested loops.
-- `Vm::catch_tags` (`#[doc(hidden)]`) is gone: `catch` is the reference's bytecode method and
-  `throw` finds it on the frame stack (`Vm::catch_proc`).
+- `Vm::catch_tags` (`#[doc(hidden)]`) is gone: `catch` runs its block from a frame of its own
+  and `throw` finds that frame on the frame stack (`33cc076`).
 
-Benchmarks before and after: **pending** (the worklog will carry them).
+Speed ([`docs/verification/bench.md`](docs/verification/bench.md), "Waiting inside blocks"): the 27
+benchmarks together +0.9% and −0.7% in two rounds; `sort { }` with a light block +8.1%; a Hash's
+default proc −25.6%, a Hash miss −20.9%, `index { }` −13.2%, `instance_exec` −8.6%.
 
 ## 0.6.1 — 2026-09-22
 

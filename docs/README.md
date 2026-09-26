@@ -215,7 +215,9 @@ hash calls `eql?` on every entry, SabiRuby compares hash codes first — with th
 `instance_exec` and its relatives, `Method#call`, `public_send`, `Class#new` and the string `eval`s
 leaving a frame where the SEND's value goes instead of running a nested loop (the reference's
 `mrb_exec_irep`); `sleep(n)` inside a boundary raising instead of returning at once; and the error
-that names the boundary, worked out from the frame below it only when it is raised.
+that names the boundary, worked out from the frame below it only when it is raised; then the
+measurements: the A/A that set the line, the Ruby loops that were 2.5–3 times slower and the native
+loop frames that replaced them, `Cci::KeepSelf`, and the one path left over the line (`sort { }`, +8%).
 
 ## Where things were (before 2026-09-15)
 
