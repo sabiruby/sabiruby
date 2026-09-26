@@ -2165,7 +2165,8 @@ impl Vm {
         let p = match blk {
             Value::Obj(o) if matches!(self.heap.get(o).kind, ObjKind::Proc(_)) => o,
             Value::Nil => return Err(self.raise(self.core.local_jump_error, "no block given (yield)")),
-            _ => return Err(self.raise_type("wrong type (expected Proc)")),
+            // mruby `check_block` in mrb_yield / mrb_yield_argv (src/vm.c)
+            _ => return Err(self.raise_type("not a block")),
         };
         let pd = self.heap.proc_data(p);
         let self_ = match pd.env {
@@ -2185,7 +2186,8 @@ impl Vm {
     pub fn call_block_with_self_kw(&mut self, blk: Value, self_: Value, args: &[Value], kw: Option<Value>) -> VmResult<Value> {
         let p = match blk {
             Value::Obj(o) if matches!(self.heap.get(o).kind, ObjKind::Proc(_)) => o,
-            _ => return Err(self.raise_type("wrong type (expected Proc)")),
+            // mruby `check_block` in mrb_yield_with_class (src/vm.c)
+            _ => return Err(self.raise_type("not a block")),
         };
         // `mrb_singleton_class_ptr` is NULL for an Integer/Float/Symbol: the frame then has no
         // target class of its own and OP_CLASS falls back to the block's (its env's) class.
@@ -2206,7 +2208,8 @@ impl Vm {
     pub(crate) fn exec_block_with_self(&mut self, blk: Value, self_: Value, args: &[Value], kw: Option<Value>) -> VmResult<Value> {
         let p = match blk {
             Value::Obj(o) if matches!(self.heap.get(o).kind, ObjKind::Proc(_)) => o,
-            _ => return Err(self.raise_type("wrong type (expected Proc)")),
+            // mruby `check_block` in eval_under (instance_eval/class_eval with a block) (src/vm.c)
+            _ => return Err(self.raise_type("not a block")),
         };
         let tc = match self_ {
             Value::Obj(o) if self.heap.is_class(o) => Some(o),
@@ -2223,7 +2226,8 @@ impl Vm {
         let p = match blk {
             Value::Obj(o) if matches!(self.heap.get(o).kind, ObjKind::Proc(_)) => o,
             Value::Nil => return Err(self.raise(self.core.local_jump_error, "no block given (yield)")),
-            _ => return Err(self.raise_type("wrong type (expected Proc)")),
+            // mruby `check_block` in mrb_yield (src/vm.c)
+            _ => return Err(self.raise_type("not a block")),
         };
         let pd = self.heap.proc_data(p);
         let (env, ptc) = (pd.env, pd.target_class);
@@ -2523,7 +2527,8 @@ impl Vm {
         if self.ci.len() >= CALL_LEVEL_MAX { return Err(self.raise(self.core.system_stack_error, "stack level too deep")); }
         let p = match self.stack[base + 1].get() {
             Value::Obj(o) if matches!(self.heap.get(o).kind, ObjKind::Proc(_)) => o,
-            _ => return Err(self.raise_type("wrong type (expected Proc)")),
+            // mruby `check_block` in mrb_yield, which the native loops of the reference call (src/vm.c)
+            _ => return Err(self.raise_type("not a block")),
         };
         let nbase = base + LOOP_RESULT;
         if self.stack.len() <= nbase + n + 1 { self.stack.resize(nbase + n + 2, Slot::NIL); }

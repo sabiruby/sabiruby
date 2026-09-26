@@ -300,3 +300,14 @@ fn a_closure_method_missing_reached_by_funcall_is_behind_the_native_that_called_
     ));
     assert_eq!(out, "\"can't cross C function boundary\"\n1\n:done\n");
 }
+
+#[test]
+fn a_block_that_is_not_a_proc_is_refused_as_the_reference_refuses_it() {
+    // mruby's `mrb_yield`, `mrb_yield_with_class` and `instance_eval`/`class_eval` with a block
+    // go through `check_block` (src/vm.c): TypeError "not a block" for a value that is not a Proc
+    let mut vm = Vm::with_mrblib().expect("vm");
+    let e = vm.call_block(Value::Int(1), &[]).expect_err("not a block");
+    assert_eq!(vm.describe_error(&e), "not a block (TypeError)");
+    let e = vm.call_block_with_self(Value::Int(1), Value::Nil, &[]).expect_err("not a block");
+    assert_eq!(vm.describe_error(&e), "not a block (TypeError)");
+}
