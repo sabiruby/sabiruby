@@ -80,7 +80,7 @@ benchmarks together +0.9% and −0.7% in two rounds; a Hash's default proc −25
   `NoMethodError` (`__method_recursive?`); `Kernel#__method_recursive?` and
   `Enumerable.__update_hash` are there now, as in mruby (`39be934`).
 - A closure `method_missing` reached by a SEND sees `Vm::native_mid` as `:method_missing`; it
-  saw the name of the native called before it.
+  saw the name of the native called before it (`91ca672`).
 
 `sabiruby` — for hosts that run many scripts and replace them
 ([`docs/plans/release-0.7-plan.md`](docs/plans/release-0.7-plan.md) S4–S6,

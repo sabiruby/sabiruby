@@ -240,6 +240,12 @@ what is still different; the scheduler's queues as ordered maps so that a waitin
 nothing per turn, with the walked elements counted before and after; and handing a program's
 ireps back (`Vm::unload`) where nothing can still run them.
 
+[2026-09-26-release-0.7-c](worklog/2026-09-26-release-0.7-c.md) is stage C of `release-0.7-plan.md`
+(Japanese): `Enumerable#hash`, which needed two natives the core mrblib calls, and the nil-block
+error that `check_block` gives; merging stage B into stage A (no conflict in the VM; what the merge
+had to be checked for), the `native_mid` of a closure `method_missing` reached by a SEND, the
+decision that unloaded irep numbers are never reused, and every check on the merged tree.
+
 ## Where things were (before 2026-09-15)
 
 Every document above sat directly under `docs/`; references in older commits, in the book's notes
