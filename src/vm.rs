@@ -2129,8 +2129,19 @@ impl Vm {
                         let mut nargs = vec![Value::Sym(mid)];
                         nargs.extend_from_slice(args);
                         if let Method::Closure(f) = &m {
+                            // called as the closure branch above calls one: nested in the
+                            // caller's Rust frame, so not "called by a SEND" (a fiber must not
+                            // yield from it; mruby's `mrb_funcall` pushes a CINFO_DIRECT frame)
+                            if self.native_depth >= NATIVE_DEPTH_MAX { return Err(self.raise(self.core.system_stack_error, "stack level too deep")); }
                             let f = f.clone();
-                            return self.call_closure(&f, recv, &nargs, blk);
+                            self.native_mid = Some(mm);
+                            self.native_depth += 1;
+                            let direct = core::mem::replace(&mut self.direct_send, false);
+                            let r = self.call_closure(&f, recv, &nargs, blk);
+                            self.direct_send = direct;
+                            self.native_depth -= 1;
+                            self.orphan_block_of_native(blk);
+                            return r;
                         }
                         if let Method::Ruby(p) = m {
                             let kw = match (self.pending_kw, args.last()) { (Some(k), Some(l)) if !k.is_nil() && k == *l => Some(k), _ => None };

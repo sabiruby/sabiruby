@@ -276,3 +276,27 @@ fn without_debug_information_there_is_no_line_and_no_backtrace() {
     // the frames `backtrace` leaves out are the frames this has no line for
     assert_eq!(*seen.lock().unwrap(), [(None, 0)]);
 }
+
+#[test]
+fn a_closure_method_missing_reached_by_funcall_is_behind_the_native_that_called_it() {
+    // `relay` is a native called by a SEND; it calls `funcall`, which finds no `nope` and hands
+    // the call to Ghost's `method_missing`, a closure. That closure runs nested inside `relay`'s
+    // Rust frame, so it may not yield the fiber: mruby's `mrb_funcall` pushes a CINFO_DIRECT
+    // frame and `mrb_fiber_yield`'s `fiber_check_cfunc` raises on it
+    // (mrbgems/mruby-fiber/src/fiber.c). The same closure called by a SEND of its own yields.
+    let mut vm = Vm::with_mrblib().expect("vm");
+    let object = vm.core.object;
+    let ghost = vm.define_class("Ghost", object);
+    vm.define_closure(ghost, "method_missing", |vm, _self_, _args, _blk| vm.fiber_yield(&[Value::Int(1)]));
+    vm.define_closure(object, "relay", |vm, _self_, args, _blk| {
+        let nope = vm.intern("nope");
+        vm.funcall(args[0], nope, &[], Value::Nil)
+    });
+    let out = run(&mut vm, concat!(
+        "f = Fiber.new { relay(Ghost.new); :done }\n",
+        "begin; p f.resume; rescue FiberError => e; p e.message; end\n",
+        "g = Fiber.new { Ghost.new.nope; :done }\n",
+        "p g.resume, g.resume\n",
+    ));
+    assert_eq!(out, "\"can't cross C function boundary\"\n1\n:done\n");
+}
