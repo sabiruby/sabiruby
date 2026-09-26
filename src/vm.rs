@@ -2860,16 +2860,17 @@ impl Vm {
     /// delivered to the register the new context waits on (or, when the fiber
     /// that yielded had been resumed by native code, the run loop is told to
     /// return it) and the caller must not write it to its own register.
-    fn call_native_direct(&mut self, f: crate::object::NativeFn, mid: Option<Sym>, recv: Value, args: &[Value], blk: Value, ret_reg: usize) -> VmResult<(Value, bool)> {
+    fn call_native_direct(&mut self, f: crate::object::NativeFn, recv: Value, args: &[Value], blk: Value, ret_reg: usize) -> VmResult<(Value, bool)> {
         let ctx0 = self.cur;
         let direct = core::mem::replace(&mut self.direct_send, true);
         let reg0 = core::mem::replace(&mut self.native_ret_reg, ret_reg);
         let r = self.call_native(f, recv, args, blk);
-        if r.is_err() { self.keep_native_backtrace(&r, Some(f), mid, ctx0); }
         self.native_ret_reg = reg0;
         self.direct_send = direct;
         self.orphan_block_of_native(blk);
-        let v = r?;
+        // nothing but `r` and `ctx0` is kept across the call: the native's name for its backtrace
+        // is read back from the call instruction, on the error path only (`native_raised`)
+        let v = match r { Ok(v) => v, Err(e) => return Err(self.native_raised(e, ctx0)) };
         if self.cur == ctx0 { return Ok((v, false)); }
         if self.loop_exit.is_some() { return Ok((v, true)); }
         self.deliver(v);
@@ -2899,16 +2900,17 @@ impl Vm {
     }
 
     /// [`Vm::call_native_direct`](Vm::call_native) for a closure method.
-    fn call_closure_direct(&mut self, f: &crate::object::NativeClosure, mid: Option<Sym>, recv: Value, args: &[Value], blk: Value, ret_reg: usize) -> VmResult<(Value, bool)> {
+    fn call_closure_direct(&mut self, f: &crate::object::NativeClosure, recv: Value, args: &[Value], blk: Value, ret_reg: usize) -> VmResult<(Value, bool)> {
         let ctx0 = self.cur;
         let direct = core::mem::replace(&mut self.direct_send, true);
         let reg0 = core::mem::replace(&mut self.native_ret_reg, ret_reg);
         let r = self.call_closure(f, recv, args, blk);
-        if r.is_err() { self.keep_native_backtrace(&r, None, mid, ctx0); }
         self.native_ret_reg = reg0;
         self.direct_send = direct;
         self.orphan_block_of_native(blk);
-        let v = r?;
+        // nothing but `r` and `ctx0` is kept across the call: the native's name for its backtrace
+        // is read back from the call instruction, on the error path only (`native_raised`)
+        let v = match r { Ok(v) => v, Err(e) => return Err(self.native_raised(e, ctx0)) };
         if self.cur == ctx0 { return Ok((v, false)); }
         if self.loop_exit.is_some() { return Ok((v, true)); }
         self.deliver(v);
@@ -3242,12 +3244,28 @@ impl Vm {
     /// name is gone. `Kernel#raise` is not named, as the reference's clears its own
     /// (`mrb_f_raise`: `ci->mid = 0`). Only where the native is still in the context it was
     /// called from: one that switched fibers left its frames behind.
+    ///
+    /// The native's name is read back from the frame that called it, whose `pc` is still past the
+    /// call instruction and whose receiver register still holds the receiver (as
+    /// `Vm::boundary_name` reads them): the method that name finds is the native that raised. A
+    /// name that finds nothing went to `method_missing`. Passing the name down the call instead
+    /// kept it alive across every native call, and that cost a SEND-heavy loop 5-13%
+    /// (`docs/worklog/2026-09-27-release-0.7-bench.md`).
     #[cold]
-    fn keep_native_backtrace(&mut self, r: &VmResult<Value>, f: Option<crate::object::NativeFn>, mid: Option<Sym>, ctx0: usize) {
-        let Err(VmError::Raise(Value::Obj(e))) = r else { return };
-        if self.cur != ctx0 || !matches!(self.heap.get(*e).kind, ObjKind::Exception) { return; }
-        let raise = f.is_some_and(|f| core::ptr::fn_addr_eq(f, crate::builtins::kernel::raise as crate::object::NativeFn));
-        self.keep_backtrace(*e, if raise { None } else { mid });
+    #[inline(never)]
+    fn native_raised(&mut self, err: VmError, ctx0: usize) -> VmError {
+        let VmError::Raise(Value::Obj(e)) = err else { return err };
+        if self.cur != ctx0 || !matches!(self.heap.get(e).kind, ObjKind::Exception) { return err; }
+        let Some(top) = self.ci.last().copied() else { return err };
+        let Some((a, mid)) = self.send_before(top.irep, top.pc) else { return err };
+        let recv = self.stack.get(top.base + a).map(|s| s.get()).unwrap_or(Value::Nil);
+        let named = match self.find_method(self.class_of(recv), mid) {
+            None => Some(self.s.method_missing),
+            Some((Method::Native(f), _)) if core::ptr::fn_addr_eq(f, crate::builtins::kernel::raise as crate::object::NativeFn) => None,
+            Some(_) => Some(mid),
+        };
+        self.keep_backtrace(e, named);
+        err
     }
 
     /// The text of a record [`Vm::backtrace_record`] made, in the format `caller` uses. Frames
@@ -5231,7 +5249,7 @@ impl Vm {
                             return self.op_send_vis(base, a, mm, c, has_blk, false, false);
                         }
                         let r = match m {
-                            Method::Closure(f) => { let kd = self.kdict_nonempty(kd); if let Some(k) = kd { nargs.push(k); } self.native_mid = Some(mm); let (v, sw) = self.call_closure_direct(&f, Some(mm), recv, &nargs, blk, base + a)?; if sw { return Ok(()); } v }
+                            Method::Closure(f) => { let kd = self.kdict_nonempty(kd); if let Some(k) = kd { nargs.push(k); } self.native_mid = Some(mm); let (v, sw) = self.call_closure_direct(&f, recv, &nargs, blk, base + a)?; if sw { return Ok(()); } v }
                             _ => Value::Nil,
                         };
                         self.stack[base + a] = Slot::from(r);
@@ -5258,7 +5276,7 @@ impl Vm {
                 }
                 let (args, kd) = self.native_call_args(base + a, argc, kw);
                 let saved = self.pending_kw.replace(kd.unwrap_or(Value::Nil));
-                let r = self.call_native_direct(f, Some(mid), recv, &args, blk, base + a);
+                let r = self.call_native_direct(f, recv, &args, blk, base + a);
                 self.pending_kw = saved;
                 let (v, switched) = r?;
                 if !switched { self.stack[base + a] = Slot::from(v); }
@@ -5268,7 +5286,7 @@ impl Vm {
                 let f = match self.closure_of(owner, mid) { Some(f) => f, None => return Err(VmError::Internal("closure vanished between lookup and call".into())) };
                 let (args, kd) = self.native_call_args(base + a, argc, kw);
                 let saved = self.pending_kw.replace(kd.unwrap_or(Value::Nil));
-                let r = self.call_closure_direct(&f, Some(mid), recv, &args, blk, base + a);
+                let r = self.call_closure_direct(&f, recv, &args, blk, base + a);
                 self.pending_kw = saved;
                 let (v, switched) = r?;
                 if !switched { self.stack[base + a] = Slot::from(v); }
