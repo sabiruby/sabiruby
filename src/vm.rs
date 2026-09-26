@@ -90,12 +90,52 @@ impl Context {
 /// Index of the root context in `Vm::contexts`.
 pub const ROOT: usize = 0;
 
+/// One of the scheduler's four queues, in the order its tasks come out: the ready one by
+/// priority and first come first served within one priority, the others first come first
+/// served. Each task knows its key (`TaskData::queued`), so taking one out, putting one back
+/// and finding the head cost the same with ten tasks queued or ten thousand
+/// (`docs/plans/host-scale-plan.md`, H1). It was a `Vec` walked from its head until 0.7.0.
+#[derive(Default)]
+pub struct TaskQueue {
+    tasks: alloc::collections::BTreeMap<(u8, u64), ObjId>,
+}
+
+impl TaskQueue {
+    /// How many tasks are in the queue.
+    pub fn len(&self) -> usize { self.tasks.len() }
+    /// Whether the queue is empty.
+    pub fn is_empty(&self) -> bool { self.tasks.is_empty() }
+    /// The task that comes out next.
+    pub fn first(&self) -> Option<ObjId> { self.tasks.first_key_value().map(|(_, o)| *o) }
+    /// The tasks in the order they come out.
+    pub fn iter(&self) -> impl Iterator<Item = ObjId> + '_ { self.tasks.values().copied() }
+    pub(crate) fn insert(&mut self, key: (u8, u64), task: ObjId) { self.tasks.insert(key, task); }
+    pub(crate) fn remove(&mut self, key: &(u8, u64)) { self.tasks.remove(key); }
+    pub(crate) fn retain(&mut self, mut keep: impl FnMut(ObjId) -> bool) { self.tasks.retain(|_, o| keep(*o)); }
+}
+
 /// mruby-task's scheduler state (`mrb_task_state`). The queues hold the Task objects, which is
 /// what keeps a task the program dropped every other reference to alive.
 #[derive(Default)]
 pub struct TaskState {
     /// dormant, ready, waiting, suspended — the ready one sorted by priority, FIFO within one
-    pub queues: [Vec<ObjId>; 4],
+    pub queues: [TaskQueue; 4],
+    /// The order tasks were put in a queue: the second half of a queue's key, so that tasks of one
+    /// priority come out first come first served, and what orders the tasks a wake-up makes ready
+    /// (the order they entered the waiting queue, as the reference's walk of that queue gives).
+    pub(crate) seq: u64,
+    /// The waiting tasks that have a deadline — a sleep, or a `Task::Queue#pop` with a timeout —
+    /// by the tick it falls on (counted from the start, so it does not wrap) and their place in
+    /// the waiting queue. A tick looks only at the ones that are due.
+    pub(crate) sleepers: alloc::collections::BTreeMap<(u64, u64), ObjId>,
+    /// The waiting tasks that wait for an object — the `Task::Queue` they pop, the task they
+    /// join — by that object and their place in the waiting queue. A push wakes the first one
+    /// on its queue without looking at the others.
+    pub(crate) waiters: alloc::collections::BTreeMap<(ObjId, u64), ObjId>,
+    /// `tick` counted without wrapping, and the value of `tick` it was last brought up to date
+    /// with (`ext_task::abs_tick`): what the deadlines in `sleepers` are counted in.
+    pub(crate) tick_abs: u64,
+    pub(crate) tick_seen: u32,
     /// ticks since the scheduler started (`MRB_TICK_UNIT` milliseconds apiece)
     pub tick: u32,
     /// the earliest tick a waiting task asked to be woken at; `u32::MAX` where none did
@@ -160,6 +200,10 @@ pub struct TaskState {
     pub forced: Option<u64>,
     /// `Task::Overrun`
     pub overrun_class: Option<ObjId>,
+    /// Queue elements the scheduler has looked at or moved one by one, for the tests that check
+    /// that a waiting task costs nothing per turn (`tests/task_scale.rs`). Not a measure of time.
+    #[doc(hidden)]
+    pub walked: u64,
 }
 
 /// Instructions a tick lasts where nothing else drives one (`MRB_TICK_UNIT` has no meaning
@@ -3217,7 +3261,7 @@ impl Vm {
         // task a program can still reach, as the reference's do.
         {
             let heap = &self.heap;
-            self.task.queues[0].retain(|o| heap.is_marked(*o));
+            self.task.queues[0].retain(|o| heap.is_marked(o));
         }
         // A context nothing reached (its Fiber object is garbage) can never run
         // again. The environments of its frames that are still reachable (a
@@ -3303,7 +3347,7 @@ impl Vm {
         // to run no more, so it is held weakly and dropped from the queue once the collection
         // finds nothing else naming it (`Vm::gc_collect`, `docs/design/gems.md`).
         for q in &self.task.queues[1..] {
-            for id in q { h.mark_id(*id, work); }
+            for id in q.iter() { h.mark_id(id, work); }
         }
         for t in [self.task.running, self.task.main].into_iter().flatten() { h.mark_id(t, work); }
     }

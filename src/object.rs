@@ -552,6 +552,12 @@ pub struct TaskData {
     /// instructions this task has run, for a host that shows what a script spends
     /// (`Vm::task_instructions`)
     pub instructions: u64,
+    /// where the task is in the scheduler: the queue and its key there (`TaskState::queues`),
+    /// its entry among the sleepers with a deadline and among the tasks waiting for an object
+    /// (`TaskState::sleepers`, `TaskState::waiters`). `None` where it is in none of them.
+    pub(crate) queued: Option<(usize, (u8, u64))>,
+    pub(crate) sleep_key: Option<(u64, u64)>,
+    pub(crate) wait_key: Option<(ObjId, u64)>,
 }
 
 /// Why a `Break` object is unwinding the stack (mruby `RBREAK_TAG_*`).

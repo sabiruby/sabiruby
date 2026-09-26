@@ -578,6 +578,19 @@ How a gem of the reference tree becomes part of SabiRuby, and what each ported o
     root context, not while an exception is in flight (the catch handler must consume it first,
     or a rescued exception would be swallowed into the task's result), and not across a native
     frame (`Vm::fiber_check_native`, which is `task_across_c_boundary`).
+  * **A waiting task costs nothing per turn** (0.7.0; `docs/plans/host-scale-plan.md`, H1). The
+    reference's queues are linked lists it walks: a tick walks the waiting queue for a due
+    deadline, a push walks it for the queue's readers, putting a task back walks the ready queue
+    for its priority. Here each queue is an ordered map keyed by (priority, arrival)
+    (`TaskQueue`), each task knows its key, and two indexes cover the walks: the waiting tasks
+    with a deadline by that deadline (`TaskState::sleepers`), and those waiting for an object —
+    a `Task::Queue`, a task being joined — by that object (`TaskState::waiters`). What a turn
+    looks at no longer grows with the tasks that are only waiting (`tests/task_scale.rs` counts
+    it: a push and a tick each look at 1 task with 100 or 1000 others waiting, where they looked
+    at 406 and 4006). What a program sees is the same, and that test fixes it first: a wake-up
+    makes tasks ready in the order they entered the waiting queue (not the order of their
+    deadlines), a task put back goes last among its priority, `Task.list` and `Task.stat` list
+    each queue in that order.
   * **An unhandled exception is the task's result**, so the scheduler carries on and `Task#value`
     answers the exception object (`mrb->task.exception_as_result`).
   * **A task that is closed or terminated while suspended takes its environments with it.** Its

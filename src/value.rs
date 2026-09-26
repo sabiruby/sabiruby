@@ -3,7 +3,7 @@ use crate::symbol::Sym;
 extern crate alloc;
 
 /// Handle to a heap object (index into [`crate::object::Heap`]).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ObjId(pub u32);
 
 /// A Ruby value. Immediates are stored inline; everything else is a heap
