@@ -262,7 +262,7 @@ fn re_initialize(vm: &mut Vm, self_: Value, pattern: Value, flags: u32) -> VmRes
         for nc in &pat.named_captures {
             let name = vm.str_new(&nc.name);
             if let Some(o) = name.obj() { vm.heap.get_mut(o).frozen = true; }
-            let cur = vm.hash_get(h, name).unwrap_or(Value::Nil);
+            let cur = vm.hash_get(h, name)?.unwrap_or(Value::Nil);
             let list = if cur.is_nil() {
                 let a = vm.ary_new(vec![]);
                 vm.hash_set(h, name, a)?;

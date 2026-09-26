@@ -4183,7 +4183,8 @@ impl Vm {
                 Op::Enter => { self.op_enter(a as u32)?; }
                 Op::Karg => {
                     let k = Value::Sym(self.ireps[irep].syms[b]);
-                    let v = match self.kidx_at(top).and_then(|ki| self.hash_delete(self.stack[ki].get(), k)) {
+                    let found = match self.kidx_at(top) { Some(ki) => self.hash_delete(self.stack[ki].get(), k)?, None => None };
+                    let v = match found {
                         Some(v) => v,
                         None => { let n = self.sym_name(self.ireps[irep].syms[b]); return Err(self.raise_arg(&format!("missing keyword: {n}"))); }
                     };
@@ -4191,7 +4192,7 @@ impl Vm {
                 }
                 Op::KeyP => {
                     let k = Value::Sym(self.ireps[irep].syms[b]);
-                    let has = match self.kidx_at(top) { Some(ki) => self.hash_get(self.stack[ki].get(), k).is_some(), None => false };
+                    let has = match self.kidx_at(top) { Some(ki) => self.hash_get(self.stack[ki].get(), k)?.is_some(), None => false };
                     setreg!(a, Value::bool(has));
                 }
                 Op::Keyend => {
@@ -4564,15 +4565,17 @@ impl Vm {
     /// Key equality for lookups: `eql?` (natively for immediates and Strings).
     pub fn key_eql(&mut self, a: Value, b: Value) -> VmResult<bool> {
         match (a, b) {
-            (Value::Obj(x), _) if !matches!(self.heap.get(x).kind, ObjKind::String(_)) => {
-                let eql = self.s.eql;
-                self.native_active += 1; // as in key_hash
-                let r = self.funcall(a, eql, &[b], Value::Nil);
-                self.native_active -= 1;
-                Ok(r?.truthy())
-            }
+            (Value::Obj(x), _) if !matches!(self.heap.get(x).kind, ObjKind::String(_)) => self.key_eql_send(a, b),
             _ => Ok(self.eql(a, b)),
         }
+    }
+    /// The half of [`Vm::key_eql`] that sends `eql?`, which can be Ruby.
+    fn key_eql_send(&mut self, a: Value, b: Value) -> VmResult<bool> {
+        let eql = self.s.eql;
+        self.native_active += 1; // as in key_hash
+        let r = self.funcall(a, eql, &[b], Value::Nil);
+        self.native_active -= 1;
+        Ok(r?.truthy())
     }
     /// Makes the cached hashes match the entries (after wholesale edits of `entries`).
     ///
@@ -4605,18 +4608,38 @@ impl Vm {
     /// The candidate walk of [`Vm::hash_index`], for a caller that has already made the
     /// cached codes current and hashed the key. `hash_set` needs the code a second time to
     /// store it, and hashing a key can run Ruby, so it must not be asked for twice.
+    ///
+    /// An `eql?` that is Ruby can change the hash under the walk. The walk itself stays in
+    /// bounds (`next_candidate` reads the entries as they are then), but, as mruby 4.1.0-rc2
+    /// does (`H_CHECK_MODIFIED` around `obj_eql`, GHSA-2778-fvwg-5m8w), a lookup whose
+    /// `eql?` added or removed entries raises `RuntimeError` ("hash modified") instead of
+    /// answering from a hash that no longer holds what it walked.
     fn hash_index_at(&mut self, o: ObjId, k: Value, kh: i64) -> VmResult<Option<usize>> {
-        let mut cand = match &self.heap.get(o).kind { ObjKind::Hash(hd) => hd.first_candidate(kh), _ => None };
+        let (mut cand, len) = match &self.heap.get(o).kind { ObjKind::Hash(hd) => (hd.first_candidate(kh), hd.len()), _ => (None, 0) };
         while let Some((p, ek)) = cand {
-            if self.key_eql(k, ek.get())? { return Ok(Some(p)); }
+            let eq = match k {
+                Value::Obj(x) if !matches!(self.heap.get(x).kind, ObjKind::String(_)) => {
+                    let eq = self.key_eql_send(k, ek.get())?;
+                    let now = match &self.heap.get(o).kind { ObjKind::Hash(hd) => Some(hd.len()), _ => None };
+                    if now != Some(len) { return Err(self.raise(self.core.runtime_error, "hash modified")); }
+                    eq
+                }
+                _ => self.eql(k, ek.get()),
+            };
+            if eq { return Ok(Some(p)); }
             cand = match &self.heap.get(o).kind { ObjKind::Hash(hd) => hd.next_candidate(p, kh), _ => None };
         }
         Ok(None)
     }
-    pub fn hash_get(&mut self, h: Value, k: Value) -> Option<Value> {
-        match self.hash_index(h, k) {
-            Ok(Some(i)) => match &self.heap.get(h.obj().unwrap()).kind { ObjKind::Hash(hd) => hd.entries().get(i).map(|e| e.1.get()), _ => None },
-            _ => None,
+    /// `h[k]` without the default: the value stored under `k`, or `None`.
+    ///
+    /// Looking a key up can run Ruby (the key's `hash` and `eql?`), and what that raises is
+    /// returned, as mruby's `mrb_hash_get` raises it. A host that wants the old "not found
+    /// on any error" can write `.ok().flatten()`.
+    pub fn hash_get(&mut self, h: Value, k: Value) -> VmResult<Option<Value>> {
+        match self.hash_index(h, k)? {
+            Some(i) => Ok(match &self.heap.get(h.obj().unwrap()).kind { ObjKind::Hash(hd) => hd.entries().get(i).map(|e| e.1.get()), _ => None }),
+            None => Ok(None),
         }
     }
     /// `h[k] = v`.
@@ -4785,7 +4808,7 @@ impl Vm {
             // `mrb_hash_get`: a Hash without the key answers through `default`/`default_proc`.
             // A default proc is left to the send, where `Hash#[]` runs it in a frame of its own
             // (no native boundary, so a task can wait inside it); the rest is answered here.
-            IDX_HASH_AREF => match self.hash_get(recv, idx) {
+            IDX_HASH_AREF => match self.hash_get(recv, idx)? {
                 Some(v) => v,
                 // a default proc runs in a frame where this instruction's value goes
                 None => match self.hash_miss_at(recv, o, idx, base + a)? { Some(v) => v, None => return Ok(false) },
@@ -4816,7 +4839,7 @@ impl Vm {
         if !self.idx_armed(slot, cls) { return fallback(self); }
         let v = match slot {
             IDX_ARY_AREF => self.heap.array(o).and_then(|l| l.first().map(|e| e.get())).unwrap_or(Value::Nil),
-            IDX_HASH_AREF => match self.hash_get(recv, Value::Int(0)) {
+            IDX_HASH_AREF => match self.hash_get(recv, Value::Int(0))? {
                 Some(v) => v,
                 None => {
                     if self.stack.len() <= base + a + 1 { self.stack.resize(base + a + 2, Slot::NIL); }
@@ -5000,10 +5023,12 @@ impl Vm {
         let n = ci.n as usize;
         Some(ci.base + (if n == 15 { 1 } else { n }) + 1)
     }
-    pub fn hash_delete(&mut self, h: Value, k: Value) -> Option<Value> {
-        let o = h.obj()?;
-        let pos = self.hash_index(h, k).ok()??;
-        match &mut self.heap.get_mut(o).kind { ObjKind::Hash(hd) => Some(hd.remove_entry(pos).1.get()), _ => None }
+    /// Removes `k` from the hash and returns its value, or `None` if it was not there. What the
+    /// lookup raises (the key's `hash`/`eql?`, [`Vm::hash_get`]) is returned.
+    pub fn hash_delete(&mut self, h: Value, k: Value) -> VmResult<Option<Value>> {
+        let o = match h.obj() { Some(o) => o, None => return Ok(None) };
+        let pos = match self.hash_index(h, k)? { Some(p) => p, None => return Ok(None) };
+        Ok(match &mut self.heap.get_mut(o).kind { ObjKind::Hash(hd) => Some(hd.remove_entry(pos).1.get()), _ => None })
     }
 
     /// Positional arguments of a SEND at `nbase` (`argc == 15` = packed array).

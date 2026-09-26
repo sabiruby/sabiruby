@@ -310,7 +310,7 @@ fn a_host_table_is_read_back_from_ruby_with_symbol_keys() {
     )).expect("run");
     let one = vm.global_get("$one");
     let key = Value::Sym(vm.intern("scale"));
-    let scale = vm.hash_get(one, key).expect("scale");
+    let scale = vm.hash_get(one, key).expect("lookup").expect("scale");
     assert_eq!(scale, Value::Float(1.0));
     assert_eq!(vm.global_get("$two"), Value::Float(0.0254));
     assert_eq!(vm.global_get("$none"), Value::Nil);

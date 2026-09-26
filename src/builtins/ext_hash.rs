@@ -25,16 +25,16 @@ pub fn init(vm: &mut Vm) {
     let hash = vm.core.hash;
     vm.define_methods(hash, &[
         ("values_at", |vm, s, a, _b| { let mut out = Vec::with_capacity(a.len()); for k in a { out.push(super::hash::hash_value(vm, s, *k)?); } Ok(vm.ary_new(out)) }),
-        ("slice", |vm, s, a, _b| { let h = vm.hash_new(); for k in a { if let Some(v) = vm.hash_get(s, *k) { vm.hash_set(h, *k, v)?; } } Ok(h) }),
+        ("slice", |vm, s, a, _b| { let h = vm.hash_new(); for k in a { if let Some(v) = vm.hash_get(s, *k)? { vm.hash_set(h, *k, v)?; } } Ok(h) }),
         ("slice!", |vm, s, a, _b| {
             check_frozen(vm, s)?;
             let mut remove = vec![];
             for (k, _) in entries(vm, s) { let mut keep = false; for x in a { if vm.key_eql(*x, k)? { keep = true; break; } } if !keep { remove.push(k); } }
             let removed = vm.hash_new();
-            for k in remove { let v = vm.hash_delete(s, k).unwrap_or(Value::Nil); vm.hash_set(removed, k, v)?; }
+            for k in remove { let v = vm.hash_delete(s, k)?.unwrap_or(Value::Nil); vm.hash_set(removed, k, v)?; }
             Ok(removed)
         }),
-        ("except", |vm, s, a, _b| { let h = vm.hash_new(); for (k, v) in entries(vm, s) { vm.hash_set(h, k, v)?; } for k in a { vm.hash_delete(h, *k); } Ok(h) }),
+        ("except", |vm, s, a, _b| { let h = vm.hash_new(); for (k, v) in entries(vm, s) { vm.hash_set(h, k, v)?; } for k in a { vm.hash_delete(h, *k)?; } Ok(h) }),
         ("key", |vm, s, a, _b| { argc!(vm, a, 1); for (k, v) in entries(vm, s) { if vm.equal(v, a[0])? { return Ok(k); } } Ok(Value::Nil) }),
         ("__merge", |vm, s, a, _b| {
             if a.is_empty() { return Err(vm.argnum_error(0, "1+")); }

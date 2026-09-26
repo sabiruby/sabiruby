@@ -166,7 +166,7 @@ fn hash_keys_answers_what_ruby_keys_does_without_a_send() {
     assert_eq!(keys, via_ruby);
     assert_eq!(keys.len(), 4);
     // and the values are still reachable key by key, which is the shape this is for
-    let looked_up: Vec<Value> = keys.iter().map(|k| vm.hash_get(h, *k).unwrap_or(Value::Nil)).collect();
+    let looked_up: Vec<Value> = keys.iter().map(|k| vm.hash_get(h, *k).unwrap().unwrap_or(Value::Nil)).collect();
     let entries: Vec<Value> = vm.hash_entries(h).expect("a Hash").into_iter().map(|(_, v)| v).collect();
     assert_eq!(looked_up, entries);
     // the keys of an empty Hash are no keys, and anything that is not a Hash is None

@@ -189,7 +189,7 @@ fn s_def(vm: &mut Vm, s: Value, a: &[Value], b: Value) -> VmResult<Value> {
     if let Some(last) = args.last().copied() {
         if matches!(last.obj().map(|o| &vm.heap.get(o).kind), Some(ObjKind::Hash(_))) {
             let k = vm.intern("keyword_init");
-            if let Some(v) = vm.hash_get(last, Value::Sym(k)) {
+            if let Some(v) = vm.hash_get(last, Value::Sym(k))? {
                 keyword_init_val = if v.is_nil() { Value::Nil } else { Value::bool(v.truthy()) };
                 args.pop();
             }
@@ -227,7 +227,7 @@ fn init_with_args(vm: &mut Vm, s: Value, argv: &[Value]) -> VmResult<Value> {
 fn init_with_keywords(vm: &mut Vm, s: Value, hash: Value) -> VmResult<Value> {
     let m = members(vm, s)?;
     for (i, mem) in m.iter().enumerate() {
-        let v = vm.hash_get(hash, Value::Sym(*mem)).unwrap_or(Value::Nil);
+        let v = vm.hash_get(hash, Value::Sym(*mem))?.unwrap_or(Value::Nil);
         ary_set(vm, s, i, v)?;
     }
     let keys: Vec<Value> = match hash.obj().map(|o| &vm.heap.get(o).kind) { Some(ObjKind::Hash(hd)) => hd.entries().iter().map(|(k, _)| k.get()).collect(), _ => Vec::new() };

@@ -42,16 +42,20 @@ fn size(vm: &Vm, s: Value) -> usize {
     match s.obj().map(|o| &vm.heap.get(o).kind) { Some(ObjKind::Hash(hd)) => hd.len(), _ => 0 }
 }
 
+/// Membership. What `hash`/`eql?` raise counts as "not the same element": mruby-set calls
+/// `eql?` under `mrb_protect_error` and answers not-equal on an error (`kset_equal_value`),
+/// unlike Hash, which raises it.
 fn has(vm: &mut Vm, s: Value, v: Value) -> bool {
-    vm.hash_get(s, v).is_some()
+    matches!(vm.hash_get(s, v), Ok(Some(_)))
 }
 
 fn put(vm: &mut Vm, s: Value, v: Value) -> VmResult<()> {
     vm.hash_set(s, v, Value::True)
 }
 
+/// As [`has`]: an error in `hash`/`eql?` is "not there".
 fn del(vm: &mut Vm, s: Value, v: Value) -> bool {
-    vm.hash_delete(s, v).is_some()
+    matches!(vm.hash_delete(s, v), Ok(Some(_)))
 }
 
 fn clear(vm: &mut Vm, s: Value) {

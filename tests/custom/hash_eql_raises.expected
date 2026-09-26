@@ -1,0 +1,54 @@
+aref: ArgumentError: boom
+key?: ArgumentError: boom
+include?: ArgumentError: boom
+member?: ArgumentError: boom
+has_key?: ArgumentError: boom
+fetch: ArgumentError: boom
+delete: ArgumentError: boom
+aset: ArgumentError: boom
+store: ArgumentError: boom
+dig: ArgumentError: boom
+dig_nested: ArgumentError: boom
+values_at: ArgumentError: boom
+slice: ArgumentError: boom
+except: ArgumentError: boom
+merge!: ArgumentError: boom
+eq: ArgumentError: boom
+eql?: ArgumentError: boom
+eq_other_side: false
+{"k0" => 0}
+evil 3 aref: RuntimeError: hash modified
+1
+evil 3 key?: RuntimeError: hash modified
+1
+evil 3 aset: RuntimeError: hash modified
+1
+evil 3 delete: RuntimeError: hash modified
+1
+evil 3 fetch: RuntimeError: hash modified
+1
+grow 3: RuntimeError: hash modified
+4
+hash raises 3: ArgumentError: no hash
+hash raises 3 key?: ArgumentError: no hash
+evil 20 aref: RuntimeError: hash modified
+18
+evil 20 key?: RuntimeError: hash modified
+18
+evil 20 aset: RuntimeError: hash modified
+18
+evil 20 delete: RuntimeError: hash modified
+18
+evil 20 fetch: RuntimeError: hash modified
+18
+grow 20: RuntimeError: hash modified
+21
+hash raises 20: ArgumentError: no hash
+hash raises 20 key?: ArgumentError: no hash
+5
+true
+5
+{}
+set_include?: false
+set_delete: Set["k0"]
+Set["k0"]

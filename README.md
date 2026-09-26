@@ -144,7 +144,7 @@ finite automaton has none of, and 39 KO are what the two engines answer differen
 11 need the C test fixtures of mruby-test (`env.c`, `vformat.c`, `sysfail.c`,
 `ary_shared.c`), a handful are the deviations above, 1 is `(1..).last`, where the core test and
 mruby-range-ext disagree (the reference `mruby` crashes on it too), 1 is 4.1.0-rc2's new `hash`
-assertion about an `eql?` that deletes entries mid-lookup (not decided yet; see the notes), and the remaining ones are
+assertion about an `eql?` that deletes entries mid-lookup (kept as a deviation: its keys' hash codes match no entry, and SabiRuby compares codes before it calls `eql?`, as CRuby does; see the notes), and the remaining ones are
 skips the reference makes too (build-dependent).
 `tools/mrbtest.sh` compiles the gem tests and gem mrblibs too (`GEMS` in the script).
 

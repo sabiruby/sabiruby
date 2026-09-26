@@ -67,7 +67,7 @@ impl<'a> Fmt<'a> {
         }
         let key = String::from_utf8_lossy(&name[1..name.len() - 1]).into_owned();
         let sym = vm.intern(&key);
-        match vm.hash_get(self.hash.unwrap(), Value::Sym(sym)) {
+        match vm.hash_get(self.hash.unwrap(), Value::Sym(sym))? {
             Some(v) => Ok(v),
             None => Err(vm.raise(vm.core.key_error, &format!("key{shown} not found"))),
         }
