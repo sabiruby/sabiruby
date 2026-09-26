@@ -224,6 +224,15 @@ that names the boundary, worked out from the frame below it only when it is rais
 measurements: the A/A that set the line, the Ruby loops that were 2.5–3 times slower and the native
 loop frames that replaced them, `Cci::KeepSelf`, and the one path left over the line (`sort { }`, +8%).
 
+[2026-09-26-release-0.7-a](worklog/2026-09-26-release-0.7-a.md) is stage A of
+`release-0.7-plan.md` (Japanese): Hash lookups that dropped what `eql?`/`hash` raised
+(`Vm::hash_get`/`hash_delete` now return `VmResult`, and an `eql?` that changes the Hash raises
+"hash modified" as rc2 does), which of the rc2 worklog's three options was taken and why, the
+20-entry case where the reference's hash table never meets a key that claims a String's hash; a
+closure `method_missing` reached through `funcall` that could yield a fiber from under a native;
+rc2's two loader/VM checks with images forged as the reference's bintest forges them; and the
+tidying (the no_std check now covers `sabiruby-serde`, version numbers kept out of `docs/design`).
+
 ## Where things were (before 2026-09-15)
 
 Every document above sat directly under `docs/`; references in older commits, in the book's notes

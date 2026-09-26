@@ -41,6 +41,29 @@ nothing is estimated.
 Speed ([`docs/verification/bench.md`](docs/verification/bench.md), "Waiting inside blocks"): the 27
 benchmarks together +0.9% and −0.7% in two rounds; a Hash's default proc −25.6%, a Hash miss −20.9%, `index { }` −13.2%, `instance_exec` −8.6%.
 
+`sabiruby` — fixes gathered for 0.7.0 ([`docs/plans/release-0.7-plan.md`](docs/plans/release-0.7-plan.md),
+[`docs/worklog/2026-09-26-release-0.7-a.md`](docs/worklog/2026-09-26-release-0.7-a.md)):
+
+- **API:** `Vm::hash_get` and `Vm::hash_delete` return `VmResult<Option<Value>>` (were
+  `Option<Value>`). A lookup can run Ruby — the key's `hash` and `eql?` — and what that raised was
+  dropped. A host that wants the old answer writes `vm.hash_get(h, k).ok().flatten()`; one that
+  passes the error on writes `vm.hash_get(h, k)?` (`3ad6fdd`).
+- `Hash#[]`, `key?`/`has_key?`/`include?`/`member?`, `fetch`, `delete`, `dig`, `values_at`,
+  `slice`, `except`, `==` and `eql?` raise what the key's `eql?` or `hash` raises; they answered
+  nil/false, as if the key were missing. A `Set` still answers "not there", as mruby-set does
+  (`3ad6fdd`). One difference from the reference is left: a Hash of up to 16 entries there never
+  calls `hash` (its small form compares with `eql?` only), so a key whose `hash` raises answers
+  nil there and raises here, as it does in both past 16 entries.
+- A lookup whose `eql?` adds or removes entries of the Hash it is searching raises `RuntimeError`
+  ("hash modified"), as mruby 4.1.0-rc2 does (`3ad6fdd`).
+- A `method_missing` defined with `Vm::define_closure`, reached through `Vm::funcall` from a native
+  called by Ruby, can no longer `Vm::fiber_yield` from under that native: it raises `FiberError`
+  ("can't cross C function boundary"), as in mruby (`f01d5a9`).
+- A RITE image with an irep record that has more locals than registers is refused at load
+  (`VmError::Rite`), as mruby 4.1.0-rc2 does; it made the VM panic (`66099fd`).
+- `OP_CALL`/`OP_BLKCALL` on a receiver that is not a Proc say `wrong type Integer (expected Proc)`;
+  they said `wrong type (expected Proc)` (`66099fd`).
+
 ## 0.6.1 — 2026-09-22
 
 Documentation only: no `.rs` file changed (`git diff v0.6.0 -- '*.rs'` is empty). The author
