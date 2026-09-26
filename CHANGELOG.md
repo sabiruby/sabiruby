@@ -81,6 +81,11 @@ benchmarks together +0.9% and −0.7% in two rounds; a Hash's default proc −25
   `Enumerable.__update_hash` are there now, as in mruby (`39be934`).
 - A closure `method_missing` reached by a SEND sees `Vm::native_mid` as `:method_missing`; it
   saw the name of the native called before it (`91ca672`).
+- Errors worded as mruby's where a block or a string was missing or wrong: `instance_eval` /
+  `class_eval` with nothing give the argument count (`given 0, expected 1..3`), a non-String
+  source to them or to `eval` is "Integer cannot be converted to String", `catch` without a block
+  says "for NilClass", and `define_method`, `define_singleton_method` and `Proc.new` without a
+  block say "no block given" (`da4684c`).
 
 `sabiruby` — for hosts that run many scripts and replace them
 ([`docs/plans/release-0.7-plan.md`](docs/plans/release-0.7-plan.md) S4–S6,
