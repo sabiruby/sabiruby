@@ -38,7 +38,7 @@ t { Array.new(2) { raise "a" } }
 t { catch { raise "c" } }
 t { catch(:x) { [1].index { raise "ci" } } }
 t { Hash.new { raise "h" }[1] }
-t { "a".gsub(/a/) { raise "g" } }
+t { "a".gsub("a") { raise "g" } }
 t { ObjectSpace.each_object { raise "os" } }
 t { [1].each_with_index { raise "ewi" } }
 def deep

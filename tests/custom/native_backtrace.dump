@@ -311,17 +311,14 @@ file: /w/native_backtrace.rb
    40 007 SSEND		R2	:raise	n=1
    40 011 RETURN	R2	
 
-irep 0xADDR nregs=6 nlocals=2 pools=1 syms=3 reps=1 ilen=28
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=1 ilen=19
 file: /w/native_backtrace.rb
    41 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
    41 004 STRING	R2	L[0]	; a
-   41 007 OCLASS	R3	
-   41 009 GETMCNST	R3	(R3)::Regexp
-   41 012 STRING	R4	L[0]	; a
-   41 015 SEND		R3	:compile	n=1
-   41 019 BLOCK		R4	I[0]
-   41 022 SENDB		R2	:gsub	n=1
-   41 026 RETURN	R2	
+   41 007 STRING	R3	L[0]	; a
+   41 010 BLOCK		R4	I[0]
+   41 013 SENDB		R2	:gsub	n=1
+   41 017 RETURN	R2	
 
 irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=13
 file: /w/native_backtrace.rb
