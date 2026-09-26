@@ -1,0 +1,6 @@
+category	benchmark	a_ms_best	a_ms_median	b_ms_best	b_ms_median	change_pct
+other	bm_fib	5098.086	5193.795	5182.779	5236.516	+1.7
+other	bm_so_lists	946.170	948.757	946.659	950.077	+0.1
+other	call_args	863.354	880.130	870.858	876.555	+0.9
+other	m_sort_block	267.696	274.901	282.219	284.729	+5.4
+other	m_sort_plain	244.209	248.563	151.256	153.049	-38.1

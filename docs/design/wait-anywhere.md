@@ -40,7 +40,7 @@ left on the host stack.
 | `Vm::send_in_frame` | `send_method`: a Ruby method or a Ruby `method_missing` gets a frame; a native is called with `in_frame` kept, so it can do the same in turn |
 | `Cci::KeepSelf` | a frame that answers its R0 — its receiver — whatever it returns, unless a `break` ends it (`BreakTag::BlockBreak` carries that through an `ensure`). `Class#new` pushes `initialize` so, and `Class.new { }`, `Module.new { }`, `Struct.new { }` and `Data.define { }` their block: the tail of the reference's `new_iseq`, without a frame of its own |
 | `Vm::push_return_frame` | a frame of one instruction, `OP_RETURN R0`, holding a value; what is pushed above it answers into its R1 and is dropped. Only for a native `initialize` given a block (`Array.new(n) { }` through `Class#new`) |
-| `Vm::push_loop_frame` | a native that calls its block again and again — `index { }`, `rindex { }`, `Array.new(n) { }`, `sort! { }`, `catch { }` — leaves the loop to a frame that runs one `OP_DEBUG`: each time it runs, the native's step function (`builtins::array::loop_step`) reads the loop's state from the frame's registers and either calls the block in a frame above (its value lands in the register `LOOP_RESULT`) or answers. Step for step it does what the native's own loop does: the same elements, the array read again where the native reads it again, the same comparisons in the same order for `sort!`. Not called by a SEND, the same frame runs in a nested loop; `throw` finds `catch`'s either way |
+| `Vm::push_loop_frame` | a native that calls its block again and again — `index { }`, `rindex { }`, `Array.new(n) { }`, `catch { }` — leaves the loop to a frame that runs one `OP_DEBUG`: each time it runs, the native's step function (`builtins::array::loop_step`) reads the loop's state from the frame's registers and either calls the block in a frame above (its value lands in the register `LOOP_RESULT`) or answers. Step for step it does what the native's own loop does: the same elements, the array read again where the native reads it again. Not called by a SEND, the same frame runs in a nested loop; `throw` finds `catch`'s either way |
 | `OP_GETIDX` | a Hash that misses and has a default proc: the proc's frame is pushed where the instruction's value goes |
 
 **The rule for a native that uses these:** it must be the native the SEND called, and it must
@@ -54,8 +54,9 @@ What it costs where nothing waits: the tail of every native call is unchanged; a
 takes a block reads `direct_send` once more. Measured against the version before
 ([`../verification/bench.md`](../verification/bench.md), "Waiting inside blocks"): the 27 benchmarks
 together move +0.9% and −0.7% in two rounds, inside the spread of the old binary against itself.
-`sort { }` with a light block is 8% slower — one more trip through the instruction loop per
-comparison — and the paths that no longer run a nested loop are 5–25% faster.
+The paths that no longer run a nested loop are 5–25% faster. `sort { }` in a loop frame was 8%
+slower with a light block — one more trip through the instruction loop per comparison — and it
+keeps its nested loop instead (below).
 
 ## What changed, path by path
 
@@ -76,7 +77,8 @@ the SabiRuby column after the change, for six ways of waiting and a host's own q
 | `define_method`, `rescue`, `ensure` | waits | waits | waits |
 | `Foo.new` → `initialize`, and the block it yields to | waits (source: `new_iseq`) | raises; `sleep(n)` returns at once | waits |
 | `eval("…")`, `instance_eval("…")` | waits (source: `eval_irep`) | raises; `sleep(n)` returns at once | waits |
-| `Array#index { }`, `Array.new(n) { }`, `sort { }` | raises; `sleep(n)` stops every task | raises; `sleep(n)` returns at once | waits |
+| `Array#index { }`, `Array.new(n) { }` | raises; `sleep(n)` stops every task | raises; `sleep(n)` returns at once | waits |
+| `sort { }` | raises; `sleep(n)` stops every task | raises; `sleep(n)` returns at once | raises (named) |
 | `Class.new { }`, `Module.new { }` | raises; `sleep(n)` stops every task | raises; `sleep(n)` returns at once | waits |
 | `rindex { }`, `delete(x) { }`, `Hash.new { }[k]`, `Hash#default(k)`, `Struct.new { }`, `Data.define { }`, `Regexp#match { }` | not measured | raises; `sleep(n)` returns at once | waits |
 | `catch { }` | waits (source: `catch_iseq`) | raises; `sleep(n)` returns at once | waits |
@@ -118,6 +120,11 @@ what was called back (a method by its `mid`, otherwise "a block"), and the frame
 still at the call that reached the native — its `pc` points past that instruction and the
 receiver is still in its register (`Vm::boundary_name`). Nothing is recorded on the way in.
 
+- `sort { }` and `sort! { }` — **the author's decision, 2026-09-26.** In a native loop frame a
+  light block (`sort { |x, y| x <=> y }` over 50 elements) was 8.1% slower than the nested loop,
+  over the line the change was held to, and no other way of writing the loop came under it (the
+  same loop in Ruby was 3 times slower); speed was chosen over waiting here. The reference keeps
+  it too. `sort_by { }` is mrblib's Ruby and waits.
 - `ObjectSpace.each_object { }` — the reference keeps it too; the heap is being walked.
 - `sub`, `gsub` and `scan` with a block (mruby-regexp; `sub` and `gsub` with a block in a build
   without it too), which run their block from the middle of a match loop in Rust.

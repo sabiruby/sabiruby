@@ -2486,6 +2486,18 @@ impl Vm {
         r
     }
 
+    /// One step of the loop frame `top` (`OP_DEBUG` in [`LOOP_IREP`]), kept out of `exec_frames`,
+    /// which every instruction runs through. `Some` is the value the run loop hands back.
+    #[inline(never)]
+    fn loop_op(&mut self, top: usize, base: usize, stop_depth: usize, lc: usize) -> VmResult<Option<Value>> {
+        self.ci[top].pc = 0;
+        match crate::builtins::array::loop_step(self, base)? {
+            LoopNext::Call(n) => { self.loop_call_block(top, base, n)?; Ok(None) }
+            LoopNext::Tail(n) => { self.ci[top].pc = LOOP_TAIL_PC; self.loop_call_block(top, base, n)?; Ok(None) }
+            LoopNext::Done(v) => self.op_return(v, stop_depth, lc),
+        }
+    }
+
     /// Writes argument `i` of the block call a native loop's step asks for ([`LoopNext::Call`]).
     #[inline]
     pub(crate) fn loop_arg(&mut self, base: usize, i: usize, v: Value) {
@@ -3726,8 +3738,8 @@ impl Vm {
         loop {
             let top = self.ci.len() - 1;
             let (irep, pc) = { let ci = &self.ci[top]; (ci.irep, ci.pc) };
-            let tag = if by == UnwindBy::Break { BreakTag::BlockBreak } else { BreakTag::Break };
             if let Some(h) = self.catch_find(irep, pc, true) {
+                let tag = if by == UnwindBy::Break { BreakTag::BlockBreak } else { BreakTag::Break };
                 let brk = self.break_new(tag, return_idx, v);
                 self.enter_ensure(h, brk);
                 return Ok(None);
@@ -3737,6 +3749,7 @@ impl Vm {
             let popped = self.pop_frame();
             if popped.cci == Cci::Skip || (self.cur == lc && top <= stop_depth) {
                 // crossing a native frame: let the native caller propagate it
+                let tag = if by == UnwindBy::Break { BreakTag::BlockBreak } else { BreakTag::Break };
                 let brk = self.break_new(tag, return_idx, v);
                 self.exc = None;
                 return Err(VmError::Break(brk));
@@ -3751,14 +3764,12 @@ impl Vm {
             self.deliver(v);
             return Ok(None);
         }
-        if popped.cci != Cci::None || (self.cur == lc && return_idx <= stop_depth) {
-            // a frame that answers its receiver has it in R0 already, which is the caller's R[a]
-            if popped.cci == Cci::KeepSelf && !(self.cur == lc && return_idx <= stop_depth) {
-                if by == UnwindBy::Break { self.stack[popped.base] = Slot::from(v); }
-                return Ok(None);
-            }
+        if popped.cci == Cci::Skip || (self.cur == lc && return_idx <= stop_depth) {
             return Ok(Some(v));
         }
+        // a frame that answers its receiver has it in R0 already, which is the caller's R[a];
+        // only a `break` puts its own value there
+        if popped.cci == Cci::KeepSelf && by != UnwindBy::Break { return Ok(None); }
         // the callee's R0 is the caller's R[a]
         self.stack[popped.base] = Slot::from(v);
         Ok(None)
@@ -4388,12 +4399,7 @@ impl Vm {
                 Op::Debug => {
                     // one step of a native loop frame (`Vm::push_loop_frame`); anywhere else a no-op
                     if irep == LOOP_IREP {
-                        self.ci[top].pc = 0;
-                        match crate::builtins::array::loop_step(self, base)? {
-                            LoopNext::Call(n) => self.loop_call_block(top, base, n)?,
-                            LoopNext::Tail(n) => { self.ci[top].pc = LOOP_TAIL_PC; self.loop_call_block(top, base, n)?; }
-                            LoopNext::Done(v) => { if let Some(r) = self.op_return(v, stop_depth, lc)? { return Ok(r); } }
-                        }
+                        if let Some(r) = self.loop_op(top, base, stop_depth, lc)? { return Ok(r); }
                     }
                 }
                 Op::Err => {

@@ -73,23 +73,13 @@ fn ary_cmp(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
     Ok(Value::Int(x.len().cmp(&y.len()) as i64))
 }
 
-/// What a comparison of `a` with `b` answered (`<=>` or a sort block), as an order: an
-/// Integer by its sign, nil is an error, and anything else is asked `> 0` then `< 0` (a NaN is
-/// a tie).
-fn sort_order(vm: &mut Vm, v: Value, a: Value, b: Value) -> VmResult<core::cmp::Ordering> {
-    match v {
-        Value::Int(i) => Ok(i.cmp(&0)),
-        Value::Nil => { let x = vm.describe_for_error(a); let y = vm.describe_for_error(b); Err(vm.raise_arg(&format!("comparison of {x} with {y} failed"))) }
-        v => {
-            let (gt, lt) = (vm.s.gt, vm.s.lt);
-            if vm.funcall(v, gt, &[Value::Int(0)], Value::Nil)?.truthy() { return Ok(core::cmp::Ordering::Greater); }
-            if vm.funcall(v, lt, &[Value::Int(0)], Value::Nil)?.truthy() { return Ok(core::cmp::Ordering::Less); }
-            Ok(core::cmp::Ordering::Equal)
-        }
-    }
-}
-
 fn sort_values(vm: &mut Vm, list: &mut Vec<Value>, blk: Value) -> VmResult<()> {
+    // Integers only and no block: the comparator below answers `p.cmp(&q)` for every pair and
+    // calls nothing, and equal Integers are the same value, so any sort gives the same Array
+    if blk.is_nil() && list.iter().all(|v| matches!(v, Value::Int(_))) {
+        list.sort_unstable_by_key(|v| match v { Value::Int(i) => *i, _ => 0 });
+        return Ok(());
+    }
     // insertion-free merge sort via a comparator that may raise: collect errors.
     let cmp = vm.intern("<=>");
     let mut err = None;
@@ -101,8 +91,18 @@ fn sort_values(vm: &mut Vm, list: &mut Vec<Value>, blk: Value) -> VmResult<()> {
                 _ => vm.funcall(a, cmp, &[b], Value::Nil),
             }
         } else { vm.call_block(blk, &[a, b]) };
-        match r.and_then(|v| sort_order(vm, v, a, b)) {
-            Ok(o) => o,
+        match r {
+            Ok(Value::Int(i)) => i.cmp(&0),
+            Ok(Value::Nil) => { let x = vm.describe_for_error(a); let y = vm.describe_for_error(b); err = Some(vm.raise_arg(&format!("comparison of {x} with {y} failed"))); core::cmp::Ordering::Equal }
+            Ok(v) => {
+                // any other answer is asked `> 0` then `< 0` (a NaN is a tie)
+                let (gt, lt) = (vm.s.gt, vm.s.lt);
+                match vm.funcall(v, gt, &[Value::Int(0)], Value::Nil) {
+                    Ok(t) if t.truthy() => core::cmp::Ordering::Greater,
+                    Ok(_) => match vm.funcall(v, lt, &[Value::Int(0)], Value::Nil) { Ok(t) if t.truthy() => core::cmp::Ordering::Less, Ok(_) => core::cmp::Ordering::Equal, Err(e) => { err = Some(e); core::cmp::Ordering::Equal } },
+                    Err(e) => { err = Some(e); core::cmp::Ordering::Equal }
+                }
+            }
             Err(e) => { err = Some(e); core::cmp::Ordering::Equal }
         }
     };

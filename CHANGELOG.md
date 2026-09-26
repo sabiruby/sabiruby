@@ -19,9 +19,11 @@ nothing is estimated.
   `instance_eval`, `class_exec`, `class_eval`, `module_eval`, `Method#call`, `bind_call`,
   `public_send`, the `initialize` `Class#new` calls, `eval("…")` and `instance_eval("…")`, as in
   mruby 4.1.0-rc2 (`9eaf698`), and inside `index { }`, `rindex { }`, `Array.new(n) { }`,
-  `sort { }`, `delete(x) { }`, a Hash's default proc, `Hash#default(k)`, `Class.new { }`,
+  `delete(x) { }`, a Hash's default proc, `Hash#default(k)`, `Class.new { }`,
   `Module.new { }`, `Struct.new { }`, `Data.define { }`, `catch { }` and `Regexp#match { }`,
   where mruby cannot (`da68a3a`, `33cc076`, `f3c7d9c`).
+- `sort { }` stays a native boundary (the author's decision, 2026-09-26: waiting there cost a light
+  block 8%). `sort` without a block on an Array of Integers sorts them in Rust directly.
 - `sleep(n)`, `usleep` and `sleep_ms` in a task inside a native boundary raise `RuntimeError`;
   they returned at once without waiting (`9eaf698`).
 - The error of a wait inside a native boundary names it: `can't wait inside Array#join's call to
@@ -37,8 +39,7 @@ nothing is estimated.
   and `throw` finds that frame on the frame stack (`33cc076`).
 
 Speed ([`docs/verification/bench.md`](docs/verification/bench.md), "Waiting inside blocks"): the 27
-benchmarks together +0.9% and −0.7% in two rounds; `sort { }` with a light block +8.1%; a Hash's
-default proc −25.6%, a Hash miss −20.9%, `index { }` −13.2%, `instance_exec` −8.6%.
+benchmarks together +0.9% and −0.7% in two rounds; a Hash's default proc −25.6%, a Hash miss −20.9%, `index { }` −13.2%, `instance_exec` −8.6%.
 
 ## 0.6.1 — 2026-09-22
 

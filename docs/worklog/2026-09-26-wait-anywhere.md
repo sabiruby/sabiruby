@@ -486,6 +486,46 @@ new_ruby_init・new_plain・index_arg 1,000,000、hash_hit・hash_miss 2,000,000
 method_call・public_send・hash_default_proc 500,000、sort_plain・catch 300,000、class_new_block 200,000、index_block 100,000、
 array_new_block 50,000、sort_block 10,000。
 
+## 著者の判断: `sort { }` は入れ子のままにする（2026-09-26）
+
+上の「線を超えたもの」の 3 択のうち、著者は **(2) `sort! { }` だけネイティブの入れ子に戻す** を選んだ（2026-09-26）。
+`sort { }` は名指しの境界 `can't wait inside Array#sort!'s call to a block` に戻る（本家も境界）。
+
+- `array.rs` の `sort!` から `in_frame` の枝を外し、`sort_step` / `sort_in_frame` / `LOOP_SORT` を消した。
+  ループのフレームで一番多く状態を持つのが `Array.new(n) { }` の 3 個になったので、`LOOP_RESULT` を 16 → 7 にした。
+- probe の期待に `c_sort` を名指しの境界として戻した（`tests/wait_anywhere.rs`）。
+
+### 測り直し（`m_sort_block`・`m_sort_plain`）
+
+変更前（`3170b63`）と交互に、各巡 5 回、`--core 2`、巡ごとに順を入れ替え、`vmstat -t 10` を記録（全巡 idle 95% 以上）。
+**入れ子に戻しても `m_sort_block` は線（マイクロ 2.7%）の内側に戻らなかった。** 同じ道を通る木を 5 通り建てて測った:
+
+| 建てたもの | `m_sort_block` | `m_sort_plain` | `bm_so_lists` |
+|---|---|---|---|
+| `1eee048`（入れ子に戻しただけ） | +6.6%（+8.2 +7.2 +4.6） | −4.9% | — |
+| fin2（`unwind_return` の末尾を W2c 前の形に近づけた） | +3.7%（+3.7 +3.7） | −6.5% | +5.5% |
+| fin3（fin2 + ループの 1 歩を `#[inline(never)]` で外へ） | +1.0%（+2.1 +0.3） | **+10.7%**（+10.6 +10.7） | +0.2% |
+| fin4（fin3 + `sort_values` を変更前と同じ字面に戻す） | +6.5%（+6.6 +5.4） | +2.6% | +1.1% |
+| fin5（fin4 + block なしの Integer だけの配列は Rust の `sort_unstable`） | **+5.4%**（+3.0 +5.4 +5.4） | −36.9% | +0.4% |
+
+`m_sort_block` の命令数は変更前と同じ（12,162,140）。block を呼ぶ道（`call_block` → 入れ子の `run_loop` →
+`OP_ENTER`・`<=>`・`OP_RETURN` → `unwind_return`）で変更前と違うのは、`run_loop_ctx` の `direct_send` の出し入れ
+（W1 から。W1 の `m_sort_block` は +0.1、−2.5%）と、`unwind_return` の末尾の `Cci::KeepSelf` の比較 1 つ。
+同じ道のまま 5 通りの建て方で +1.0〜+6.6% に散り、`m_sort_plain` と `bm_so_lists`（触っていない道）も −6.5〜+10.7%、
++0.2〜+5.5% に散るので、`exec_frames` まわりの置き場所の揺れが大半と読む。ただし 5 通りのどれでも正の側なので、
+比較 1 つ分の実費も混じっていると思われる（分けられていない）。
+
+残したのは fin5（`sort` の block なし・Integer だけの配列は、比べる関数が `p.cmp(&q)` を答えるだけで何も呼ばず、
+等しい Integer は同じ値なので、どの並べ方でも結果は同じ）。`m_sort_plain` は −37%。ここは本来の範囲の外の手直しだが、
+`m_sort_plain` を置き場所のくじから外すために入れた。
+
+**`m_sort_block` は +5.4% のまま（線 2.7%）。これ以上は直し方が見つからず、ここで止めて報告する。**
+
+### `tools/bench_ab.sh` の順の偏り
+
+`bench_ab.sh` は各回で必ず A を先に走らせていた。A/A の 1 巡目は B 側に平均 +0.8% ほど寄っていた。回ごとに先に走る方を
+入れ替えるようにした（`for i in $(seq "$RUNS")` で奇数回は A が先、偶数回は B が先）。上の測り直しはこの版で取った。
+
 ## 気づいた点
 
 - `Vm::funcall` の「メソッドが無い」枝で、クロージャの `method_missing` を `call_closure` で呼ぶとき
@@ -499,10 +539,8 @@ array_new_block 50,000、sort_block 10,000。
 - `in_frame` の前提（「SEND から呼ばれたネイティブが、その答えをそのまま返すときだけ」）は型では守られていない。
   ネイティブの関数を別のネイティブが助け手として呼ぶと破れる（`values_at` の件）。今は変えた関数の呼び手を
   grep で全部見たが、これから `exec_*` / `send_in_frame` を使う関数を足すときに同じ確認が要る。VM の話。
-- `tools/bench_ab.sh` は各回で必ず A を先に走らせる（`ta=$(one "$A" …); tb=$(one "$B" …)`）。A/A の 1 巡目は B 側に平均
-  +0.8% ほど寄っていた。今回は巡ごとに A と B を入れ替えて打ち消した。スクリプトの側で回ごとに順を入れ替えれば要らなくなる。
-  検証の道具（`tools/`）の話。
+- `tools/bench_ab.sh` は各回で必ず A を先に走らせていた。A/A の 1 巡目は B 側に平均 +0.8% ほど寄っていた。
+  回ごとに順を入れ替えるよう直した（上の「`tools/bench_ab.sh` の順の偏り」）。
 - 同じ PC で別の担当の C のビルドとテストが 13:24〜17:00 過ぎまで断続的に走り、`bench_ab.sh` の巡の中で idle が 0% まで
   落ちた。巡の前に idle を見るだけでは足りず、巡の間の `vmstat -t` を残して後から捨てる形にした。計測の手順の話。
-- `m_sort_block` の +8% をどう扱うか（このまま／`sort! { }` だけ境界に戻す／段階 3）は著者の判断。計画書の「著者に後で聞くこと」
-  に足す話。
+- `m_sort_block` の扱いは著者が (2) に決めた（上の「著者の判断」）。入れ子に戻しても +5.4% が残っている。
