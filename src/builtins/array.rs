@@ -150,7 +150,7 @@ fn int(vm: &Vm, base: usize, i: usize) -> i64 { match reg(vm, base, i) { Value::
 #[inline]
 fn set(vm: &mut Vm, base: usize, i: usize, v: Value) { vm.stack[base + i] = Slot::from(v); }
 
-/// One step of the native loop frame at `base` (`Op::Debug` in `LOOP_IREP`, `Vm::exec_frames`).
+/// One step of the native loop frame at `base` (`Op::Nop` in `LOOP_IREP`, `Vm::exec_frames`).
 pub(crate) fn loop_step(vm: &mut Vm, base: usize) -> VmResult<LoopNext> {
     match int(vm, base, 2) {
         LOOP_INDEX => index_step(vm, base),
@@ -229,6 +229,13 @@ fn sort_in_frame(vm: &mut Vm, s: Value, b: Value) -> VmResult<Value> {
 }
 
 fn ary_at(vm: &Vm, a: Value, i: i64) -> Value { vm.ary(a).and_then(|v| v.get(i as usize).map(|x| x.get())).unwrap_or(Value::Nil) }
+/// `a[i]` and `a[j]` with one look at the heap.
+fn pair_at(vm: &Vm, a: Value, i: i64, j: i64) -> (Value, Value) {
+    match vm.ary(a) {
+        Some(v) => (v.get(i as usize).map(|x| x.get()).unwrap_or(Value::Nil), v.get(j as usize).map(|x| x.get()).unwrap_or(Value::Nil)),
+        None => (Value::Nil, Value::Nil),
+    }
+}
 fn ary_put(vm: &mut Vm, a: Value, i: i64, v: Value) {
     if let Some(o) = a.obj() { if let ObjKind::Array(arr) = &mut vm.heap.get_mut(o).kind { if let Some(x) = arr.as_mut_slice().get_mut(i as usize) { *x = Slot::from(v); } } }
 }
@@ -239,12 +246,16 @@ fn ary_put(vm: &mut Vm, a: Value, i: i64, v: Value) {
 /// when it starts, `width` when a pass ends.
 fn sort_step(vm: &mut Vm, base: usize) -> VmResult<LoopNext> {
     let (mut src, mut dst) = (reg(vm, base, 4), reg(vm, base, 5));
-    let n = int(vm, base, 6);
-    let (mut width, mut i, mut mid, mut hi) = (int(vm, base, 7), int(vm, base, 8), int(vm, base, 9), int(vm, base, 10));
+    let (mut mid, mut hi) = (int(vm, base, 9), int(vm, base, 10));
     let (mut l, mut r, mut k) = (int(vm, base, 11), int(vm, base, 12), int(vm, base, 13));
     let mut merging = reg(vm, base, 14).truthy();
+    // `n`, `width` and `i` are only wanted when a merge ends, which most steps do not reach
+    let (mut n, mut width, mut i) = (-1, 0, 0);
+    let outer = |vm: &Vm, n: &mut i64, width: &mut i64, i: &mut i64| {
+        if *n < 0 { *n = int(vm, base, 6); *width = int(vm, base, 7); *i = int(vm, base, 8); }
+    };
     if int(vm, base, 3) == 1 {
-        let (x, y) = (ary_at(vm, src, r), ary_at(vm, src, l));
+        let (x, y) = pair_at(vm, src, r, l);
         let answer = reg(vm, base, LOOP_RESULT);
         if sort_order(vm, answer, x, y)? == core::cmp::Ordering::Less { ary_put(vm, dst, k, x); r += 1; } else { ary_put(vm, dst, k, y); l += 1; }
         k += 1;
@@ -256,16 +267,18 @@ fn sort_step(vm: &mut Vm, base: usize) -> VmResult<LoopNext> {
                 set(vm, base, 12, Value::Int(r));
                 set(vm, base, 13, Value::Int(k));
                 set(vm, base, 3, Value::Int(1));
-                let (x, y) = (ary_at(vm, src, r), ary_at(vm, src, l));
+                let (x, y) = pair_at(vm, src, r, l);
                 vm.loop_arg(base, 0, x);
                 vm.loop_arg(base, 1, y);
                 return Ok(LoopNext::Call(2));
             }
             while l < mid { let v = ary_at(vm, src, l); ary_put(vm, dst, k, v); l += 1; k += 1; }
             while r < hi { let v = ary_at(vm, src, r); ary_put(vm, dst, k, v); r += 1; k += 1; }
+            outer(vm, &mut n, &mut width, &mut i);
             i += 2 * width;
             merging = false;
         }
+        outer(vm, &mut n, &mut width, &mut i);
         if width >= n { break; }
         if i < n {
             mid = (i + width).min(n); hi = (i + 2 * width).min(n);

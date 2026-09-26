@@ -672,8 +672,8 @@ impl Vm {
         // `OP_RETURN R0`; R1 is where the call made above it answers (`Vm::push_return_frame`)
         let ret_irep = VmIrep { nlocals: 1, nregs: 2, iseq: vec![Op::Return as u8, 0], catch: vec![], pool: vec![], syms: vec![], reps: vec![], lv: vec![], lines: vec![], filename: None };
         let ret_proc = heap.alloc(core.proc_, ObjKind::Proc(ProcData { irep: 1, upper: None, env: None, target_class: Some(object), strict: true, scope: true, orphan: false, mid: None }));
-        // `OP_DEBUG`, read as one step of a native loop (`Vm::push_loop_frame`)
-        let loop_irep = VmIrep { nlocals: 1, nregs: LOOP_RESULT + 1, iseq: vec![Op::Debug as u8, 0, 0, 0, Op::Return as u8, LOOP_RESULT as u8], catch: vec![], pool: vec![], syms: vec![], reps: vec![], lv: vec![], lines: vec![], filename: None };
+        // `OP_NOP`, read as one step of a native loop (`Vm::push_loop_frame`), then `OP_RETURN`
+        let loop_irep = VmIrep { nlocals: 1, nregs: LOOP_RESULT + 1, iseq: vec![Op::Nop as u8, Op::Return as u8, LOOP_RESULT as u8], catch: vec![], pool: vec![], syms: vec![], reps: vec![], lv: vec![], lines: vec![], filename: None };
         let loop_proc = heap.alloc(core.proc_, ObjKind::Proc(ProcData { irep: LOOP_IREP, upper: None, env: None, target_class: Some(object), strict: true, scope: true, orphan: false, mid: None }));
         let mut vm = Vm {
             heap, syms, ireps: vec![call_irep, ret_irep, loop_irep], ret_proc, loop_proc, stack: Vec::new(), ci: Vec::new(), globals: HashMap::new(),
@@ -2441,7 +2441,7 @@ impl Vm {
 
     /// A native that calls its block again and again (`index { }`, `sort! { }`, `catch { }`),
     /// called by a SEND, leaves the loop to a frame of its own: R0 `recv`, R1 the block, R2
-    /// `kind`, R3 0 (not started), then `state`. The frame runs one instruction, `OP_DEBUG`,
+    /// `kind`, R3 0 (not started), then `state`. The frame runs one instruction, `OP_NOP`,
     /// which asks the native's step function (`builtins::array::loop_step`) what to do: call
     /// the block — in a frame above this one, whose value lands in [`LOOP_RESULT`] — and ask
     /// again when it returns, or answer. The block's frame is an ordinary one, so a task can
@@ -3726,8 +3726,8 @@ impl Vm {
         loop {
             let top = self.ci.len() - 1;
             let (irep, pc) = { let ci = &self.ci[top]; (ci.irep, ci.pc) };
-            let tag = if by == UnwindBy::Break { BreakTag::BlockBreak } else { BreakTag::Break };
             if let Some(h) = self.catch_find(irep, pc, true) {
+                let tag = if by == UnwindBy::Break { BreakTag::BlockBreak } else { BreakTag::Break };
                 let brk = self.break_new(tag, return_idx, v);
                 self.enter_ensure(h, brk);
                 return Ok(None);
@@ -3737,6 +3737,7 @@ impl Vm {
             let popped = self.pop_frame();
             if popped.cci == Cci::Skip || (self.cur == lc && top <= stop_depth) {
                 // crossing a native frame: let the native caller propagate it
+                let tag = if by == UnwindBy::Break { BreakTag::BlockBreak } else { BreakTag::Break };
                 let brk = self.break_new(tag, return_idx, v);
                 self.exc = None;
                 return Err(VmError::Break(brk));
@@ -3948,7 +3949,19 @@ impl Vm {
                 }
             } } }
             match op {
-                Op::Nop => {}
+                Op::Nop => {
+                    // one step of a native loop frame (`Vm::push_loop_frame`); anywhere else a no-op.
+                    // `OP_NOP` has no operands to decode, which a step pays for at every call of
+                    // the block
+                    if irep == LOOP_IREP {
+                        self.ci[top].pc = 0;
+                        match crate::builtins::array::loop_step(self, base)? {
+                            LoopNext::Call(n) => self.loop_call_block(top, base, n)?,
+                            LoopNext::Tail(n) => { self.ci[top].pc = LOOP_TAIL_PC; self.loop_call_block(top, base, n)?; }
+                            LoopNext::Done(v) => { if let Some(r) = self.op_return(v, stop_depth, lc)? { return Ok(r); } }
+                        }
+                    }
+                }
                 Op::Move => { setreg!(a, reg!(b)); }
                 Op::Loadl => {
                     let v = match &self.ireps[irep].pool[b] {
@@ -4385,17 +4398,7 @@ impl Vm {
                 Op::Undef => { let s = self.ireps[irep].syms[a]; self.undef_method(self.ci[top].target_class, s)?; }
                 Op::Sclass => { let v = reg!(a); setreg!(a, Value::Obj(self.singleton_class(v)?)); }
                 Op::Tclass => { setreg!(a, Value::Obj(self.ci[top].target_class)); }
-                Op::Debug => {
-                    // one step of a native loop frame (`Vm::push_loop_frame`); anywhere else a no-op
-                    if irep == LOOP_IREP {
-                        self.ci[top].pc = 0;
-                        match crate::builtins::array::loop_step(self, base)? {
-                            LoopNext::Call(n) => self.loop_call_block(top, base, n)?,
-                            LoopNext::Tail(n) => { self.ci[top].pc = LOOP_TAIL_PC; self.loop_call_block(top, base, n)?; }
-                            LoopNext::Done(v) => { if let Some(r) = self.op_return(v, stop_depth, lc)? { return Ok(r); } }
-                        }
-                    }
-                }
+                Op::Debug => {}
                 Op::Err => {
                     let msg = match &self.ireps[irep].pool[a] { Pool::Str(s) => String::from_utf8_lossy(s).into_owned(), _ => "error".into() };
                     return Err(self.raise(self.core.local_jump_error, &msg));
@@ -5270,7 +5273,7 @@ impl Default for Vm {
 /// `MRB_CALL_LEVEL_MAX`.
 pub const CALL_LEVEL_MAX: usize = 512;
 
-/// The irep a native loop frame runs (`Vm::push_loop_frame`): `OP_DEBUG`, which the
+/// The irep a native loop frame runs (`Vm::push_loop_frame`): `OP_NOP`, which the
 /// instruction loop reads as "step the native loop of this frame", then `OP_RETURN` of
 /// [`LOOP_RESULT`] ([`LoopNext::Tail`]). 0 is `call_proc`'s, 1 `ret_proc`'s.
 pub(crate) const LOOP_IREP: IrepId = 2;
@@ -5281,7 +5284,7 @@ pub(crate) const LOOP_IREP: IrepId = 2;
 /// this number is.
 pub(crate) const LOOP_RESULT: usize = 16;
 /// Where the loop frame's `OP_RETURN` is ([`LoopNext::Tail`]).
-const LOOP_TAIL_PC: usize = 4;
+const LOOP_TAIL_PC: usize = 1;
 
 /// What the step of a native loop asks for next (`Vm::push_loop_frame`).
 pub(crate) enum LoopNext {
