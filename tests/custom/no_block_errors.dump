@@ -1,0 +1,343 @@
+irep 0xADDR nregs=4 nlocals=1 pools=0 syms=25 reps=25 ilen=247
+file: /w/no_block_errors.rb
+   10 000 TDEF		R1	:t	I[0]
+   16 004 LOADSYM	R2	:instance_eval
+   16 007 BLOCK		R3	I[1]
+   16 010 SSENDB	R1	:t	n=1
+   17 014 LOADSYM	R2	:class_eval
+   17 017 BLOCK		R3	I[2]
+   17 020 SSENDB	R1	:t	n=1
+   18 024 LOADSYM	R2	:module_eval
+   18 027 BLOCK		R3	I[3]
+   18 030 SSENDB	R1	:t	n=1
+   19 034 LOADSYM	R2	:instance_eval_4
+   19 037 BLOCK		R3	I[4]
+   19 040 SSENDB	R1	:t	n=1
+   20 044 LOADSYM	R2	:class_eval_4
+   20 047 BLOCK		R3	I[5]
+   20 050 SSENDB	R1	:t	n=1
+   21 054 LOADSYM	R2	:instance_eval_str_blk
+   21 057 BLOCK		R3	I[6]
+   21 060 SSENDB	R1	:t	n=1
+   22 064 LOADSYM	R2	:instance_eval_int
+   22 067 BLOCK		R3	I[7]
+   22 070 SSENDB	R1	:t	n=1
+   23 074 LOADSYM	R2	:class_eval_int
+   23 077 BLOCK		R3	I[8]
+   23 080 SSENDB	R1	:t	n=1
+   24 084 LOADSYM	R2	:instance_eval_nil
+   24 087 BLOCK		R3	I[9]
+   24 090 SSENDB	R1	:t	n=1
+   25 094 LOADSYM	R2	:eval_int
+   25 097 BLOCK		R3	I[10]
+   25 100 SSENDB	R1	:t	n=1
+   26 104 LOADSYM	R2	:eval_nil
+   26 107 BLOCK		R3	I[11]
+   26 110 SSENDB	R1	:t	n=1
+   27 114 LOADSYM	R2	:binding_eval_int
+   27 117 BLOCK		R3	I[12]
+   27 120 SSENDB	R1	:t	n=1
+   28 124 LOADSYM	R2	:instance_eval_ok
+   28 127 BLOCK		R3	I[13]
+   28 130 SSENDB	R1	:t	n=1
+   29 134 LOADSYM	R2	:class_eval_ok
+   29 137 BLOCK		R3	I[14]
+   29 140 SSENDB	R1	:t	n=1
+   30 144 LOADSYM	R2	:catch
+   30 147 BLOCK		R3	I[15]
+   30 150 SSENDB	R1	:t	n=1
+   31 154 LOADSYM	R2	:catch_tag
+   31 157 BLOCK		R3	I[16]
+   31 160 SSENDB	R1	:t	n=1
+   32 164 LOADSYM	R2	:catch_ok
+   32 167 BLOCK		R3	I[17]
+   32 170 SSENDB	R1	:t	n=1
+   33 174 LOADSYM	R2	:nil_call
+   33 177 BLOCK		R3	I[18]
+   33 180 SSENDB	R1	:t	n=1
+   34 184 LOADSYM	R2	:define_method
+   34 187 BLOCK		R3	I[19]
+   34 190 SSENDB	R1	:t	n=1
+   35 194 LOADSYM	R2	:define_method_int
+   35 197 BLOCK		R3	I[20]
+   35 200 SSENDB	R1	:t	n=1
+   36 204 LOADSYM	R2	:define_singleton_method
+   36 207 BLOCK		R3	I[21]
+   36 210 SSENDB	R1	:t	n=1
+   37 214 LOADSYM	R2	:proc_new
+   37 217 BLOCK		R3	I[22]
+   37 220 SSENDB	R1	:t	n=1
+   38 224 LOADSYM	R2	:proc
+   38 227 BLOCK		R3	I[23]
+   38 230 SSENDB	R1	:t	n=1
+   39 234 LOADSYM	R2	:lambda
+   39 237 BLOCK		R3	I[24]
+   39 240 SSENDB	R1	:t	n=1
+   39 244 RETURN	R1	
+   39 246 STOP
+
+irep 0xADDR nregs=9 nlocals=5 pools=2 syms=5 reps=0 ilen=105
+local variable names:
+  R1:name
+  R3:r
+  R4:e
+catch type: rescue   begin: 0004 end: 0039 target: 0042
+file: /w/no_block_errors.rb
+   10 000 ENTER		1:0:0:0:0:0:0:0 (0x40000)
+   11 004 BLKPUSH	R5	1:0:0:0 (0)
+   11 008 BLKCALL		R5	0
+   11 011 MOVE		R3	R5	; R3:r
+   12 014 STRING	R6	L[0]
+   12 017 MOVE		R7	R1	; R1:name
+   12 020 STRCAT	R6	(R7)
+   12 022 STRING	R7	L[1]	; : 
+   12 025 STRCAT	R6	(R7)
+   12 027 MOVE		R7	R3	; R3:r
+   12 030 SEND0		R7	:inspect
+   12 033 STRCAT	R6	(R7)
+   12 035 SSEND		R5	:puts	n=1
+   12 039 JMP		103
+   12 042 EXCEPT	R5	
+   12 044 GETCONST	R6	StandardError
+   12 047 RESCUE	R5	R6
+   12 050 JMPIF		R6	057
+   12 054 JMP		101
+   12 057 MOVE		R4	R5	; R4:e
+   14 060 STRING	R6	L[0]
+   14 063 MOVE		R7	R1	; R1:name
+   14 066 STRCAT	R6	(R7)
+   14 068 STRING	R7	L[1]	; : 
+   14 071 STRCAT	R6	(R7)
+   14 073 MOVE		R7	R4	; R4:e
+   14 076 SEND0		R7	:class
+   14 079 STRCAT	R6	(R7)
+   14 081 STRING	R7	L[1]	; : 
+   14 084 STRCAT	R6	(R7)
+   14 086 MOVE		R7	R4	; R4:e
+   14 089 SEND0		R7	:message
+   14 092 STRCAT	R6	(R7)
+   14 094 SSEND		R5	:puts	n=1
+   14 098 JMP		103
+   14 101 RAISEIF	R5	
+   14 103 RETURN	R5	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=0 ilen=11
+file: /w/no_block_errors.rb
+   16 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   16 004 LOADI_1	R2	(1)
+   16 006 SEND0		R2	:instance_eval
+   16 009 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=3 reps=0 ilen=15
+file: /w/no_block_errors.rb
+   17 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   17 004 GETCONST	R2	Class
+   17 007 SEND0		R2	:new
+   17 010 SEND0		R2	:class_eval
+   17 013 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=3 reps=0 ilen=15
+file: /w/no_block_errors.rb
+   18 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   18 004 GETCONST	R2	Module
+   18 007 SEND0		R2	:new
+   18 010 SEND0		R2	:module_eval
+   18 013 RETURN	R2	
+
+irep 0xADDR nregs=8 nlocals=2 pools=2 syms=1 reps=0 ilen=22
+file: /w/no_block_errors.rb
+   19 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   19 004 LOADI_1	R2	(1)
+   19 006 STRING	R3	L[0]	; 1
+   19 009 STRING	R4	L[1]	; f
+   19 012 LOADI_1	R5	(1)
+   19 014 LOADI_2	R6	(2)
+   19 016 SEND		R2	:instance_eval	n=4
+   19 020 RETURN	R2	
+
+irep 0xADDR nregs=8 nlocals=2 pools=2 syms=3 reps=0 ilen=26
+file: /w/no_block_errors.rb
+   20 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   20 004 GETCONST	R2	Class
+   20 007 SEND0		R2	:new
+   20 010 STRING	R3	L[0]	; 1
+   20 013 STRING	R4	L[1]	; f
+   20 016 LOADI_1	R5	(1)
+   20 018 LOADI_2	R6	(2)
+   20 020 SEND		R2	:class_eval	n=4
+   20 024 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=1 ilen=18
+file: /w/no_block_errors.rb
+   21 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   21 004 LOADI_1	R2	(1)
+   21 006 STRING	R3	L[0]	; 1
+   21 009 BLOCK		R4	I[0]
+   21 012 SENDB		R2	:instance_eval	n=1
+   21 016 RETURN	R2	
+
+irep 0xADDR nregs=3 nlocals=2 pools=0 syms=0 reps=0 ilen=5
+file: /w/no_block_errors.rb
+   21 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   21 004 RETNIL
+
+irep 0xADDR nregs=6 nlocals=2 pools=0 syms=1 reps=0 ilen=16
+file: /w/no_block_errors.rb
+   22 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   22 004 LOADI_1	R2	(1)
+   22 006 LOADI_1	R3	(1)
+   22 008 LOADI_2	R4	(2)
+   22 010 SEND		R2	:instance_eval	n=2
+   22 014 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=3 reps=0 ilen=18
+file: /w/no_block_errors.rb
+   23 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   23 004 GETCONST	R2	Class
+   23 007 SEND0		R2	:new
+   23 010 LOADI_1	R3	(1)
+   23 012 SEND		R2	:class_eval	n=1
+   23 016 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=1 reps=0 ilen=14
+file: /w/no_block_errors.rb
+   24 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   24 004 LOADI_1	R2	(1)
+   24 006 LOADNIL	R3	(nil)
+   24 008 SEND		R2	:instance_eval	n=1
+   24 012 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=1 reps=0 ilen=12
+file: /w/no_block_errors.rb
+   25 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   25 004 LOADI_1	R3	(1)
+   25 006 SSEND		R2	:eval	n=1
+   25 010 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=1 reps=0 ilen=12
+file: /w/no_block_errors.rb
+   26 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   26 004 LOADNIL	R3	(nil)
+   26 006 SSEND		R2	:eval	n=1
+   26 010 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=2 reps=0 ilen=15
+file: /w/no_block_errors.rb
+   27 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   27 004 SSEND0	R2	:binding
+   27 007 LOADI_1	R3	(1)
+   27 009 SEND		R2	:eval	n=1
+   27 013 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=1 reps=0 ilen=15
+file: /w/no_block_errors.rb
+   28 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   28 004 LOADI_1	R2	(1)
+   28 006 STRING	R3	L[0]	; self + 1
+   28 009 SEND		R2	:instance_eval	n=1
+   28 013 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=1 syms=3 reps=0 ilen=19
+file: /w/no_block_errors.rb
+   29 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   29 004 GETCONST	R2	Class
+   29 007 SEND0		R2	:new
+   29 010 STRING	R3	L[0]	; 1 + 1
+   29 013 SEND		R2	:class_eval	n=1
+   29 017 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=0 ilen=9
+file: /w/no_block_errors.rb
+   30 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   30 004 SSEND0	R2	:catch
+   30 007 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=2 reps=0 ilen=13
+file: /w/no_block_errors.rb
+   31 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   31 004 LOADSYM	R3	:x
+   31 007 SSEND		R2	:catch	n=1
+   31 011 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=2 reps=1 ilen=16
+file: /w/no_block_errors.rb
+   32 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   32 004 LOADSYM	R3	:x
+   32 007 BLOCK		R4	I[0]
+   32 010 SSENDB	R2	:catch	n=1
+   32 014 RETURN	R2	
+
+irep 0xADDR nregs=6 nlocals=2 pools=0 syms=2 reps=0 ilen=15
+file: /w/no_block_errors.rb
+   32 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   32 004 LOADSYM	R3	:x
+   32 007 LOADI_5	R4	(5)
+   32 009 SSEND		R2	:throw	n=2
+   32 013 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=0 ilen=11
+file: /w/no_block_errors.rb
+   33 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   33 004 LOADNIL	R2	(nil)
+   33 006 SEND0		R2	:call
+   33 009 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=2 reps=1 ilen=16
+file: /w/no_block_errors.rb
+   34 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   34 004 GETCONST	R2	Class
+   34 007 BLOCK		R3	I[0]
+   34 010 SENDB		R2	:new	n=0
+   34 014 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=2 reps=0 ilen=13
+file: /w/no_block_errors.rb
+   34 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   34 004 LOADSYM	R3	:x
+   34 007 SSEND		R2	:define_method	n=1
+   34 011 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=2 reps=1 ilen=16
+file: /w/no_block_errors.rb
+   35 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   35 004 GETCONST	R2	Class
+   35 007 BLOCK		R3	I[0]
+   35 010 SENDB		R2	:new	n=0
+   35 014 RETURN	R2	
+
+irep 0xADDR nregs=6 nlocals=2 pools=0 syms=2 reps=0 ilen=15
+file: /w/no_block_errors.rb
+   35 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   35 004 LOADSYM	R3	:x
+   35 007 LOADI_1	R4	(1)
+   35 009 SSEND		R2	:define_method	n=2
+   35 013 RETURN	R2	
+
+irep 0xADDR nregs=5 nlocals=2 pools=0 syms=4 reps=0 ilen=19
+file: /w/no_block_errors.rb
+   36 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   36 004 GETCONST	R2	Object
+   36 007 SEND0		R2	:new
+   36 010 LOADSYM	R3	:x
+   36 013 SEND		R2	:define_singleton_method	n=1
+   36 017 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=2 reps=0 ilen=12
+file: /w/no_block_errors.rb
+   37 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   37 004 GETCONST	R2	Proc
+   37 007 SEND0		R2	:new
+   37 010 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=0 ilen=9
+file: /w/no_block_errors.rb
+   38 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   38 004 SSEND0	R2	:proc
+   38 007 RETURN	R2	
+
+irep 0xADDR nregs=4 nlocals=2 pools=0 syms=1 reps=0 ilen=9
+file: /w/no_block_errors.rb
+   39 000 ENTER		0:0:0:0:0:0:0:0 (0x0)
+   39 004 SSEND0	R2	:lambda
+   39 007 RETURN	R2	
+

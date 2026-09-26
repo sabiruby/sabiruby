@@ -124,7 +124,8 @@ fn file_line(vm: &mut Vm, a: &[Value], at: usize) -> VmResult<(Option<String>, u
 fn str_arg(vm: &mut Vm, v: Value) -> VmResult<Vec<u8>> {
     match vm.str_bytes(v) {
         Some(b) => Ok(b.to_vec()),
-        None => { let d = vm.describe_for_error(v); Err(vm.raise_type(&format!("wrong argument type {d} (expected String)"))) }
+        // `mrb_get_args` "s" (`mrb_to_str`): "%Y cannot be converted to String", as for the file name
+        None => { let d = vm.describe_for_type_error(v); Err(vm.raise_type(&format!("{d} cannot be converted to String"))) }
     }
 }
 
@@ -198,8 +199,11 @@ fn instance_eval(vm: &mut Vm, s: Value, a: &[Value], b: Value) -> VmResult<Value
         argc!(vm, a, 0);
         return vm.exec_block_with_self(b, s, &[s], None);
     }
-    if a.is_empty() { return Err(vm.raise_arg("no block given")); }
-    argc!(vm, a, 1, 3);
+    // `object_eval` / `mrb_mod_module_eval`: `mrb_get_args(mrb, "|S&", ...)` then, with no block,
+    // `mrb_argnum_error(mrb, argc, 1, 3)` when there is no string, and `"s|zi"` refuses more
+    // than 3 as the optional form (0..3) does
+    if a.is_empty() { return Err(vm.argnum_error(0, "1..3")); }
+    argc!(vm, a, 0, 3);
     let src = str_arg(vm, a[0])?;
     let (file, line) = file_line(vm, a, 1)?;
     let p = eval_proc(vm, &src, file, line)?;
@@ -216,8 +220,11 @@ fn class_eval(vm: &mut Vm, s: Value, a: &[Value], b: Value) -> VmResult<Value> {
         argc!(vm, a, 0);
         return vm.exec_block_with_self(b, s, &[s], None);
     }
-    if a.is_empty() { return Err(vm.raise_arg("no block given")); }
-    argc!(vm, a, 1, 3);
+    // `object_eval` / `mrb_mod_module_eval`: `mrb_get_args(mrb, "|S&", ...)` then, with no block,
+    // `mrb_argnum_error(mrb, argc, 1, 3)` when there is no string, and `"s|zi"` refuses more
+    // than 3 as the optional form (0..3) does
+    if a.is_empty() { return Err(vm.argnum_error(0, "1..3")); }
+    argc!(vm, a, 0, 3);
     let src = str_arg(vm, a[0])?;
     let (file, line) = file_line(vm, a, 1)?;
     let p = eval_proc(vm, &src, file, line)?;

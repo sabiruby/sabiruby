@@ -68,7 +68,8 @@ pub fn init(vm: &mut Vm) {
             if !strict && env.is_some() && env == caller_env { if let ObjKind::Proc(pd) = &mut vm.heap.get_mut(np).kind { pd.orphan = true; } }
             Ok(Value::Obj(np))
         }
-        _ => Err(vm.raise_arg("tried to create Proc object without a block")),
+        // `mrb_proc_s_new`: `mrb_get_args(mrb, "&!", ...)`
+        _ => Err(vm.raise_arg("no block given")),
     });
 }
 

@@ -27,7 +27,9 @@ fn catch_m(vm: &mut Vm, s: Value, a: &[Value], b: Value) -> VmResult<Value> {
     if b.is_nil() {
         // `r2.call(r1)` with no block
         let call = vm.intern("call");
-        return Err(vm.no_method_error(call, Value::Nil, "undefined method 'call' for nil"));
+        // what the reference's `r2.call(r1)` raises for nil (`%T`: NilClass)
+        let d = vm.describe_for_error(Value::Nil);
+        return Err(vm.no_method_error(call, Value::Nil, &alloc::format!("undefined method 'call' for {d}")));
     }
     vm.push_loop_frame(LOOP_CATCH, s, b, &[tag])
 }

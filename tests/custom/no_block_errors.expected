@@ -1,0 +1,24 @@
+instance_eval: ArgumentError: wrong number of arguments (given 0, expected 1..3)
+class_eval: ArgumentError: wrong number of arguments (given 0, expected 1..3)
+module_eval: ArgumentError: wrong number of arguments (given 0, expected 1..3)
+instance_eval_4: ArgumentError: wrong number of arguments (given 4, expected 0..3)
+class_eval_4: ArgumentError: wrong number of arguments (given 4, expected 0..3)
+instance_eval_str_blk: ArgumentError: wrong number of arguments (given 1, expected 0)
+instance_eval_int: TypeError: Integer cannot be converted to String
+class_eval_int: TypeError: Integer cannot be converted to String
+instance_eval_nil: TypeError: nil cannot be converted to String
+eval_int: TypeError: Integer cannot be converted to String
+eval_nil: TypeError: nil cannot be converted to String
+binding_eval_int: TypeError: Integer cannot be converted to String
+instance_eval_ok: 2
+class_eval_ok: 2
+catch: NoMethodError: undefined method 'call' for NilClass
+catch_tag: NoMethodError: undefined method 'call' for NilClass
+catch_ok: 5
+nil_call: NoMethodError: undefined method 'call' for NilClass
+define_method: ArgumentError: no block given
+define_method_int: TypeError: wrong argument type Integer (expected Proc)
+define_singleton_method: ArgumentError: no block given
+proc_new: ArgumentError: no block given
+proc: ArgumentError: no block given
+lambda: ArgumentError: tried to create Proc object without a block
