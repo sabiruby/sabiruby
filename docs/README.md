@@ -61,7 +61,7 @@ What changed in each release, with the commit behind every claim, is
 | [upstream-task-plan.md](plans/upstream-task-plan.md) | (Japanese) steps 1–4 done (2026-09-17), step 5 deliberately not: `upstream-pr-candidates.md` item 4 — a finished task is kept for the life of the VM — measured on the reference, patched and written up **as a record, not submitted** |
 | [from-mrubyedge-plan.md](plans/from-mrubyedge-plan.md) | items 1 and 3 done (2026-09-16); what mruby/edge does that is worth having — serde, RBS at the boundary, a coverage list, gems as features, `RUBY_ENGINE` |
 | [host-bridge-plan.md](plans/host-bridge-plan.md) | done through stage 6a (2026-09-15); 6b is rubevy's and 6c is both. Carries the findings of each stage |
-| [wait-anywhere-plan.md](plans/wait-anywhere-plan.md) | planned (2026-09-26): a task can wait inside `instance_exec`/`instance_eval`/`Method#call` (as the reference mruby) and inside block-taking builtins DSLs use; a wait that cannot happen raises instead of passing silently; no slowdown on ordinary paths |
+| [wait-anywhere-plan.md](plans/wait-anywhere-plan.md) | done (2026-09-26), stages 1 and 2 (stage 3 undecided): a task can wait inside `instance_exec`/`instance_eval`/`Method#call` (as the reference mruby) and inside block-taking builtins DSLs use; a wait that cannot happen raises instead of passing silently; no slowdown on ordinary paths |
 
 ## worklog/ — what happened, when
 
