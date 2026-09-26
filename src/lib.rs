@@ -178,3 +178,6 @@ pub const MRBLIB_REGEXP_MRB: &[u8] = include_bytes!("mrblib/regexp.mrb");
 pub const MRBLIB_TASK_MRB: &[u8] = include_bytes!("mrblib/task.mrb");
 /// `require`/`load`, which the reference has no equivalent of (`src/mrblib/require.rb`).
 pub const MRBLIB_REQUIRE_MRB: &[u8] = include_bytes!("mrblib/require.mrb");
+/// The loops of block-taking natives, for when a SEND called them (`src/mrblib/block-frames.rb`,
+/// `docs/design/wait-anywhere.md`); the reference has no equivalent of it either.
+pub const MRBLIB_BLOCK_FRAMES_MRB: &[u8] = include_bytes!("mrblib/block-frames.mrb");

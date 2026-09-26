@@ -87,8 +87,11 @@ fiber and kept elsewhere) is detached: its window is copied into `values` (mruby
 
 * **A native may hold `Value`s and `ObjId`s in Rust locals for as long as it runs.** Nothing is
   collected while any native is on the host stack, including while it re-enters the VM
-  (`funcall`, `call_block`: a `sort { }` block, `Class#new` → `initialize`). There is no arena
-  and nothing to save/restore.
+  (`funcall`, `call_block`: the `to_s` `Array#join` calls, a block a native calls through
+  `funcall`). There is no arena and nothing to save/restore. The natives that hand their block
+  to a frame of its own when a SEND called them (`instance_exec`, `Class#new` → `initialize`,
+  `sort { }`, `Array.new(n) { }`, …; [`wait-anywhere.md`](wait-anywhere.md)) are not on the
+  host stack while that block runs, so collection is not postponed there.
 * The cost of that rule: collection is postponed during Ruby code that runs *under* a native.
   mrblib's `each`/`map`/`times`/`loop`/`upto` are Ruby, so ordinary iteration is not affected;
   a long-running `initialize` or a `sort_by` block that allocates heavily is.
@@ -119,7 +122,9 @@ fiber and kept elsewhere) is detached: its window is copied into `values` (mruby
 * **No collection in Ruby code running under a native is accepted**, as the plan decided.
   Condition to revisit: a real case where Ruby code called back by a native runs long and its
   allocations actually cause a memory problem. Then switch to an arena-style scheme for natives.
-  Today's candidates (`sort { }` blocks, `initialize` from `Class#new`) are short.
+  Today's candidates (the implicit callbacks `wait-anywhere.md` lists, and blocks a native calls
+  through `funcall`) are short; `sort { }` blocks and `initialize` from `Class#new` stopped being
+  candidates when a SEND's call to them became a frame of its own (2026-09-26).
 
 ## `GC` module
 

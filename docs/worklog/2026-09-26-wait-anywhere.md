@@ -182,6 +182,94 @@ can't wait inside Array.new's call to a block (sleep)
 - 最初の実行で `object ObjId(44) is not a proc` で落ちた。足した `ret_proc` を GC の根に入れていなかった
   （`call_proc` は `gc_mark_roots` で印を付けている）。1 行足して直した。
 
+## W2: 段階 2
+
+### 対象の確定
+
+W0 の表の「段階 2」の行。probe で確かめると、計画に挙げた `select!` などの破壊的な block 付き・`sort_by`・
+`count`・`to_h`・`fetch` と、Hash の `fetch`・`delete`・`merge` / `update`、String の `each_char` / `each_byte` /
+`upto`、`Integer#times`・`Kernel#loop` は **mrblib の Ruby が同じ名前を後から定義していて、ネイティブは呼ばれていない**
+（W1 の時点で全部「待つ」）。残ったのは次の 13 経路:
+`Array#index {}`・`rindex {}`・`Array.new(n) {}`・`sort {}`（mrblib の `sort` が `dup.sort!` を呼ぶので実体は `sort!`）・
+`Array#delete(x) {}`・`Hash.new {}` の `h[k]`・`Hash#default(k)`・`Class.new {}`・`Module.new {}`・`Struct.new {}`・
+`Data.define {}`・`catch {}`・`Regexp#match {}`（と、それを呼ぶ `String#match {}`）。
+
+`send` / `public_send` が `method_missing` に落ちる場合は、SabiRuby では W1 の前から同じフレームで呼んでいた
+（`op_send_vis`、`docs/design/fibers.md`）。W1 で `public_send` も同じ形にした。
+
+### 直し方（1 つずつ）
+
+計画は「Ruby の前置き（a）か、フレームの書き換え（b）かを速さで選ぶ」。速さはまだ測れない（冒頭）ので、本体の指示どおり
+**全部 (b) にして、速さの確認は計測待ちの印を付ける**。(b) の中で 3 つの形になった。
+
+1. **block の値がそのまま答え**（続きの処理が無い）: `Array#delete(x) {}`（見つからないとき）・`Hash#default(k)`・
+   `Hash#[]` の既定の proc・`Regexp#match {}`。`Vm::exec_block`（`call_block` のフレーム版）で W1 と同じ。
+   `String#match {}` は `Regexp#match` を `send_in_frame` で呼ぶ。
+2. **block の後に決まった値を返すだけ**: `Class.new {}`・`Module.new {}`・`Struct.new {}`・`Data.define {}`。
+   W1 の `Class#new` と同じく、`OP_RETURN R0` の小さなフレームの上に block のフレームを積む
+   （`Vm::exec_block_with_self_then`）。
+3. **block を繰り返し呼ぶ**: `index`・`rindex`・`Array.new(n)`・`sort!`。続きは Ruby の小さなメソッドにした
+   （計画の (b) の「続きを Ruby の小さなメソッドにする」）。`src/mrblib/block-frames.rb` に `__index_by`・
+   `__rindex_by`・`__init_by`・`__sort_by_block!`（private）を置き、参照の `mrbc`（Docker `kishima/mruby:4.1.0-rc2`）で
+   `block-frames.mrb` に焼いて埋め込む（`require.rb` と同じ扱い、`tools/fixtures.sh` に 1 行）。ネイティブは block があって
+   `in_frame` のときだけそちらへ `send_in_frame` し、`funcall` から呼ばれたときや block の無いときは今までの Rust のまま。
+   **block の無い呼び出しは何も変わらない**（`b.is_nil()` の判定は前からあり、足したのは `in_frame` の 1 回の読みだけ）。
+   - 各メソッドはネイティブのループを 1 手ずつ写した。`rindex` は毎回長さを読み直す（block が配列を縮めうる）、
+     `Array.new(n)` は要素を集めてから 1 度に入れる、`sort!` は同じボトムアップのマージソートで、同じ組を同じ順で比べる。
+     比べた答えの読み方（Integer は符号、nil はエラー、それ以外は `> 0` / `< 0` を聞く）は `sort_order` として
+     Rust に切り出し、ネイティブのソートと Ruby 側（`__sort_cmp`）の両方が使う。矛盾した block でも前と同じ順になることを
+     テストで固定した（`[5, 4, 3, 2, 1, 0].sort { n += 1; n % 3 - 1 }` → `[0, 5, 4, 1, 3, 2]`、変更前のバイナリの答え）。
+   - `Array.new(n) {}` は `Class#new` → `initialize`（ネイティブ）を通る。W1 の `Class#new` は Ruby の `initialize` だけを
+     フレームにしていたので、**block があるときはネイティブの `initialize` もフレームを保ったまま呼ぶ**ようにした
+     （`Vm::send_in_frame_then`: 答えのフレームを積んでから呼び、何も積まれなかったら答えのフレームを外す）。
+
+`catch` だけは形が違う。本家の `catch` はバイトコードのメソッド（`catch_iseq`、`mruby-catch/src/catch.c:20-45`）で、
+`throw` はフレームを下から見て、その proc で R1（タグ）が同じものを探す（`find_catcher`）。SabiRuby は `catch` を
+ネイティブにして `Vm::catch_tags` にタグと深さを積んでいたが、フレームにすると「ネイティブが返ったら外す」ができない。
+本家の 29 バイトの命令列をそのまま `VmIrep` にして `Kernel#catch` にし（`ext_catch.rs`）、`throw` を本家と同じ探し方に
+した。`catch_tags` は要らなくなり、`Vm::catch_proc` に置き換えた（GC の根にも入れる）。
+
+### `Hash#[]` と `OP_GETIDX`
+
+`h[k]` はほとんど `OP_GETIDX` で、`op_getidx` がネイティブの `hash_aref` を SEND を通さずに直接呼んでいた。
+直接の呼び出しは `in_frame` にならないので、既定の proc はそのままでは入れ子のまま。そこで `op_getidx` / `op_getidx0` で
+**自分で引いて、無くて既定の proc があるときだけ send に回す**ようにした（send なら `Hash#[]` が `in_frame` で呼ばれる）。
+既定の proc の有無は ivar の読み 1 回で、その名前（`__default_proc`）は `Syms` に 1 つ足した。
+当たったときは前より仕事が減る（`call_native` の出入りと `argc!` が無くなる）。外れて既定の proc が無いときは、
+引いた後の処理だけの `hash_missing` を呼ぶので、引き直しはしない。速さは計測待ち。
+
+### 失敗と直したもの
+
+- **`Hash#values_at` が壊れた**（mrbtest `gem_hash` 27 → 26）。`values_at` はネイティブの中から `hash_aref` を
+  Rust の関数として呼び、答えを集めて先へ進む。`values_at` 自身が SEND から呼ばれているので `in_frame` が真のまま
+  `hash_aref` に届き、最初の既定の proc でフレームを積んで戻ってしまった。**「SEND から呼ばれたネイティブが、その答えを
+  そのまま返すときだけ」**という前提を、ネイティブを助け手として呼ぶ側が破る形。`hash_aref` を「そのまま返す入口」と
+  「続きのある呼び手用の `hash_value`（既定の proc は入れ子）」に分けて直した。同じ形の呼び出しが他に無いかを、
+  変えた関数を名前で全部 grep して確かめた（`mcall`・`str_match`・`eval_in_binding` などは呼び手が答えをそのまま返す）。
+- **`tests/task.rs` の 2 つ**（`Task::Overrun`）が落ちた。`Array.new(1) { loop { } }` を「ネイティブの境界で止まって
+  切り替えられない task」の例にしていたが、もう境界ではないので、普通に切り替わって Overrun にならない。
+  例を残る境界（`Array#join` が呼ぶ `to_s` が終わらない）に替えた。テストの意図は変えていない。
+- no_std の構成で `vec!` が無かった（`ext_catch.rs` に `use alloc::vec;`）。
+
+### 意味の違い（W2）
+
+前後のバイナリで同じスクリプト（`index`・`rindex`・`Array.new`・`sort`・`delete`・既定の proc・`values_at`・
+`Class.new`・`Module.new`・`Struct.new`・`Data.define`・`catch` / `throw`（入れ子、深い再帰、`ensure`、見つからないタグ、
+block なし、`Kernel.catch`、`Method#call` 経由）・`Regexp#match`）を比べた。違いは 3 つで、全部 `break`:
+
+| 式 | 変更前 | 変更後 |
+|---|---|---|
+| `[1, 2, 3].index { break :b }` | `0` | `:b` |
+| `Array.new(3) { \|i\| break :early if i == 1; i }` | `[0, :early, 2]` | `:early` |
+| `Class.new { break :cb }` | そのクラス | `:cb` |
+
+変更前は、入れ子のループの中の `break` が block の値として返り、ネイティブがそれを使って先へ進んでいた。
+変更後は block を受け取ったメソッドから抜ける。Ruby の `break` の意味（CRuby の振る舞い）に合うのは変更後。
+本家での振る舞いは今回は動かして確かめていない。
+
+GC を毎回走らせる設定（`SABIRUBY_GC_STRESS=1`）でも、probe の主な経路・上の比較スクリプト・関係する mrbtest の
+18 ファイルの通過数が変わらないことを確かめた。
+
 ## 気づいた点
 
 - `Vm::funcall` の「メソッドが無い」枝で、クロージャの `method_missing` を `call_closure` で呼ぶとき
@@ -189,3 +277,9 @@ can't wait inside Array.new's call to a block (sleep)
   そのクロージャが Fiber の `yield` を呼ぶと、入れ子なのに「SEND から呼ばれた」と見える。VM（sabiruby）の話。
   今回の変更では、`run_loop_ctx` が下ろすようになったので入れ子のループの中では起きないが、SEND から呼ばれたネイティブが
   `funcall` でこの枝に来た場合は残る。
+- rubevy の `src/prelude.rb` の冒頭のコメントは、境界の例外の文言を
+  `"blocking pop cannot be called from within a C function boundary"` と引いている。文言はこの変更で
+  `can't wait inside ... (Task::Queue#pop)` になった。rubevy の文書と実物のずれ（rubevy の側で直す話。この repo からは触らない）。
+- `in_frame` の前提（「SEND から呼ばれたネイティブが、その答えをそのまま返すときだけ」）は型では守られていない。
+  ネイティブの関数を別のネイティブが助け手として呼ぶと破れる（`values_at` の件）。今は変えた関数の呼び手を
+  grep で全部見たが、これから `exec_*` / `send_in_frame` を使う関数を足すときに同じ確認が要る。VM の話。

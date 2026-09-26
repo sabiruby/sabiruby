@@ -843,7 +843,8 @@ pub fn init(vm: &mut Vm) {
             let pos = if a.len() == 2 { vm.expect_int(a[1], "pos")? } else { 0 };
             let Some(pos) = char_to_byte(vm, str, pos) else { clear_match(vm); return Ok(Value::Nil) };
             let md = exec_match(vm, s, str, pos, false, false)?;
-            if !md.is_nil() && !b.is_nil() { return vm.call_block(b, &[md]); }
+            // called by a SEND the block runs in a frame of its own
+            if !md.is_nil() && !b.is_nil() { return vm.exec_block(b, &[md]); }
             Ok(md)
         }),
         ("match?", |vm, s, a, _b| {
@@ -1534,7 +1535,8 @@ fn str_match(vm: &mut Vm, s: Value, a: &[Value], b: Value) -> VmResult<Value> {
     let re = if literal { new_regexp(vm, re, 0)? } else { re };
     let m = vm.intern("match");
     let pos = a.get(1).copied().unwrap_or(Value::Int(0));
-    vm.funcall(re, m, &[s, pos], b)
+    // `Regexp#match` in the same frame, so its block is no native boundary either
+    vm.send_in_frame(re, m, &[s, pos], None, b)
 }
 
 fn str_sub(vm: &mut Vm, s: Value, a: &[Value], b: Value, bang: bool) -> VmResult<Value> {

@@ -98,7 +98,7 @@ fn mcall(vm: &mut Vm, s: Value, recv: Option<Value>, a: &[Value], b: Value) -> V
         let mm = vm.intern("method_missing");
         let mut args = vec![Value::Sym(mid)];
         args.extend_from_slice(a);
-        return vm.funcall(recv, mm, &args, b);
+        return vm.send_in_frame(recv, mm, &args, kw, b);
     }
     match iv(vm, s, i.proc_) {
         // called by a SEND the method's body becomes the frame (`mcall` → `mrb_exec_irep`)
@@ -108,7 +108,7 @@ fn mcall(vm: &mut Vm, s: Value, recv: Option<Value>, a: &[Value], b: Value) -> V
             Some((Method::Closure(f), _)) => vm.call_closure(&f, recv, a, b),
             Some((Method::AttrReader(ivn), _)) => Ok(recv.obj().map(|o| vm.heap.ivar_get(o, ivn)).unwrap_or(Value::Nil)),
             Some((Method::AttrWriter(ivn), _)) => { if a.len() != 1 { return Err(vm.argnum_error(a.len(), "1")); } if let Some(o) = recv.obj() { vm.heap.ivar_set(o, ivn, a[0]); } Ok(a[0]) }
-            _ => vm.funcall(recv, mid, a, b),
+            _ => vm.send_in_frame(recv, mid, a, kw, b),
         },
     }
 }

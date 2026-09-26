@@ -189,8 +189,10 @@ pub enum Timeslice {
 ///
 /// The instruction budget is checked between timeslices, as [`Vm::task_run_budget`] always did.
 /// The time budget also cuts the running timeslice short at the next look at the clock. Neither
-/// can stop a task that is inside a native waiting for a block (`sort { }`, `Array.new { }`):
-/// switching it out would need the native's Rust frames to be kept, which they cannot be. The
+/// can stop a task that is inside a native waiting for Ruby code it called (the `to_s` of
+/// `Array#join`, `ObjectSpace.each_object { }`, a block a native called through `funcall`;
+/// `docs/design/wait-anywhere.md` lists them): switching it out would need the native's Rust
+/// frames to be kept, which they cannot be. The
 /// overrun limits are for that case — past them, such a task gets `Task::Overrun` (an
 /// `Exception`, not a `StandardError`, so a plain `rescue` does not keep it running), which
 /// unwinds the native like any exception, and the task is switched out at the next boundary.
@@ -361,6 +363,8 @@ pub struct Syms {
     pub aref: Sym,
     pub aset: Sym,
     pub attached: Sym,
+    /// the instance variable a Hash keeps its default proc in (`builtins/hash.rs`)
+    pub default_proc: Sym,
     /// The hidden instance variables of a Rational and a Complex (`ext_rational.rs`,
     /// `ext_complex.rs`), which their natives read on every operation.
     pub num: Sym,
@@ -466,10 +470,11 @@ pub struct Vm {
     /// find their member); valid at the native's entry only.
     #[doc(hidden)]
     pub native_mid: Option<Sym>,
-    /// `catch` tags in flight: (tag, context, depth of the block's frame); `throw` searches it
-    /// innermost first (mruby-catch, `ext_catch.rs`).
+    /// The body of `Kernel#catch`, a bytecode method as in the reference (`catch_iseq`):
+    /// `throw` finds a `catch` in flight by this proc on the frame stack (mruby-catch,
+    /// `ext_catch.rs`).
     #[doc(hidden)]
-    pub catch_tags: Vec<(Value, usize, usize)>,
+    pub catch_proc: Option<ObjId>,
     /// Objects alive after the last collection.
     pub live_after_gc: usize,
     /// Collections run so far.
@@ -656,6 +661,7 @@ impl Vm {
             aref: syms.intern_str("[]"),
             aset: syms.intern_str("[]="),
             attached: syms.intern_str("__attached__"),
+            default_proc: syms.intern_str("__default_proc"),
         };
         let top_self = heap.alloc(object, ObjKind::Object);
         let call_irep = VmIrep { nlocals: 1, nregs: 4, iseq: vec![Op::Call as u8], catch: vec![], pool: vec![], syms: vec![], reps: vec![], lv: vec![], lines: vec![], filename: None };
@@ -665,7 +671,7 @@ impl Vm {
         let ret_proc = heap.alloc(core.proc_, ObjKind::Proc(ProcData { irep: 1, upper: None, env: None, target_class: Some(object), strict: true, scope: true, orphan: false, mid: None }));
         let mut vm = Vm {
             heap, syms, ireps: vec![call_irep, ret_irep], ret_proc, stack: Vec::new(), ci: Vec::new(), globals: HashMap::new(),
-            exc: None, out: Vec::new(), core, s, top_self, step_left: None, instructions: 0, op_counts: [0; crate::opcode::OP_COUNT], count_ops: false, method_cache: alloc::boxed::Box::new([MethodCacheLine::default(); METHOD_CACHE_LEN]), idx_builtin: [None; IDX_SLOTS], idx_class: [None; IDX_SLOTS], idx_serial: 0, native_depth: 0, inspect_guard: Vec::new(), pending_kw: None, eq_guard: Vec::new(), gc_disabled: false, pending_vis_break: false, notimpl_fns: Vec::new(), gc_step_limit: 0, gc_interval_ratio: 200, gc_stress: false, native_active: 0, gc_registered: Vec::new(), catch_tags: Vec::new(), native_mid: None, live_after_gc: 0, gc_count: 0, gc_time_ns: 0, gc_clock: None, wall_clock: None, sleep_hook: None, host: None, trace: None, call_proc,
+            exc: None, out: Vec::new(), core, s, top_self, step_left: None, instructions: 0, op_counts: [0; crate::opcode::OP_COUNT], count_ops: false, method_cache: alloc::boxed::Box::new([MethodCacheLine::default(); METHOD_CACHE_LEN]), idx_builtin: [None; IDX_SLOTS], idx_class: [None; IDX_SLOTS], idx_serial: 0, native_depth: 0, inspect_guard: Vec::new(), pending_kw: None, eq_guard: Vec::new(), gc_disabled: false, pending_vis_break: false, notimpl_fns: Vec::new(), gc_step_limit: 0, gc_interval_ratio: 200, gc_stress: false, native_active: 0, gc_registered: Vec::new(), catch_proc: None, native_mid: None, live_after_gc: 0, gc_count: 0, gc_time_ns: 0, gc_clock: None, wall_clock: None, sleep_hook: None, host: None, trace: None, call_proc,
             contexts: vec![Context::new(FiberState::Running)], cur: ROOT, direct_send: false, native_ret_reg: 0, loop_exit: None, native_arity: Vec::new(),
             task: TaskState { wakeup_tick: u32::MAX, tick_every: TASK_TICK_INSTRUCTIONS, tick_left: TASK_TICK_INSTRUCTIONS, clock_from_instructions: true, native_every: TASK_NATIVE_SAMPLE, native_left: TASK_NATIVE_SAMPLE, ..Default::default() },
             host_state: None, on_free: None, host_stores: Vec::new(), next_tag: 1,
@@ -730,6 +736,9 @@ impl Vm {
         #[cfg(feature = "regexp")]
         vm.load_and_run(crate::MRBLIB_REGEXP_MRB)?;
         vm.load_and_run(crate::MRBLIB_TASK_MRB)?;
+        // SabiRuby's own: the loops `index { }`, `sort! { }` and `Array.new(n) { }` hand their
+        // block to when a SEND called them (`src/mrblib/block-frames.rb`)
+        vm.load_and_run(crate::MRBLIB_BLOCK_FRAMES_MRB)?;
         // mruby-regexp initialises after the core mrblib is loaded, as a gem does: it takes the
         // names of the String methods mrblib defines in Ruby (`sub`, `gsub`, which mix character
         // and byte units there) as well as the ones the natives hold
@@ -2193,6 +2202,58 @@ impl Vm {
         self.exec_proc(p, self_, args, kw, Value::Nil, None, tc, true)
     }
 
+    /// [`Vm::call_block`] for a native that returns the block's value as it is (`Hash`'s default
+    /// proc, `fetch`-like fallbacks): called by a SEND, the block runs in a frame of its own
+    /// ([`Vm::exec_proc`]).
+    pub(crate) fn exec_block(&mut self, blk: Value, args: &[Value]) -> VmResult<Value> {
+        let p = match blk {
+            Value::Obj(o) if matches!(self.heap.get(o).kind, ObjKind::Proc(_)) => o,
+            Value::Nil => return Err(self.raise(self.core.local_jump_error, "no block given (yield)")),
+            _ => return Err(self.raise_type("wrong type (expected Proc)")),
+        };
+        let pd = self.heap.proc_data(p);
+        let (env, ptc) = (pd.env, pd.target_class);
+        let self_ = match env { Some(e) => self.env_get(e, 0), None => Value::Nil };
+        let mid = env.and_then(|e| self.heap.env(e).mid);
+        // what `call_block` → `call_proc` picks
+        let tc = if env.is_some() { None } else { Some(ptc.unwrap_or(self.core.object)) };
+        self.exec_proc(p, self_, args, None, Value::Nil, mid, tc, false)
+    }
+
+    /// [`Vm::call_block_with_self`] followed by answering `answer` (`Class.new { }`,
+    /// `Struct.new { }`): called by a SEND, the block runs in a frame of its own above one that
+    /// answers `answer` ([`Vm::push_return_frame`]).
+    pub(crate) fn exec_block_with_self_then(&mut self, blk: Value, self_: Value, args: &[Value], answer: Value) -> VmResult<Value> {
+        if !self.direct_send {
+            self.call_block_with_self(blk, self_, args)?;
+            return Ok(answer);
+        }
+        let name = self.native_mid.unwrap_or(self.s.call);
+        self.push_return_frame(answer, name)?;
+        self.exec_block_with_self(blk, self_, args, None)?;
+        Ok(answer)
+    }
+
+    /// [`Vm::send_in_frame`] followed by answering `answer` (`Class#new` and its `initialize`).
+    /// A call that runs to its end where it is (a native that pushes nothing) needs no frame to
+    /// answer for it, and the one pushed for that is taken off again.
+    pub(crate) fn send_in_frame_then(&mut self, answer: Value, recv: Value, mid: Sym, args: &[Value], kw: Option<Value>, blk: Value) -> VmResult<Value> {
+        if !self.direct_send {
+            self.funcall(recv, mid, args, blk)?;
+            return Ok(answer);
+        }
+        let depth = self.ci.len();
+        let name = self.native_mid.unwrap_or(mid);
+        self.push_return_frame(answer, name)?;
+        let r = self.send_in_frame(recv, mid, args, kw, blk);
+        if self.ci.len() == depth + 1 {
+            self.ci.pop();
+            self.native_ret_reg -= 1;
+        }
+        r?;
+        Ok(answer)
+    }
+
     /// [`Vm::call_method_proc`] for `Method#call` (mruby `mcall` → `mrb_exec_irep`).
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn exec_method_proc(&mut self, proc_: ObjId, self_: Value, args: &[Value], kw: Option<Value>, blk: Value, mid: Option<Sym>, target_class: ObjId) -> VmResult<Value> {
@@ -3049,6 +3110,7 @@ impl Vm {
         h.mark_id(self.top_self, work);
         h.mark_id(self.call_proc, work);
         h.mark_id(self.ret_proc, work);
+        if let Some(p) = self.catch_proc { h.mark_id(p, work); }
         for id in &self.inspect_guard { h.mark_id(*id, work); }
         for (x, y) in &self.eq_guard { h.mark_id(*x, work); h.mark_id(*y, work); }
         for id in &self.gc_registered { h.mark_id(*id, work); }
@@ -4571,9 +4633,14 @@ impl Vm {
                 Value::Int(i) => self.ary_entry(o, i),
                 _ => return Ok(true),
             },
-            // `mrb_hash_get`: a Hash without the key answers through `default`/`default_proc`,
-            // which can run Ruby code — as it does under the send, and behind the same boundary
-            IDX_HASH_AREF => self.call_native(crate::builtins::hash::hash_aref, recv, &[idx], Value::Nil)?,
+            // `mrb_hash_get`: a Hash without the key answers through `default`/`default_proc`.
+            // A default proc is left to the send, where `Hash#[]` runs it in a frame of its own
+            // (no native boundary, so a task can wait inside it); the rest is answered here.
+            IDX_HASH_AREF => match self.hash_get(recv, idx) {
+                Some(v) => v,
+                None if !self.heap.ivar_get(o, self.s.default_proc).is_nil() => return Ok(true),
+                None => self.call_native(crate::builtins::hash::hash_missing, recv, &[idx], Value::Nil)?,
+            },
             _ => {
                 if !self.str_index_p(idx) { return Ok(true); }
                 self.call_native(crate::builtins::string::str_aref, recv, &[idx], Value::Nil)?
@@ -4600,7 +4667,11 @@ impl Vm {
         if !self.idx_armed(slot, cls) { return fallback(self); }
         let v = match slot {
             IDX_ARY_AREF => self.heap.array(o).and_then(|l| l.first().map(|e| e.get())).unwrap_or(Value::Nil),
-            IDX_HASH_AREF => self.call_native(crate::builtins::hash::hash_aref, recv, &[Value::Int(0)], Value::Nil)?,
+            IDX_HASH_AREF => match self.hash_get(recv, Value::Int(0)) {
+                Some(v) => v,
+                None if !self.heap.ivar_get(o, self.s.default_proc).is_nil() => return fallback(self),
+                None => self.call_native(crate::builtins::hash::hash_missing, recv, &[Value::Int(0)], Value::Nil)?,
+            },
             _ => self.call_native(crate::builtins::string::str_aref, recv, &[Value::Int(0)], Value::Nil)?,
         };
         if self.stack.len() <= base + a { self.stack.resize(base + a + 1, Slot::NIL); }

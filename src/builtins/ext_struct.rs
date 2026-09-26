@@ -211,7 +211,8 @@ fn s_def(vm: &mut Vm, s: Value, a: &[Value], b: Value) -> VmResult<Value> {
     let st = make_struct(vm, name, &members, klass)?;
     let kk = vm.intern("@__keyword_init__");
     vm.heap.ivar_set(st, kk, keyword_init_val);
-    if !b.is_nil() { vm.call_block_with_self(b, Value::Obj(st), &[Value::Obj(st)])?; }
+    // called by a SEND the block runs in a frame of its own
+    if !b.is_nil() { return vm.exec_block_with_self_then(b, Value::Obj(st), &[Value::Obj(st)], Value::Obj(st)); }
     Ok(Value::Obj(st))
 }
 

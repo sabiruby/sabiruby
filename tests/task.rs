@@ -356,14 +356,20 @@ fn class_name(vm: &mut sabiruby::Vm, v: sabiruby::Value) -> String {
     vm.inspect_str(c).expect("inspect")
 }
 
+/// A `to_s` that never returns: `[Stuck.new].join` is stuck under a native (`Array#join` calling
+/// it back), which is still a native boundary.
+const STUCK: &str = "class Stuck\n  def to_s\n    loop { }\n  end\nend\n";
+
 #[test]
 fn a_task_stuck_in_a_block_under_a_native_gets_overrun() {
-    // `Array.new { }` is a native waiting for a block, so the task cannot be switched out while
-    // the block runs, and a timeslice never ends. Past the run's hard limit it gets Task::Overrun
-    // instead of taking the host loop with it. Counted in instructions here, so no clock is needed.
+    // `Array#join` is a native waiting for the `to_s` it called, so the task cannot be switched
+    // out while that runs, and a timeslice never ends. Past the run's hard limit it gets
+    // Task::Overrun instead of taking the host loop with it. Counted in instructions here, so no
+    // clock is needed. (This used `Array.new(1) { loop { } }` until `Array.new` stopped being a
+    // native boundary: `docs/design/wait-anywhere.md`.)
     let mut vm = sabiruby::Vm::with_mrblib().expect("vm");
     vm.task_external_clock(true);
-    let stuck = spawn_src(&mut vm, "Array.new(1) { loop { } }", "stuck");
+    let stuck = spawn_src(&mut vm, &format!("{STUCK}[Stuck.new].join"), "stuck");
     let other = spawn_src(&mut vm, "$n = 0\nloop { $n += 1; Task.pass }", "other");
     let limits = sabiruby::RunLimits { instructions: Some(50_000), overrun_instructions: Some(300_000), ..Default::default() };
     let spent = vm.task_run_limits(limits).expect("frame");
@@ -380,7 +386,7 @@ fn a_task_stuck_in_a_block_under_a_native_gets_overrun() {
 fn overrun_is_not_a_standard_error_and_a_task_that_rescues_it_still_yields() {
     let mut vm = sabiruby::Vm::with_mrblib().expect("vm");
     vm.task_external_clock(true);
-    let plain = spawn_src(&mut vm, "begin\n  Array.new(1) { loop { } }\nrescue => e\n  $plain = e\nend", "plain");
+    let plain = spawn_src(&mut vm, &format!("{STUCK}begin\n  [Stuck.new].join\nrescue => e\n  $plain = e\nend"), "plain");
     let limits = sabiruby::RunLimits { overrun_instructions: Some(100_000), ..Default::default() };
     // the exception unwinds out of the native into the `rescue` clause, which does not match it;
     // the switch Overrun leaves due is taken at that boundary, before the re-raise, so the task
@@ -394,7 +400,7 @@ fn overrun_is_not_a_standard_error_and_a_task_that_rescues_it_still_yields() {
     // one that rescues Exception and walks back into the same call is switched out every turn
     // rather than holding the host loop
     let stubborn = spawn_src(&mut vm,
-        "$caught = 0\nloop do\n  begin\n    Array.new(1) { loop { } }\n  rescue Exception\n    $caught += 1\n  end\nend", "stubborn");
+        &format!("{STUCK}$caught = 0\nloop do\n  begin\n    [Stuck.new].join\n  rescue Exception\n    $caught += 1\n  end\nend"), "stubborn");
     for _ in 0..3 {
         let spent = vm.task_run_limits(limits).expect("frame");
         assert!(spent < 200_000, "the run ends at its hard limit: spent {spent}");

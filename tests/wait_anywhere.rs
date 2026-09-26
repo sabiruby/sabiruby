@@ -27,21 +27,9 @@ const KINDS: &[(&str, &str)] = &[
 /// The paths that are still a native boundary, and how the error names them. Every other path
 /// of the probe waits.
 const BOUNDARIES: &[(&str, &str)] = &[
-    ("c_array_index", "Array#index's call to a block"),
-    ("c_array_new", "Array.new's call to a block"),
-    ("c_sort", "Array#sort!'s call to a block"),
-    ("class_new", "Class.new's call to a block"),
-    ("module_new", "Module.new's call to a block"),
     // the reference keeps this one too: the collector is walking the heap
     ("c_each_object", "ObjectSpace.each_object's call to a block"),
-    ("c_rindex", "Array#rindex's call to a block"),
-    ("c_ary_delete", "Array#delete's call to a block"),
-    ("c_hash_default", "Hash#[]'s call to a block"),
-    ("c_hash_default_m", "Hash#default's call to a block"),
-    ("c_struct_new", "Struct.new's call to a block"),
-    ("c_data_define", "Data.define's call to a block"),
-    ("c_catch", "Kernel#catch's call to a block"),
-    ("c_regexp_match", "Regexp#match's call to a block"),
+    // mruby-regexp's loops over the matches (left as they are: `docs/design/wait-anywhere.md`)
     ("c_sub", "String#sub's call to a block"),
     ("c_gsub", "String#gsub's call to a block"),
     ("c_scan", "String#scan's call to a block"),
@@ -155,4 +143,51 @@ fn the_frame_a_wait_leaves_answers_where_the_call_was() {
       p log, t.status
     "#);
     assert_eq!(out, "[3, [3, 4, true], [5, 6], :broke, 7, [8, 2]]\n:DORMANT\n");
+}
+
+#[test]
+fn the_loops_handed_to_a_frame_do_what_the_natives_did() {
+    // `index { }`, `rindex { }`, `Array.new(n) { }` and `sort! { }` run their loop in Ruby when a
+    // SEND called them (`src/mrblib/block-frames.rb`); the answers are the natives', and a
+    // `break` now ends the call that took the block, as it does in the reference
+    let mut vm = new_vm();
+    let out = run_program(&mut vm, r#"
+      a = [1, 2, 3, 2]
+      p [a.index { |x| x == 2 }, a.rindex { |x| x == 2 }, a.index { false }]
+      b = [1, 2, 3, 4]
+      p b.rindex { |x| b.pop if x == 4; x == 1 }
+      p [Array.new(3) { |i| i * i }, Array.new(0) { raise "no" }]
+      n = 0
+      p [5, 4, 3, 2, 1, 0].sort { |x, y| n += 1; n % 3 - 1 }
+      p [[1, :a], [0, :b], [1, :c], [0, :d]].sort { |x, y| x[0] <=> y[0] }
+      p [3, 1, 2].sort { |x, y| (x <=> y).to_f }
+      begin; [3, 1].sort { nil }; rescue => e; p e.message; end
+      p [[1, 2, 3].index { break :b }, Array.new(3) { |i| break :early if i == 1; i }, [2, 1].sort { break :s }]
+      p [(Class.new { break :c }), catch(:t) { [1, 2].each { |x| throw :t, x if x == 2 } }]
+      h = Hash.new { |hh, k| hh[k] = k * 2 }
+      p [h[3], h[0], h.default(5), [].delete(1) { :none }]
+      p catch { |t| throw t, 7 }
+    "#);
+    assert_eq!(out, concat!(
+        "[1, 3, nil]\n",
+        "0\n",
+        "[[0, 1, 4], []]\n",
+        // what the native's merge sort gave for the same block (`3170b63`)
+        "[0, 5, 4, 1, 3, 2]\n",
+        "[[0, :b], [0, :d], [1, :a], [1, :c]]\n",
+        "[1, 2, 3]\n",
+        "\"comparison of Integer with Integer failed\"\n",
+        "[:b, :early, :s]\n",
+        "[:c, 2]\n",
+        "[6, 0, 10, :none]\n",
+        "7\n",
+    ));
+}
+
+#[cfg(feature = "regexp")]
+#[test]
+fn a_match_block_answers_what_it_did() {
+    let mut vm = new_vm();
+    let out = run_program(&mut vm, r#"p [(/b/.match("abc") { |m| m[0] * 2 }), "abc".match(/c/) { |m| m.pre_match }]"#);
+    assert_eq!(out, "[\"bb\", \"ab\"]\n");
 }

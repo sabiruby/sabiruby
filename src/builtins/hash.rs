@@ -51,15 +51,36 @@ pub fn hash_inspect(vm: &mut Vm, v: Value) -> VmResult<Vec<u8>> {
     Ok(out)
 }
 
+/// `Hash#[]`. Where the key is missing and the Hash has a default proc, a SEND's call runs the
+/// proc in a frame of its own ([`Vm::exec_block`]), so a task can wait inside it.
 pub(crate) fn hash_aref(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
     argc!(vm, a, 1);
     if let Some(v) = vm.hash_get(s, a[0]) { return Ok(v); }
+    missing(vm, s, a[0], true)
+}
+
+/// `h[k]` for a native that goes on with the value (`values_at`): a default proc runs nested,
+/// since the native is not done when it answers.
+pub(crate) fn hash_value(vm: &mut Vm, s: Value, k: Value) -> VmResult<Value> {
+    if let Some(v) = vm.hash_get(s, k) { return Ok(v); }
+    missing(vm, s, k, false)
+}
+
+/// What `h[k]` answers where the index opcodes' own lookup missed and there is no default proc
+/// (a default proc is left to the send: `Vm::op_getidx`).
+pub(crate) fn hash_missing(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
+    missing(vm, s, a[0], false)
+}
+
+/// What `h[k]` answers where `k` is not there. `in_frame`: the caller returns the value as it
+/// is, so a default proc may run in a frame of its own when a SEND called it.
+fn missing(vm: &mut Vm, s: Value, k: Value, in_frame: bool) -> VmResult<Value> {
     // a redefined `default` is honoured (#3272)
     let dm = vm.intern("default");
-    if let Some((crate::object::Method::Ruby(_) | crate::object::Method::Closure(_), _)) = vm.find_method(vm.class_of(s), dm) { return vm.funcall(s, dm, &[a[0]], Value::Nil); }
+    if let Some((crate::object::Method::Ruby(_) | crate::object::Method::Closure(_), _)) = vm.find_method(vm.class_of(s), dm) { return vm.funcall(s, dm, &[k], Value::Nil); }
     let dp = default_proc_ivar(vm);
     let proc_ = s.obj().map(|o| vm.heap.ivar_get(o, dp)).unwrap_or(Value::Nil);
-    if !proc_.is_nil() { return vm.call_block(proc_, &[s, a[0]]); }
+    if !proc_.is_nil() { return if in_frame { vm.exec_block(proc_, &[s, k]) } else { vm.call_block(proc_, &[s, k]) }; }
     Ok(default_of(vm, s))
 }
 
@@ -139,7 +160,7 @@ pub fn init(vm: &mut Vm) {
         ("empty?", |vm, s, _a, _b| Ok(Value::bool(hash_len(vm, s) == 0))),
         ("keys", |vm, s, _a, _b| { let k: Vec<Value> = entries(vm, s).iter().map(|(k, _)| *k).collect(); Ok(vm.ary_new(k)) }),
         ("values", |vm, s, _a, _b| { let v: Vec<Value> = entries(vm, s).iter().map(|(_, v)| *v).collect(); Ok(vm.ary_new(v)) }),
-        ("values_at", |vm, s, a, _b| { let mut out = vec![]; for k in a { out.push(hash_aref(vm, s, &[*k], Value::Nil)?); } Ok(vm.ary_new(out)) }),
+        ("values_at", |vm, s, a, _b| { let mut out = vec![]; for k in a { out.push(hash_value(vm, s, *k)?); } Ok(vm.ary_new(out)) }),
         ("has_key?", |vm, s, a, _b| { argc!(vm, a, 1); Ok(Value::bool(vm.hash_get(s, a[0]).is_some())) }),
         ("key?", |vm, s, a, _b| { argc!(vm, a, 1); Ok(Value::bool(vm.hash_get(s, a[0]).is_some())) }),
         ("include?", |vm, s, a, _b| { argc!(vm, a, 1); Ok(Value::bool(vm.hash_get(s, a[0]).is_some())) }),
@@ -150,7 +171,7 @@ pub fn init(vm: &mut Vm) {
         ("delete", |vm, s, a, b| { argc!(vm, a, 1); if s.obj().map(|o| vm.heap.get(o).frozen).unwrap_or(false) { return Err(vm.frozen_error(s)); } match vm.hash_delete(s, a[0]) { Some(v) => Ok(v), None => if b.is_nil() { Ok(Value::Nil) } else { vm.call_block(b, &[a[0]]) } } }),
         ("clear", |vm, s, _a, _b| { with_mut(vm, s, |h| h.clear())?; Ok(s) }),
         ("shift", |vm, s, _a, _b| { let first = with_mut(vm, s, |h| if h.is_empty() { None } else { Some(h.remove_entry(0)) })?; match first { Some((k, v)) => Ok(vm.ary_new(vec![k.get(), v.get()])), None => Ok(Value::Nil) } }),
-        ("default", |vm, s, a, _b| { argc!(vm, a, 0, 1); let dp = default_proc_ivar(vm); let proc_ = s.obj().map(|o| vm.heap.ivar_get(o, dp)).unwrap_or(Value::Nil); if !proc_.is_nil() { if let Some(k) = a.first() { return vm.call_block(proc_, &[s, *k]); } return Ok(Value::Nil); } Ok(default_of(vm, s)) }),
+        ("default", |vm, s, a, _b| { argc!(vm, a, 0, 1); let dp = default_proc_ivar(vm); let proc_ = s.obj().map(|o| vm.heap.ivar_get(o, dp)).unwrap_or(Value::Nil); if !proc_.is_nil() { if let Some(k) = a.first() { return vm.exec_block(proc_, &[s, *k]); } return Ok(Value::Nil); } Ok(default_of(vm, s)) }),
         ("rehash", |vm, s, _a, _b| {
             // rebuild: keys are re-hashed and compared with eql?; a later duplicate replaces the earlier
             if s.obj().map(|o| vm.heap.get(o).frozen).unwrap_or(false) { return Err(vm.frozen_error(s)); }

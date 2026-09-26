@@ -192,16 +192,12 @@ pub fn init(vm: &mut Vm) {
             let init = vm.s.initialize;
             // Called by a SEND, an `initialize` written in Ruby runs in a frame of its own above
             // one that answers the object, which is what the reference's bytecode `new` is
-            // (`new_iseq`: `SSENDB :initialize` then `RETURN R0`), so it is no native boundary
-            if vm.in_frame() {
-                if let Some((p, owner)) = vm.ruby_method(obj, init) {
-                    let kw = match (vm.pending_kw, a.last()) { (Some(k), Some(l)) if !k.is_nil() && k == *l => Some(k), _ => None };
-                    let pos = if kw.is_some() { &a[..a.len() - 1] } else { a };
-                    let name = vm.native_mid.unwrap_or(init);
-                    vm.push_return_frame(obj, name)?;
-                    vm.push_method_frame(p, owner, obj, init, pos.to_vec(), kw, b, false)?;
-                    return Ok(obj);
-                }
+            // (`new_iseq`: `SSENDB :initialize` then `RETURN R0`), so it is no native boundary.
+            // A native `initialize` given a block is called the same way, so that one which
+            // hands its loop to a frame (`Array.new(n) { }`) can do it there.
+            if vm.in_frame() && (!b.is_nil() || vm.ruby_method(obj, init).is_some()) {
+                let kw = match (vm.pending_kw, a.last()) { (Some(k), Some(l)) if !k.is_nil() && k == *l => Some(k), _ => None };
+                return vm.send_in_frame_then(obj, obj, init, a, kw, b);
             }
             if vm.respond_to(obj, init) {
                 vm.funcall(obj, init, a, b)?;
@@ -228,13 +224,14 @@ pub fn init(vm: &mut Vm) {
         let cls = vm.heap.alloc(vm.core.class, ObjKind::Class(crate::object::ClassData { superclass: Some(sup), ..Default::default() }));
         vm.singleton_class(Value::Obj(cls))?;
         vm.call_inherited(sup, cls)?;
-        if !b.is_nil() { vm.call_block_with_self(b, Value::Obj(cls), &[Value::Obj(cls)])?; }
+        // called by a SEND the block runs in a frame of its own (`mrb_class_initialize` yields)
+        if !b.is_nil() { return vm.exec_block_with_self_then(b, Value::Obj(cls), &[Value::Obj(cls)], Value::Obj(cls)); }
         Ok(Value::Obj(cls))
     });
     let sm = vm.singleton_class(Value::Obj(c.module)).unwrap();
     vm.define_method(sm, "new", |vm, _s, _a, b| {
         let m = vm.heap.alloc(vm.core.module, ObjKind::Class(crate::object::ClassData { is_module: true, ..Default::default() }));
-        if !b.is_nil() { vm.call_block_with_self(b, Value::Obj(m), &[Value::Obj(m)])?; }
+        if !b.is_nil() { return vm.exec_block_with_self_then(b, Value::Obj(m), &[Value::Obj(m)], Value::Obj(m)); }
         Ok(Value::Obj(m))
     });
 
@@ -454,7 +451,10 @@ fn is_a(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {
 pub fn send(vm: &mut Vm, s: Value, a: &[Value], b: Value) -> VmResult<Value> {
     if a.is_empty() { return Err(vm.argnum_error(0, "1+")); }
     let m = sym_arg(vm, a[0])?;
-    vm.funcall(s, m, &a[1..], b)
+    // reached by a native that keeps the frame (`Method#call` of `method(:send)`), the named
+    // method still runs in it
+    let kw = match (vm.pending_kw, a.last()) { (Some(k), Some(l)) if a.len() > 1 && !k.is_nil() && k == *l => Some(k), _ => None };
+    vm.send_in_frame(s, m, &a[1..], kw, b)
 }
 
 fn method_missing(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value> {

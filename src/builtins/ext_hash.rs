@@ -24,7 +24,7 @@ fn set_class(vm: &mut Vm, h: Value, klass: Value) {
 pub fn init(vm: &mut Vm) {
     let hash = vm.core.hash;
     vm.define_methods(hash, &[
-        ("values_at", |vm, s, a, _b| { let mut out = Vec::with_capacity(a.len()); for k in a { out.push(super::hash::hash_aref(vm, s, &[*k], Value::Nil)?); } Ok(vm.ary_new(out)) }),
+        ("values_at", |vm, s, a, _b| { let mut out = Vec::with_capacity(a.len()); for k in a { out.push(super::hash::hash_value(vm, s, *k)?); } Ok(vm.ary_new(out)) }),
         ("slice", |vm, s, a, _b| { let h = vm.hash_new(); for k in a { if let Some(v) = vm.hash_get(s, *k) { vm.hash_set(h, *k, v)?; } } Ok(h) }),
         ("slice!", |vm, s, a, _b| {
             check_frozen(vm, s)?;

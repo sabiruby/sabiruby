@@ -142,7 +142,8 @@ fn s_def(vm: &mut Vm, s: Value, a: &[Value], b: Value) -> VmResult<Value> {
     let key = vm.intern("__members__");
     let ary = vm.ary_new(mems.iter().map(|m| Value::Sym(*m)).collect());
     vm.heap.ivar_set(c, key, ary);
-    if !b.is_nil() { vm.call_block_with_self(b, Value::Obj(c), &[Value::Obj(c)])?; }
+    // called by a SEND the block runs in a frame of its own
+    if !b.is_nil() { return vm.exec_block_with_self_then(b, Value::Obj(c), &[Value::Obj(c)], Value::Obj(c)); }
     Ok(Value::Obj(c))
 }
 
