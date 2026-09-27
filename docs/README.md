@@ -9,6 +9,8 @@ in English; plans and the worklog are in Japanese.
 What changed in each release, with the commit behind every claim, is
 [`../CHANGELOG.md`](../CHANGELOG.md) at the root of the repository.
 
+[numbers.md](numbers.md) lists the defaults the VM carries, where each is changed and where it came from (started with 0.7.0).
+
 ## design/ — how it is built
 
 | file | what it covers |

@@ -144,9 +144,7 @@ pub struct TaskState {
     pub(crate) indexed: bool,
     /// How many waiting tasks it takes for the scheduler to keep indexes of them (their deadlines,
     /// what they wait for) instead of walking the waiting queue. 0 keeps them from the first.
-    /// Set with [`Vm::task_set_index_from`]. The default, 0, is what 0.7.0's stage B built; the
-    /// number a short queue walks faster up to is to be measured
-    /// (`docs/worklog/2026-09-27-release-0.7-bench.md`).
+    /// Set with [`Vm::task_set_index_from`]; the default is [`TASK_INDEX_FROM`].
     pub index_from: usize,
     /// `tick` counted without wrapping, and the value of `tick` it was last brought up to date
     /// with (`ext_task::abs_tick`): what the deadlines in `sleepers` are counted in.
@@ -225,6 +223,12 @@ pub struct TaskState {
 /// Instructions a tick lasts where nothing else drives one (`MRB_TICK_UNIT` has no meaning
 /// without a clock).
 pub const TASK_TICK_INSTRUCTIONS: u64 = 10_000;
+
+/// Waiting tasks from which the scheduler indexes them rather than walking the waiting queue
+/// (`TaskState::index_from`, `Vm::task_set_index_from`): where the two cost the same, measured
+/// 2026-09-27 with two tasks playing queue ping-pong beside N idle waiters (walking was 2% faster
+/// at 10, the same at 30, 10% slower at 100; `docs/numbers.md`).
+pub const TASK_INDEX_FROM: usize = 30;
 
 /// Natives between two looks at the clock while a limit is kept on it.
 pub const TASK_NATIVE_SAMPLE: u32 = 32;
@@ -756,7 +760,7 @@ impl Vm {
             heap, syms, ireps: vec![call_irep, ret_irep, loop_irep], ret_proc, loop_proc, stack: Vec::new(), ci: Vec::new(), globals: HashMap::new(),
             exc: None, out: Vec::new(), core, s, top_self, step_left: None, instructions: 0, op_counts: [0; crate::opcode::OP_COUNT], count_ops: false, method_cache: alloc::boxed::Box::new([MethodCacheLine::default(); METHOD_CACHE_LEN]), idx_builtin: [None; IDX_SLOTS], idx_class: [None; IDX_SLOTS], idx_serial: 0, native_depth: 0, inspect_guard: Vec::new(), pending_kw: None, eq_guard: Vec::new(), gc_disabled: false, pending_vis_break: false, notimpl_fns: Vec::new(), gc_step_limit: 0, gc_interval_ratio: 200, gc_stress: false, native_active: 0, gc_registered: Vec::new(), native_mid: None, live_after_gc: 0, gc_count: 0, gc_time_ns: 0, gc_clock: None, wall_clock: None, sleep_hook: None, host: None, trace: None, call_proc,
             contexts: vec![Context::new(FiberState::Running)], cur: ROOT, direct_send: false, native_ret_reg: 0, native_raise: None, loop_exit: None, native_arity: Vec::new(),
-            task: TaskState { wakeup_tick: u32::MAX, tick_every: TASK_TICK_INSTRUCTIONS, tick_left: TASK_TICK_INSTRUCTIONS, clock_from_instructions: true, native_every: TASK_NATIVE_SAMPLE, native_left: TASK_NATIVE_SAMPLE, ..Default::default() },
+            task: TaskState { index_from: TASK_INDEX_FROM, wakeup_tick: u32::MAX, tick_every: TASK_TICK_INSTRUCTIONS, tick_left: TASK_TICK_INSTRUCTIONS, clock_from_instructions: true, native_every: TASK_NATIVE_SAMPLE, native_left: TASK_NATIVE_SAMPLE, ..Default::default() },
             host_state: None, on_free: None, host_stores: Vec::new(), next_tag: 1, irep_loads: alloc::collections::BTreeMap::new(),
         };
         // Constants for the core classes, Object includes Kernel.
