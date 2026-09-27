@@ -1,0 +1,3 @@
+category	benchmark	a_ms_best	a_ms_median	b_ms_best	b_ms_median	change_pct
+other	f_sum	90.650	91.006	87.482	88.653	-3.5
+other	t_pass_prio	200.024	200.619	202.196	205.809	+1.1

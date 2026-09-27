@@ -1,0 +1,5 @@
+category	benchmark	a_ms_best	a_ms_median	b_ms_best	b_ms_median	change_pct
+other	m_sort_plain	159.352	160.578	147.964	148.971	-7.1
+other	s_dup	41.704	42.373	44.962	45.332	+7.8
+other	s_sortbang	37.482	38.842	38.045	38.183	+1.5
+other	s_sortcall	213.438	217.528	211.384	214.146	-1.0

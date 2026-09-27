@@ -1,0 +1,12 @@
+category	benchmark	a_ms_best	a_ms_median	b_ms_best	b_ms_median	change_pct
+other	app_json_hash	1192.161	1200.969	1161.166	1164.205	-2.6
+other	bm_fib	5081.085	5101.220	5079.536	5121.087	-0.0
+other	bm_so_lists	1037.720	1042.661	915.629	922.619	-11.8
+other	call_fiber	969.637	976.867	867.706	874.231	-10.5
+other	m_new_plain	140.323	142.641	133.107	134.393	-5.1
+other	m_public_send	68.127	68.787	64.101	64.987	-5.9
+other	m_sort_plain	162.638	165.857	148.743	150.274	-8.5
+other	t_pass_prio	215.815	221.835	202.264	202.945	-6.3
+other	t_pingpong	168.659	169.549	165.530	165.943	-1.9
+other	t_sleep_10	333.085	336.256	329.887	331.247	-1.0
+other	vmo_calls	2874.355	2902.278	2767.957	2783.102	-3.7

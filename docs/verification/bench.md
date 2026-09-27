@@ -596,6 +596,48 @@ frame goes 6.3–6.5 → 5.2–5.4 ms a tick. The other rows vary 2× between ru
 messages a frame or more. It is 0.7.0's share: 0.6.1 → main is −6 to +0 on those rows. Its tick is 2–7% slower.
 The host's push runs the same code before and after, so this is the stage-B slowdown above.
 
+#### 0.7.0: after the causes were found (`a3d0188`, 2026-09-27)
+
+A second quiet window isolated the slowdowns above. The task-free one was **S5**, not code placement.
+S5's backtrace record sat on the native call's return path, and even an unused call on that
+error branch changed the register allocation of `op_send_vis`, where it is inlined. Taking S5's two
+lines out made it vanish; building every function 64-byte aligned did not. The return path now only
+stores a note, and the run loop names the native from the calling frame (`400bd30`).
+
+The small-scheduler cost came from three things:
+- The waiting indexes are now kept only from 30 waiting tasks on (`TASK_INDEX_FROM`, measured
+  crossover, `docs/numbers.md`).
+- `TaskData`'s scheduler keys shrank from 80 to 26 bytes (`TaskPlace`).
+- `funcall`'s missing-method branch moved out of line.
+
+Before `2fe974e` → latest build measured, best of 2 rounds with the order swapped; each row names
+the build and rounds (`bench/results/release-0.7/`):
+
+| benchmark | change | rounds | build |
+|---|---:|---|---|
+| bm_so_lists | −0.7% | +0.2 −0.7 | `400bd30` (`s5b-*`) |
+| call_fiber | −0.7% | −0.7 −0.7 | `400bd30` |
+| app_json_hash | +0.9% | +1.2 +0.9 | `400bd30` |
+| vmo_calls | +1.8% | +1.5 +1.9 | `400bd30` |
+| bm_fib | −0.7% | −0.7 −0.7 | `400bd30` |
+| m_new_plain | +2.9% | +1.1 +2.9 | `400bd30` |
+| m_public_send | −0.3% | +1.2 −1.6 | `400bd30` |
+| **m_sort_plain** | **+9.0%** | +9.0 +8.2 | `400bd30` |
+| t_pass_prio | +1.1% | +1.1 +0.4 | `a3d0188` (`fc-*`) |
+| t_pingpong | −0.3% | −0.3 −0.4 | `e93bb03` (`tp-*`) |
+| t_sleep_10 | −1.4% | −1.2 −2.0 | `e93bb03` |
+| t_sleep_100 | −13.7% | −13.4 −13.7 | `cd09ff0` (`fin2t-*`) |
+| t_sleep_1000 | −74.0% | −74.0 −73.7 | `cd09ff0` |
+| t_spawn_join | −95.9% | | `cd09ff0` |
+| t_list_stat | −5.1% | −7.8 −3.1 | `cd09ff0` |
+
+Still over the line (1.2–1.8%):
+- **`m_sort_plain` +9%.** Instruction and GC counts are the same, and its parts timed alone are not
+  slower. Not found.
+- **`m_new_plain` +2.9% in one round** (+1.1 in the other).
+- **rubevy's `publish_heard` +11–15%** at ≥10 subscribers and ≥100 messages. The same host pattern
+  on the VM alone is as fast or faster. Not found.
+
 ## Earlier measurements (the five reference benchmarks, best of 3)
 
 
