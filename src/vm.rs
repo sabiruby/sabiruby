@@ -572,6 +572,9 @@ pub struct Vm {
     pub direct_send: bool,
     /// Absolute register the native call in progress writes its result to.
     pub(crate) native_ret_reg: usize,
+    /// The exception the native a SEND called has just raised, and the context it was called in
+    /// (`Vm::native_raised`): the run loop names that native in its backtrace.
+    pub(crate) native_raise: Option<(ObjId, usize)>,
     /// Set by a fiber switch that must end the innermost run loop (yield or
     /// termination of a fiber resumed by native code): the loop returns this value.
     pub(crate) loop_exit: Option<Value>,
@@ -752,7 +755,7 @@ impl Vm {
         let mut vm = Vm {
             heap, syms, ireps: vec![call_irep, ret_irep, loop_irep], ret_proc, loop_proc, stack: Vec::new(), ci: Vec::new(), globals: HashMap::new(),
             exc: None, out: Vec::new(), core, s, top_self, step_left: None, instructions: 0, op_counts: [0; crate::opcode::OP_COUNT], count_ops: false, method_cache: alloc::boxed::Box::new([MethodCacheLine::default(); METHOD_CACHE_LEN]), idx_builtin: [None; IDX_SLOTS], idx_class: [None; IDX_SLOTS], idx_serial: 0, native_depth: 0, inspect_guard: Vec::new(), pending_kw: None, eq_guard: Vec::new(), gc_disabled: false, pending_vis_break: false, notimpl_fns: Vec::new(), gc_step_limit: 0, gc_interval_ratio: 200, gc_stress: false, native_active: 0, gc_registered: Vec::new(), native_mid: None, live_after_gc: 0, gc_count: 0, gc_time_ns: 0, gc_clock: None, wall_clock: None, sleep_hook: None, host: None, trace: None, call_proc,
-            contexts: vec![Context::new(FiberState::Running)], cur: ROOT, direct_send: false, native_ret_reg: 0, loop_exit: None, native_arity: Vec::new(),
+            contexts: vec![Context::new(FiberState::Running)], cur: ROOT, direct_send: false, native_ret_reg: 0, native_raise: None, loop_exit: None, native_arity: Vec::new(),
             task: TaskState { wakeup_tick: u32::MAX, tick_every: TASK_TICK_INSTRUCTIONS, tick_left: TASK_TICK_INSTRUCTIONS, clock_from_instructions: true, native_every: TASK_NATIVE_SAMPLE, native_left: TASK_NATIVE_SAMPLE, ..Default::default() },
             host_state: None, on_free: None, host_stores: Vec::new(), next_tag: 1, irep_loads: alloc::collections::BTreeMap::new(),
         };
@@ -2870,7 +2873,7 @@ impl Vm {
         self.orphan_block_of_native(blk);
         // nothing but `r` and `ctx0` is kept across the call: the native's name for its backtrace
         // is read back from the call instruction, on the error path only (`native_raised`)
-        let v = match r { Ok(v) => v, Err(e) => return Err(self.native_raised(e, ctx0)) };
+        let v = match r { Ok(v) => v, Err(e) => { self.native_raised(&e, ctx0); return Err(e) } };
         if self.cur == ctx0 { return Ok((v, false)); }
         if self.loop_exit.is_some() { return Ok((v, true)); }
         self.deliver(v);
@@ -2910,7 +2913,7 @@ impl Vm {
         self.orphan_block_of_native(blk);
         // nothing but `r` and `ctx0` is kept across the call: the native's name for its backtrace
         // is read back from the call instruction, on the error path only (`native_raised`)
-        let v = match r { Ok(v) => v, Err(e) => return Err(self.native_raised(e, ctx0)) };
+        let v = match r { Ok(v) => v, Err(e) => { self.native_raised(&e, ctx0); return Err(e) } };
         if self.cur == ctx0 { return Ok((v, false)); }
         if self.loop_exit.is_some() { return Ok((v, true)); }
         self.deliver(v);
@@ -3239,33 +3242,32 @@ impl Vm {
         self.heap.ivar_set(exc, k, a);
     }
 
-    /// The record of an exception a native raised, made as the native returns to the SEND that
-    /// called it, while the frames are still those of the call — at the run loop the native's
-    /// name is gone. `Kernel#raise` is not named, as the reference's clears its own
-    /// (`mrb_f_raise`: `ci->mid = 0`). Only where the native is still in the context it was
-    /// called from: one that switched fibers left its frames behind.
-    ///
-    /// The native's name is read back from the frame that called it, whose `pc` is still past the
-    /// call instruction and whose receiver register still holds the receiver (as
-    /// `Vm::boundary_name` reads them): the method that name finds is the native that raised. A
-    /// name that finds nothing went to `method_missing`. Passing the name down the call instead
-    /// kept it alive across every native call, and that cost a SEND-heavy loop 5-13%
-    /// (`docs/worklog/2026-09-27-release-0.7-bench.md`).
+    /// Notes that the native a SEND called raised `err`, for the run loop to name it in the
+    /// exception's backtrace (`run_loop_inner`, `native_name_at_top`): only a store on the way
+    /// back. Recording the backtrace here instead — a call on the native's return path, with the
+    /// SEND's name and the native kept alive across the call — cost SEND-heavy loops 5-16%
+    /// even though the path is never taken (`docs/worklog/2026-09-27-release-0.7-bench.md`).
+    #[inline(always)]
+    fn native_raised(&mut self, err: &VmError, ctx0: usize) {
+        if let VmError::Raise(Value::Obj(o)) = err { self.native_raise = Some((*o, ctx0)); }
+    }
+
+    /// The name the native a SEND of the top frame called goes by in a backtrace, read back from
+    /// that frame: its `pc` is still past the call instruction and its receiver register still
+    /// holds the receiver (as `Vm::boundary_name` reads them). `Kernel#raise` is not named, as the
+    /// reference's clears its own (`mrb_f_raise`: `ci->mid = 0`); a name that finds no method went
+    /// to `method_missing`.
     #[cold]
     #[inline(never)]
-    fn native_raised(&mut self, err: VmError, ctx0: usize) -> VmError {
-        let VmError::Raise(Value::Obj(e)) = err else { return err };
-        if self.cur != ctx0 || !matches!(self.heap.get(e).kind, ObjKind::Exception) { return err; }
-        let Some(top) = self.ci.last().copied() else { return err };
-        let Some((a, mid)) = self.send_before(top.irep, top.pc) else { return err };
+    fn native_name_at_top(&mut self) -> Option<Sym> {
+        let top = self.ci.last().copied()?;
+        let (a, mid) = self.send_before(top.irep, top.pc)?;
         let recv = self.stack.get(top.base + a).map(|s| s.get()).unwrap_or(Value::Nil);
-        let named = match self.find_method(self.class_of(recv), mid) {
+        match self.find_method(self.class_of(recv), mid) {
             None => Some(self.s.method_missing),
             Some((Method::Native(f), _)) if core::ptr::fn_addr_eq(f, crate::builtins::kernel::raise as crate::object::NativeFn) => None,
             Some(_) => Some(mid),
-        };
-        self.keep_backtrace(e, named);
-        err
+        }
     }
 
     /// The text of a record [`Vm::backtrace_record`] made, in the format `caller` uses. Frames
@@ -3391,6 +3393,8 @@ impl Vm {
     /// Mark & sweep (stop the world). The caller guarantees that no Rust frame
     /// holds a value that is not reachable from the roots.
     pub fn gc_collect(&mut self) {
+        // a note the run loop never read names an exception that may be gone after this
+        self.native_raise = None;
         let t0 = self.gc_clock.map(|c| c());
         let mut work: Vec<ObjId> = Vec::new();
         let mut ctxs: Vec<usize> = Vec::new();
@@ -3904,7 +3908,13 @@ impl Vm {
                         if matches!(self.heap.get(o).kind, ObjKind::Exception) {
                             let k = self.intern("@__raised");
                             self.heap.ivar_set(o, k, Value::True);
-                            self.keep_backtrace(o, None);
+                            // a native that raised, called by the top frame's SEND, is named
+                            // (`native_raised`); anything else raised in a frame is not
+                            let named = match self.native_raise.take() {
+                                Some((x, c)) if x == o && c == self.cur => self.native_name_at_top(),
+                                _ => None,
+                            };
+                            self.keep_backtrace(o, named);
                         }
                     }
                     // Unwind: look for a catch handler in frames >= stop_depth.
