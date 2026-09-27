@@ -2298,43 +2298,51 @@ impl Vm {
                     None => self.call_proc_with(p, recv, args, None, blk, Some(mid), tc),
                 }
             }
-            None => {
-                // a user-defined method_missing takes the call (the basic one only reports)
-                let mm = self.s.method_missing;
-                if let Some((m, owner)) = self.find_method(cls, mm) {
-                    if !matches!(m, Method::Native(_)) {
-                        let mut nargs = vec![Value::Sym(mid)];
-                        nargs.extend_from_slice(args);
-                        if let Method::Closure(f) = &m {
-                            // called as the closure branch above calls one: nested in the
-                            // caller's Rust frame, so not "called by a SEND" (a fiber must not
-                            // yield from it; mruby's `mrb_funcall` pushes a CINFO_DIRECT frame)
-                            if self.native_depth >= NATIVE_DEPTH_MAX { return Err(self.raise(self.core.system_stack_error, "stack level too deep")); }
-                            let f = f.clone();
-                            self.native_mid = Some(mm);
-                            self.native_depth += 1;
-                            let direct = core::mem::replace(&mut self.direct_send, false);
-                            let r = self.call_closure(&f, recv, &nargs, blk);
-                            self.direct_send = direct;
-                            self.native_depth -= 1;
-                            self.orphan_block_of_native(blk);
-                            return r;
-                        }
-                        if let Method::Ruby(p) = m {
-                            let kw = match (self.pending_kw, args.last()) { (Some(k), Some(l)) if !k.is_nil() && k == *l => Some(k), _ => None };
-                            let pos = if kw.is_some() { &nargs[..nargs.len() - 1] } else { &nargs[..] };
-                            let tc = if self.heap.proc_data(p).env.is_some() { None } else { Some(owner) };
-                            return self.call_proc_with(p, recv, pos, kw, blk, Some(mm), tc);
-                        }
+            // a name nothing answers: kept out of line, so that the branches above — every
+            // native a native calls — do not pay for this one's registers
+            None => self.funcall_missing(cls, recv, mid, args, blk),
+        }
+    }
+
+    /// [`Vm::funcall`] of a name `recv` has no method for: a `method_missing` written in Ruby or
+    /// as a closure takes the call, otherwise `NoMethodError`.
+    #[cold]
+    #[inline(never)]
+    fn funcall_missing(&mut self, cls: ObjId, recv: Value, mid: Sym, args: &[Value], blk: Value) -> VmResult<Value> {
+            // a user-defined method_missing takes the call (the basic one only reports)
+            let mm = self.s.method_missing;
+            if let Some((m, owner)) = self.find_method(cls, mm) {
+                if !matches!(m, Method::Native(_)) {
+                    let mut nargs = vec![Value::Sym(mid)];
+                    nargs.extend_from_slice(args);
+                    if let Method::Closure(f) = &m {
+                        // called as the closure branch above calls one: nested in the
+                        // caller's Rust frame, so not "called by a SEND" (a fiber must not
+                        // yield from it; mruby's `mrb_funcall` pushes a CINFO_DIRECT frame)
+                        if self.native_depth >= NATIVE_DEPTH_MAX { return Err(self.raise(self.core.system_stack_error, "stack level too deep")); }
+                        let f = f.clone();
+                        self.native_mid = Some(mm);
+                        self.native_depth += 1;
+                        let direct = core::mem::replace(&mut self.direct_send, false);
+                        let r = self.call_closure(&f, recv, &nargs, blk);
+                        self.direct_send = direct;
+                        self.native_depth -= 1;
+                        self.orphan_block_of_native(blk);
+                        return r;
+                    }
+                    if let Method::Ruby(p) = m {
+                        let kw = match (self.pending_kw, args.last()) { (Some(k), Some(l)) if !k.is_nil() && k == *l => Some(k), _ => None };
+                        let pos = if kw.is_some() { &nargs[..nargs.len() - 1] } else { &nargs[..] };
+                        let tc = if self.heap.proc_data(p).env.is_some() { None } else { Some(owner) };
+                        return self.call_proc_with(p, recv, pos, kw, blk, Some(mm), tc);
                     }
                 }
-                let name = self.sym_name(mid);
-                let desc = self.describe_for_error(recv);
-                let e = self.no_method_error(mid, recv, &format!("undefined method '{name}' for {desc}"));
-                if let VmError::Raise(Value::Obj(o)) = e { let av = self.ary_new(args.to_vec()); let k = self.intern("@args"); self.heap.ivar_set(o, k, av); }
-                Err(e)
             }
-        }
+            let name = self.sym_name(mid);
+            let desc = self.describe_for_error(recv);
+            let e = self.no_method_error(mid, recv, &format!("undefined method '{name}' for {desc}"));
+            if let VmError::Raise(Value::Obj(o)) = e { let av = self.ary_new(args.to_vec()); let k = self.intern("@args"); self.heap.ivar_set(o, k, av); }
+            Err(e)
     }
 
     /// Calls a block/proc from native code.
