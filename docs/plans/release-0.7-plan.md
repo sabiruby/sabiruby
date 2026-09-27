@@ -44,4 +44,4 @@
 | A | **済み（2026-09-26）** |
 | B | **済み（2026-09-26）** |
 | C | **済み（2026-09-27）**。取り込み・テスト 275・mrbtest・no_std。性能は S5 と小さな scheduler の遅れを直した。原因不明の 2 つ（整数 `sort` のマイクロ +9%、rubevy publish +11〜15%）は著者の判断で受け入れ（`../backlog.md`）。CHANGELOG の 0.7.0 への書き換えとバージョンの番号は公開のとき |
-| D | 未着手 |
+| D | **済み（2026-09-27）**。`sabiruby` 0.7.0、`sabiruby-compiler` 0.4.0、`sabiruby-serde` 0.3.0、`sabiruby-cli` 0.7.0 を crates.io に公開、tag `v0.7.0`。`sabiruby-macros` は変更が無いので 0.1.1 のまま |
