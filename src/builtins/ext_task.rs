@@ -12,7 +12,7 @@ use alloc::{format, string::String, vec::Vec};
 use crate::argc;
 use crate::error::VmResult;
 use crate::inspect::SwitchKind;
-use crate::object::{ObjKind, TaskData};
+use crate::object::{ObjKind, TaskData, TaskPlace};
 use crate::value::{ObjId, Slot, Value};
 use crate::vm::{FiberState, Timeslice, Vm, ROOT};
 
@@ -86,7 +86,7 @@ fn q_insert(vm: &mut Vm, o: ObjId) {
 fn requeue(vm: &mut Vm, o: ObjId, delete: bool, change: impl FnOnce(&mut TaskData)) {
     let (old, q, pri, reason, deadline, target) = {
         let t = td_mut(vm, o);
-        let old = if delete { (t.queued.take(), t.sleep_key.take(), t.wait_key.take()) } else { (None, None, None) };
+        let old = if delete { let pl = core::mem::replace(&mut t.place, TaskPlace::NONE); (pl.queued(), pl.sleep_key(), pl.wait_key()) } else { (None, None, None) };
         change(t);
         let target = match t.reason { REASON_QUEUE => t.queue, REASON_JOIN => t.join, _ => None };
         (old, q_of(t.status), t.priority, t.reason, t.wakeup_tick, target)
@@ -105,15 +105,13 @@ fn requeue(vm: &mut Vm, o: ObjId, delete: bool, change: impl FnOnce(&mut TaskDat
         if vm.task.indexed {
             (sleep_key, wait_key) = index_one(vm, o, seq, reason, deadline, target);
         } else if vm.task.queues[Q_WAITING].len() >= vm.task.index_from {
-            td_mut(vm, o).queued = Some((q, key));
+            td_mut(vm, o).place = TaskPlace::set(q, key, None, None);
             build_index(vm);
             return;
         }
     }
     let t = td_mut(vm, o);
-    t.queued = Some((q, key));
-    t.sleep_key = sleep_key;
-    t.wait_key = wait_key;
+    t.place = TaskPlace::set(q, key, sleep_key, wait_key);
 }
 
 /// Puts one waiting task in the indexes its fields call for: `sleepers` where it has a deadline,
@@ -146,8 +144,8 @@ fn build_index(vm: &mut Vm) {
         };
         let (sk, wk) = index_one(vm, o, seq, reason, deadline, target);
         let t = td_mut(vm, o);
-        t.sleep_key = sk;
-        t.wait_key = wk;
+        let (q, key) = t.place.queued().unwrap_or((Q_WAITING, (0, seq)));
+        t.place = TaskPlace::set(q, key, sk, wk);
     }
 }
 
@@ -159,7 +157,7 @@ pub(crate) fn index_waiting(vm: &mut Vm) {
 pub(crate) fn unindex_waiting(vm: &mut Vm) {
     if !vm.task.indexed { return; }
     let waiting: Vec<ObjId> = vm.task.queues[Q_WAITING].iter().collect();
-    for o in waiting { let t = td_mut(vm, o); t.sleep_key = None; t.wait_key = None; }
+    for o in waiting { td_mut(vm, o).place.unindex(); }
     vm.task.sleepers = Default::default();
     vm.task.waiters = Default::default();
     vm.task.indexed = false;
@@ -188,7 +186,8 @@ fn waits_for(t: &TaskData, target: ObjId) -> bool {
 fn q_delete(vm: &mut Vm, o: ObjId) {
     let (queued, sleep_key, wait_key) = {
         let t = td_mut(vm, o);
-        (t.queued.take(), t.sleep_key.take(), t.wait_key.take())
+        let pl = core::mem::replace(&mut t.place, TaskPlace::NONE);
+        (pl.queued(), pl.sleep_key(), pl.wait_key())
     };
     if let Some((q, key)) = queued { vm.task.queues[q].remove(&key); }
     if let Some(k) = sleep_key { vm.task.sleepers.remove(&k); }
@@ -202,7 +201,7 @@ fn set_status(vm: &mut Vm, o: ObjId, status: u8) {
 
 /// Whether the task is one the scheduler still knows (`Task#close` drops it).
 fn is_queued(vm: &Vm, o: ObjId) -> bool {
-    td(vm, o).queued.is_some()
+    td(vm, o).place.queued().is_some()
 }
 
 /// `tick` counted from the start without wrapping. The clock only moves forward, and never by
@@ -412,7 +411,7 @@ fn wake_sleepers(vm: &mut Vm) {
             if deadline > now_abs { break; }
             due.push((seq, o));
             vm.task.sleepers.remove(&(deadline, seq));
-            td_mut(vm, o).sleep_key = None;
+            td_mut(vm, o).place.unsleep();
         }
         vm.task.walked += due.len() as u64;
         due.sort_unstable_by_key(|(seq, _)| *seq);
@@ -827,7 +826,7 @@ fn create_task(vm: &mut Vm, cls: ObjId, proc_: ObjId, name: Value, priority: u8)
     let o = vm.heap.alloc(cls, ObjKind::Task(alloc::boxed::Box::new(TaskData {
         ctx: ctx_id, priority, status: READY, reason: REASON_NONE, timeslice: TIMESLICE,
         name: Slot::from(name), result: Slot::from(Value::Nil), wakeup_tick: u32::MAX,
-        join: None, queue: None, instructions: 0, queued: None, sleep_key: None, wait_key: None,
+        join: None, queue: None, instructions: 0, place: TaskPlace::NONE,
     })));
     q_insert(vm, o);
     Ok(Value::Obj(o))
@@ -844,7 +843,7 @@ fn task_current(vm: &mut Vm, s: Value, a: &[Value], _b: Value) -> VmResult<Value
     let o = vm.heap.alloc(cls, ObjKind::Task(alloc::boxed::Box::new(TaskData {
         ctx: ROOT, priority: 0, status: RUNNING, reason: REASON_NONE, timeslice: TIMESLICE,
         name: Slot::from(name), result: Slot::from(Value::Nil), wakeup_tick: u32::MAX,
-        join: None, queue: None, instructions: 0, queued: None, sleep_key: None, wait_key: None,
+        join: None, queue: None, instructions: 0, place: TaskPlace::NONE,
     })));
     vm.task.main = Some(o);
     Ok(Value::Obj(o))

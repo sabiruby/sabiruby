@@ -555,9 +555,37 @@ pub struct TaskData {
     /// where the task is in the scheduler: the queue and its key there (`TaskState::queues`),
     /// its entry among the sleepers with a deadline and among the tasks waiting for an object
     /// (`TaskState::sleepers`, `TaskState::waiters`). `None` where it is in none of them.
-    pub(crate) queued: Option<(usize, (u8, u64))>,
-    pub(crate) sleep_key: Option<(u64, u64)>,
-    pub(crate) wait_key: Option<(ObjId, u64)>,
+    ///
+    /// The three keys share their sequence number, so they are kept as their parts (`seq`, the
+    /// queue, the priority in the key, the deadline, the object waited for): 26 bytes where the
+    /// three `Option`s took 80, and `TaskData` is read on every switch.
+    pub(crate) place: TaskPlace,
+}
+
+/// Where a task is in the scheduler's queues and indexes (`TaskData::place`).
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct TaskPlace {
+    seq: u64,
+    /// the deadline key in `sleepers`, `u64::MAX` where it is not there
+    deadline: u64,
+    /// the object key in `waiters`, where it is there
+    target: Option<ObjId>,
+    /// the queue, `u8::MAX` where it is in none
+    q: u8,
+    /// the priority half of the queue key
+    qpri: u8,
+}
+
+impl TaskPlace {
+    pub(crate) const NONE: TaskPlace = TaskPlace { seq: 0, deadline: u64::MAX, target: None, q: u8::MAX, qpri: 0 };
+    pub(crate) fn queued(&self) -> Option<(usize, (u8, u64))> { if self.q == u8::MAX { None } else { Some((self.q as usize, (self.qpri, self.seq))) } }
+    pub(crate) fn sleep_key(&self) -> Option<(u64, u64)> { if self.deadline == u64::MAX { None } else { Some((self.deadline, self.seq)) } }
+    pub(crate) fn wait_key(&self) -> Option<(ObjId, u64)> { self.target.map(|t| (t, self.seq)) }
+    pub(crate) fn set(q: usize, key: (u8, u64), sleep: Option<(u64, u64)>, wait: Option<(ObjId, u64)>) -> TaskPlace {
+        TaskPlace { seq: key.1, deadline: sleep.map_or(u64::MAX, |k| k.0), target: wait.map(|k| k.0), q: q as u8, qpri: key.0 }
+    }
+    pub(crate) fn unindex(&mut self) { self.deadline = u64::MAX; self.target = None; }
+    pub(crate) fn unsleep(&mut self) { self.deadline = u64::MAX; }
 }
 
 /// Why a `Break` object is unwinding the stack (mruby `RBREAK_TAG_*`).
