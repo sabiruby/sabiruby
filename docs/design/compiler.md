@@ -191,6 +191,8 @@ is 0.3.0. `sabiruby-macros` 0.1.0 is the one crate not republished: it has no ch
 `v0.5.1` and does not depend on the VM at all (what it generates names `::sabiruby::…`, and its
 dev-dependency is path-only), so nothing in it is tied to 0.6.
 
+0.7.0 (2026-09-27) publishes four of the five with the same reasoning as 0.6.0: `sabiruby-compiler` 0.4.0 and `sabiruby-serde` 0.3.0 move a minor because the VM they name as a public dependency moved one; `sabiruby-macros` 0.1.1 has no change since `v0.6.1` and stays.
+
 The version a user writes appears, outside the manifests, in the root `README.md` ("Usage")
 and `macros/README.md` — the two pages crates.io shows with a dependency line to copy — and in
 `CHANGELOG.md`. The design documents do not repeat it (they write `<version>` and point to the

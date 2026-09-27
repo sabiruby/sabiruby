@@ -6,7 +6,7 @@ and its `impl` block as a Ruby class, without writing the registration by hand.
 Add it through the VM crate's feature `macros` (one dependency, one `use`):
 
 ```toml
-sabiruby = { version = "0.6", features = ["macros"] }
+sabiruby = { version = "0.7", features = ["macros"] }
 ```
 
 ```rust
@@ -35,7 +35,7 @@ derive macro and the trait it implements, which live in different namespaces (as
 same code:
 
 ```toml
-sabiruby = "0.6"
+sabiruby = "0.7"
 sabiruby-macros = "0.1"
 ```
 

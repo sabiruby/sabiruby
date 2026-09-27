@@ -8,7 +8,9 @@ Every claim here is traceable to a commit or to a document under `docs/`, and th
 named. Measurements are the ones in [`docs/verification/bench.md`](docs/verification/bench.md);
 nothing is estimated.
 
-## Unreleased
+## 0.7.0 — 2026-09-27
+
+Published: `sabiruby` 0.7.0, `sabiruby-compiler` 0.4.0, `sabiruby-serde` 0.3.0, `sabiruby-cli` 0.7.0. `sabiruby-macros` stays at 0.1.1 (no change since `v0.6.1`, and it does not depend on the VM). The compiler and serde move a minor because `sabiruby` is a public dependency of both (the reasoning of 0.6.0, `docs/design/compiler.md` "Publishing"). The plan was `docs/plans/release-0.7-plan.md`.
 
 `sabiruby` — a task can wait inside more blocks, and a wait that cannot happen says where
 ([`docs/design/wait-anywhere.md`](docs/design/wait-anywhere.md),
