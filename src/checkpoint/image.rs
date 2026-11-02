@@ -1,9 +1,9 @@
 //! Reading a checkpoint image into plain records, before anything is built in the VM.
 //!
-//! The layout is the format the image's writer documents (format v0 with the additions made
-//! for this reader: a permanent Proc whose irep is carried, record 15, and a permanent irep
-//! with its content, irep record 2). Every number is big-endian; a reference to a symbol, an
-//! irep or an object is a `u32` index from 1 into its own table, 0 meaning "none".
+//! The layout is the format the image's writer documents (format v1: the execution contexts of
+//! the root, the Tasks and the Fibers, and the scheduler with its Tasks). Every number is
+//! big-endian; a reference to a symbol, an irep, an object or a context is a `u32` index from 1
+//! into its own table, 0 meaning "none".
 
 use alloc::{format, string::String, vec::Vec};
 
@@ -76,8 +76,8 @@ pub enum ProcBody {
 }
 
 pub enum EnvPlace {
-    /// Attached: the window starts at this index of the stack.
-    Stack(u32),
+    /// Attached: the window starts at this index of the stack of this context.
+    Stack(u32, u32),
     /// Detached: the values themselves.
     Values(Vec<Val>),
 }
@@ -104,6 +104,11 @@ pub enum ObjRec {
     Proc { head: Head, flags: u8, body: ProcBody, upper: u32, env_kind: u8, env: u32 },
     Env { head: Head, mid: u32, len: u8, bidx: u8, vis: u8, place: EnvPlace },
     Data { head: Head, type_name: String, blob: Vec<u8>, ivars: Ivars },
+    /// A Task object: its record in the scheduler (index from 1). The record names its object
+    /// too, which is how the reader binds the two.
+    Task { head: Head, #[allow(dead_code)] task: u32, ivars: Ivars },
+    /// A Fiber object: its context (index from 1, 0 for one not initialized).
+    Fiber { head: Head, ctx: u32 },
 }
 
 pub enum PatchRec {
@@ -120,6 +125,9 @@ pub enum PatchRec {
 }
 
 pub struct FrameRec {
+    /// The C function the frame waits in (a frame of kind 1, the top of a context that is not
+    /// running: `Fiber#resume`, `Fiber.yield`, `Task.run` ...), `None` for a Ruby frame.
+    pub cfunc: Option<String>,
     pub mid: u32,
     pub proc_: u32,
     pub base: u32,
@@ -136,6 +144,69 @@ pub struct FrameRec {
     pub env: u32,
 }
 
+/// An execution context: the root (the first), a Task's or a Fiber's.
+pub struct CtxRec {
+    /// `mrb_fiber_state`: 0 created, 1 running, 2 resumed, 3 suspended, 4 transferred, 5 terminated
+    pub status: u8,
+    /// bit 0: resumed by C (`vmexec`)
+    #[allow(dead_code)]
+    pub flags: u8,
+    /// the context it was resumed from (index from 1, 0 for none)
+    pub prev: u32,
+    /// its Fiber object (0 for none)
+    pub fib: u32,
+    pub stack: Vec<Val>,
+    pub frames: Vec<FrameRec>,
+}
+
+/// What a waiting Task waits for.
+pub enum WaitRec {
+    None,
+    /// a sleep: ticks left
+    Sleep(i32),
+    /// the Task it joins (index from 1, 0 for none)
+    Join(u32),
+    /// the Task::Queue it pops from, and the ticks left of its timeout
+    Queue(u32, Option<i32>),
+}
+
+/// A Task in the scheduler.
+pub struct TaskRec {
+    pub obj: u32,
+    /// its context (index from 1); 0 for the main Task (`Task.current` at the root)
+    pub ctx: u32,
+    pub status: u8,
+    /// the queue it is in (0 dormant, 1 ready, 2 waiting, 3 suspended), 255 for the main Task
+    pub queue: u8,
+    pub priority: u8,
+    pub reason: u8,
+    #[allow(dead_code)]
+    pub timeslice: u8,
+    pub name: Val,
+    pub result: Val,
+    pub wait: WaitRec,
+}
+
+/// The scheduler (mruby-task).
+pub struct SchedRec {
+    /// the scheduler had asked for a switch where the image was taken
+    pub switch_pending: bool,
+    #[allow(dead_code)]
+    pub loop_running: bool,
+    /// milliseconds per tick
+    pub unit: u16,
+    pub tick: u32,
+    /// ticks left until the earliest wakeup, if any
+    pub wakeup: Option<i32>,
+    /// the Tasks, queue by queue in their order, then the main Task
+    pub tasks: Vec<TaskRec>,
+    /// the Task that was running (index from 1, 0 for none)
+    pub running: u32,
+    /// the host's Task (index from 1, 0 for none)
+    #[allow(dead_code)]
+    pub host: u32,
+}
+
 pub struct Image {
     pub version: u16,
     pub writer: String,
@@ -143,8 +214,10 @@ pub struct Image {
     pub ireps: Vec<IrepRec>,
     pub objs: Vec<ObjRec>,
     pub patches: Vec<PatchRec>,
-    pub stack: Vec<Val>,
-    pub frames: Vec<FrameRec>,
+    pub ctxs: Vec<CtxRec>,
+    /// the context that was running (index from 1)
+    pub current: u32,
+    pub sched: SchedRec,
     /// line numbers of carried ireps (section DBG0): irep number -> (file of its first part,
     /// (pc, line) where the line changes)
     pub lines: Vec<LinesRec>,
@@ -154,7 +227,7 @@ pub struct Image {
 pub type LinesRec = (u32, String, Vec<(u32, u32)>);
 
 /// The format versions this reader takes.
-pub const FORMAT_VERSION: u16 = 0;
+pub const FORMAT_VERSION: u16 = 1;
 
 struct Cur<'a> {
     b: &'a [u8],
@@ -289,12 +362,14 @@ impl<'a> Cur<'a> {
                 let len = self.u8()?;
                 let bidx = self.u8()?;
                 let vis = self.u8()?;
-                let place = if self.u8()? == 1 { EnvPlace::Stack(self.u32()?) } else {
+                let place = if self.u8()? == 1 { let cx = self.u32()?; EnvPlace::Stack(cx, self.u32()?) } else {
                     EnvPlace::Values((0..len).map(|_| self.val()).collect::<R<_>>()?)
                 };
                 ObjRec::Env { head, mid, len, bidx, vis, place }
             }
             14 => { let type_name = self.string()?; let blob = self.bytes()?; ObjRec::Data { head, type_name, blob, ivars: self.ivars()? } }
+            26 => { let task = self.u32()?; ObjRec::Task { head, task, ivars: self.ivars()? } }
+            27 => ObjRec::Fiber { head, ctx: self.u32()? },
             k @ 16..=24 => return Err(format!("object kind {k} ({}) is not carried to this VM yet", match k {
                 16 => "Integer beyond 64 bits", 17 => "Struct", 18 => "Set", 19 => "Rational", 20 => "Complex",
                 21 => "break through ensure", 23 => "Random", 24 => "origin of a prepended class", _ => "?",
@@ -350,16 +425,58 @@ pub fn parse(bytes: &[u8]) -> R<Image> {
     let objs = (0..n).map(|_| c.object()).collect::<R<_>>()?;
     let n = c.u32()?;
     let patches = (0..n).map(|_| c.patch()).collect::<R<_>>()?;
-    let n = c.u32()?;
-    let stack = (0..n).map(|_| c.val()).collect::<R<_>>()?;
-    let n = c.u32()?;
-    let mut frames = Vec::new();
-    for _ in 0..n {
-        frames.push(FrameRec {
-            mid: c.u32()?, proc_: c.u32()?, base: c.u32()?, pc: c.u32()?, n: c.u8()?, nk: c.u8()?, cci: c.u8()?, vis: c.u8()?,
-            blk: c.u32()?, env_kind: c.u8()?, env: c.u32()?,
-        });
+    // the VM: the contexts, the current one, the scheduler
+    let nctx = c.u32()?;
+    let mut ctxs = Vec::new();
+    for _ in 0..nctx {
+        let (status, flags, prev, fib) = (c.u8()?, c.u8()?, c.u32()?, c.u32()?);
+        let n = c.u32()?;
+        if n as usize > bytes.len() { return Err(String::from("truncated image")); }
+        let stack = (0..n).map(|_| c.val()).collect::<R<_>>()?;
+        let n = c.u32()?;
+        if n as usize > bytes.len() { return Err(String::from("truncated image")); }
+        let mut frames = Vec::new();
+        for _ in 0..n {
+            let kind = c.u8()?;
+            let mid = c.u32()?;
+            let proc_ = c.u32()?;
+            let cfunc = match kind { 0 => None, 1 => Some(c.string()?), k => return Err(format!("bad frame kind {k}")) };
+            frames.push(FrameRec {
+                cfunc, mid, proc_, base: c.u32()?, pc: c.u32()?, n: c.u8()?, nk: c.u8()?, cci: c.u8()?, vis: c.u8()?,
+                blk: c.u32()?, env_kind: c.u8()?, env: c.u32()?,
+            });
+        }
+        ctxs.push(CtxRec { status, flags, prev, fib, stack, frames });
     }
+    let current = c.u32()?;
+    let fl = c.u8()?;
+    let unit = c.u16()?;
+    let tick = c.u32()?;
+    let has_wakeup = c.u8()?;
+    let wakeup = c.u32()? as i32;
+    let ntask = c.u32()?;
+    if ntask as usize > bytes.len() { return Err(String::from("truncated image")); }
+    let mut tasks = Vec::new();
+    for _ in 0..ntask {
+        let (obj, ctx) = (c.u32()?, c.u32()?);
+        let (status, queue, priority, reason, timeslice) = (c.u8()?, c.u8()?, c.u8()?, c.u8()?, c.u8()?);
+        let name = c.val()?;
+        let result = c.val()?;
+        let wait = match reason {
+            0 => WaitRec::None,
+            1 => WaitRec::Sleep(c.u32()? as i32),
+            4 => WaitRec::Join(c.u32()?),
+            8 => { let q = c.u32()?; let has = c.u8()?; let left = c.u32()? as i32; WaitRec::Queue(q, (has == 1).then_some(left)) }
+            r => return Err(format!("a Task waits for reason {r}")),
+        };
+        tasks.push(TaskRec { obj, ctx, status, queue, priority, reason, timeslice, name, result, wait });
+    }
+    let running = c.u32()?;
+    let host = c.u32()?;
+    let sched = SchedRec {
+        switch_pending: fl & 1 != 0, loop_running: fl & 2 != 0, unit, tick,
+        wakeup: (has_wakeup == 1).then_some(wakeup), tasks, running, host,
+    };
     // optional sections after the VM, each with a tag: line numbers (DBG0, put on the
     // carried ireps) and the GC's settings (GCS0, which this VM's collector has no use for);
     // then the end mark END0
@@ -391,7 +508,7 @@ pub fn parse(bytes: &[u8]) -> R<Image> {
     // the end mark: an image cut between two sections is refused too
     if !ended { return Err(String::from("truncated image (no end mark)")); }
     if c.p != bytes.len() { return Err(format!("{} bytes left after the image", bytes.len() - c.p)); }
-    Ok(Image { version, writer, syms, ireps, objs, patches, stack, frames, lines })
+    Ok(Image { version, writer, syms, ireps, objs, patches, ctxs, current, sched, lines })
 }
 
 const FNV_INIT: u64 = 0xcbf2_9ce4_8422_2325;

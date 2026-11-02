@@ -72,6 +72,17 @@ fn refused_leaves_vm_idle() {
     let a = resume(&mut vm, "counter.1").expect("resumes after a refusal");
     let b = resume(&mut ok, "counter.1").unwrap();
     assert_eq!(a, b);
+    // the same with Tasks and Fibers: a refusal while the contexts and the queues are built
+    // leaves none of them behind
+    let mut vm = fresh_vm();
+    let mut img = std::fs::read(dir().join("task_queue-task.1.ckpt")).unwrap();
+    let at = img.windows(4).rposition(|w| w == b"END0").expect("the end mark");
+    img.truncate(at);
+    assert!(vm.checkpoint_resume(&img).is_err());
+    let mut ok = fresh_vm();
+    let a = resume(&mut vm, "task_fiber.1").expect("resumes after a refusal");
+    let b = resume(&mut ok, "task_fiber.1").unwrap();
+    assert_eq!(a, b);
 }
 
 /// Every cut of an image is refused with an error, never a panic. (A cut image fails while it
@@ -93,7 +104,7 @@ fn changed_code_is_refused() {
     // the first irep's instructions start after the symbols and the irep's fixed fields; flip
     // a byte well inside the record, which is code
     let (v, _) = sabiruby::Vm::checkpoint_header(&img).unwrap();
-    assert_eq!(v, 0);
+    assert_eq!(v, 1);
     let at = img.windows(4).position(|w| w == b"done").expect("a pool string") - 8;
     img[at] ^= 0xff;
     let mut vm = fresh_vm();
@@ -105,7 +116,7 @@ fn changed_code_is_refused() {
 /// pointer width only.
 #[test]
 fn image_is_the_same_from_32_bit() {
-    for s in ["counter", "user_class", "hash"] {
+    for s in ["counter", "user_class", "hash", "task_queue", "task_sleep-task", "fiber_nested"] {
         let a = std::fs::read(dir().join(format!("{s}.1.ckpt"))).unwrap();
         let b = std::fs::read(dir().join(format!("{s}.1-32.ckpt"))).unwrap();
         assert_eq!(a.len(), b.len());

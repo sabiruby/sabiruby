@@ -2552,7 +2552,9 @@ impl Vm {
     /// one returns, as [`Vm::run_irep`] runs the frame it pushes.
     #[cfg(feature = "checkpoint")]
     pub(crate) fn checkpoint_run(&mut self) -> VmResult<Value> {
-        let r = self.run_loop(0);
+        // the loop the host started is the root's, whichever context goes on first (a Fiber the
+        // root resumed returns to it; the root's bottom frame ends the run)
+        let r = self.run_loop_ctx(ROOT, 0);
         self.stack.clear();
         r
     }

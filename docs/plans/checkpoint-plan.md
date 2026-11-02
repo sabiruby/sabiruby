@@ -2,6 +2,7 @@
 
 作成 2026-11-02（案。作者向け）。feature `checkpoint`（既定 off）として、このブランチに
 最初の段（C mruby → SabiRuby の片道）を実装した。この文書は計画と、その段の実装の記録を兼ねる。
+第 3 段（2026-11-03）で形式 v1（Task と Fiber）に合わせた。
 
 ## 目的
 
@@ -24,7 +25,8 @@ C mruby（4.0 系）で動いているプログラムを途中で止め、状態
 
 - **feature `checkpoint`（既定 off）**に置く。off のビルドにはこのコードが一切入らない
   （`src/checkpoint/` は `#[cfg(feature = "checkpoint")]` のモジュール、`src/vm.rs` に足したのは
-  cfg 付きの関数 1 つだけ）。命令の実行・GC・`Value` の表現は変えない。no_std のまま
+  cfg 付きの関数 1 つだけ。第 3 段で `src/builtins/ext_task.rs` に cfg 付きの関数 3 つ: 像の Task を
+  列に入れる、動いていた Task の割り当ての残りを続ける、スケジューラの輪を回す）。命令の実行・GC・`Value` の表現は変えない。no_std のまま
   （`tools/check_no_std.sh --features checkpoint` も通る）。
 - CLI（`sabiruby-cli` の feature `checkpoint`）に `--resume IMAGE` と
   `--checkpoint-names FILE`（後述）を足す。
@@ -51,7 +53,7 @@ crate の中の今の公開範囲のまま使っている。新しく公開し�
 
 ## 組み立ての手順（`src/checkpoint/`）
 
-1. `image.rs`: 像全体を読んで、素のレコードにする（ヘッダの検査: 印 `MRCK`、形式の版 0、
+1. `image.rs`: 像全体を読んで、素のレコードにする（ヘッダの検査: 印 `MRCK`、形式の版（第 3 段から 1）、
    `RITE0400`、64/64/UTF-8。余りのバイトがあれば断る）。
 2. `build.rs`、GC を止めたまま（`gc_disabled`）:
    1. シンボルを intern する。
@@ -244,6 +246,77 @@ CLI は `-r lib` を `--resume` のときも先に読む（ホストの準備。
 `string.rb`（`String#index` の UTF-8）、`vformat.rb`（書き出し側の C の試験関数）と、比べ方の
 都合の 2 本（`range.rb`・`syntax.rb`: プログラムのファイル名が両者で違い、バックトレースと
 `__FILE__` に出る）。
+
+## 第 3 段: 形式 v1（Task と Fiber）（2026-11-03）
+
+書き出し側が形式を v1 にした。v0 の VM の部分（ルートの文脈 1 つ）が、実行の文脈の表（ルート・
+Task ごと・Fiber ごとのスタックと枠）、今の文脈、スケジューラ（Task を列の順に、時計、待ちの残りの
+tick）になった。書き出し側は Fiber の中・Task の中・Task が待っている最中でも書き、断るのは C の
+関数の枠だけになった。この読み手を v1 に合わせ、Fiber と Task を組み立てて続けるようにした
+（片道のまま）。v0 の像は読まない。
+
+### 写し方（第 3 段で足したもの）
+
+| 像 | SabiRuby |
+|---|---|
+| 文脈の表の 1 番（ルート） | `contexts[ROOT]`。いちばん下の枠は `Cci::Skip`（第 1 段と同じ） |
+| ほかの文脈（Task・Fiber） | `contexts` に 1 つずつ足す。`prev`、`fib`、`proc_`（いちばん下の枠の Proc） |
+| 文脈の状態 | `FiberState` にそのまま。ただし、書き出し側のルートと Task の文脈は動いた後も「作っただけ」(0) のことがあるので、ルートは `Running`、Task の文脈は `Suspended` にする。作っただけの Fiber（枠 2 枚がどちらも pc 0）は `Created` にし、枠を持たせない（resume でブロックを並べる、この VM のやり方） |
+| 待っている文脈のいちばん上の C の関数の枠（`Fiber#resume`・`Fiber#transfer`・`Fiber.yield`） | 枠にしない。その枠の窓の始まりのレジスタを `pending_reg` にする（切り替えで戻ったときの値が入る所） |
+| 終わった文脈 | スタックも枠も持たない。その文脈のスタック上の Env は、像のスタックの値で切り離す（書き出し側の Task は終わっても Env を切り離さない。この VM の `stop_task` は切り離す） |
+| スタック上の Env（文脈の番号 + 位置） | `EnvData { ctx, base, attached }` |
+| オブジェクトの種類 27（Fiber） | `ObjKind::Fiber(文脈)` |
+| オブジェクトの種類 26（Task）とスケジューラの Task の表 | `ObjKind::Task(TaskData)`。状態・理由・優先度・名前・値・待ち先（join の Task、Queue のオブジェクト）・起きる時刻（今の tick + 残り）。列は像の順に入れる（`ext_task::checkpoint_enqueue`） |
+| main の Task（`Task.current` をルートで呼んで作られたもの） | `vm.task.main`。名前は `"main"` |
+| C のデータ `Task::Queue` | ivar `@items`（像の ivar）と `@closed`（像の 1 バイト）を持つ、この VM の Queue のオブジェクト |
+| 時計 | `tick` を書き出し側の tick にする（1 tick のミリ秒が違えば換算）。待ちは残りの tick で運ばれ、今の tick に足す |
+
+### 続け方
+
+| 像 | ここで |
+|---|---|
+| Task が動いていない（今の文脈はルートか、ルートから resume された Fiber） | 今の文脈をこの VM の `stack`／`ci` に置いて、ルートの輪（`run_loop_ctx(ROOT, 0)`）を回す。Fiber が yield・終われば、`pending_reg` に値が入ってルートが続く |
+| Task が動いていた | その Task の時間の割り当ての残りを、今の文脈（Task の文脈か、その Task が resume した Fiber）から続ける（`ext_task::checkpoint_slice`。`execute_task` と同じ手順で、始まりの文脈だけが違う）。スケジューラがその境目で切り替えを頼んでいたなら、続けずに割り当ての後の扱いだけをする。その後、スケジューラを入れた側に戻る |
+| ↳ スケジューラを `Task.run` が回していた | 呼んだ側の pc を `Task.run` の呼び出しの命令に戻して、呼び出しをやり直す（輪は列の今の状態から回る） |
+| ↳ ルートの `Task.pass` | その 1 回は終わっている。呼び出しの値は nil |
+| ↳ ルートに枠が無い（書き出し側の埋め込む側がスケジューラを回していた） | 輪（`Task.run` と同じもの）を回す（`ext_task::checkpoint_run_loop`） |
+
+時間の割り当ては、着いた先で満タンから始まる（`execute_task` と同じ）。
+
+### Task・Fiber の作りの違い（書き出し側 ↔ ここ）
+
+| 項目 | 書き出し側（C mruby + mruby-task） | ここ |
+|---|---|---|
+| tick | タイマの割り込み（4 ms）。書き出し側の試験のビルドは仮想の時計（空いたとき・ルートの sleep で進む） | 命令の数（既定 10,000 命令で 1 tick）。空いたときは次の起きる時刻へ飛ぶ |
+| 待ちの期限が過ぎた Task が起きる時 | 次の tick | 次の tick（命令の数で来る） |
+| 文脈の切り替えの値 | 待っている C の関数の枠の窓の始まりに、戻ってきた側が書く | `pending_reg` に `deliver` が書く |
+| Task の文脈の状態 | 動いた後も「作っただけ」のまま | 動けば `Created` でなくなる |
+| 終わった Task の文脈 | 枠と Env をそのまま残す | 切り離して空にする |
+| Task の中の `Fiber#transfer` | できる | FiberError（Task の文脈は自分の輪で動く）。像に関係なく違う |
+| Task の中の `Fiber.current` | Task の文脈を指す Fiber。その Fiber が回収されると、Task の中の文脈を解放しようとする（書き出し側の不具合。終わりに落ちる） | 文脈の番号を持つだけ |
+| Task の中でタイマで止められた Fiber | その Task は次に動くとき、いちばん上の枠に Proc が無いので DORMANT にされる（書き出し側の不具合） | （未確認） |
+
+### 試験（第 3 段）
+
+`tests/checkpoint/` に、書き出し側の Task・Fiber のサンプル（`task_*`・`fiber_*`・`lines`）の像を
+足し、Task として起動した形（書き出し側の `checkpoint run --as-task`: プログラムの本体を Task に
+して埋め込む側がスケジューラを回す）の像を `NAME-task.K` として置いた（像 91 個、約 240 KB）。
+`task_switch` は、書き出し側のスケジューラが切り替えを頼んでいる境目の像（割り当てがそこで終わる）。
+`refused_leaves_vm_idle` は、Task の像を途中で断った後の VM が新しい VM と同じに動くことも確かめる。
+`image_is_the_same_from_32_bit` は Task・Fiber の像も見る。
+
+結果: feature off 276 passed、on 281 passed、`SABIRUBY_GC_STRESS=1` で `tests/checkpoint.rs` の 5
+passed、`tools/check_no_std.sh` は off・on とも OK。書き出し側の試験一式を外から止めて続けたもの:
+中核の試験（書き出し側と同じ出力になる 37 本 × 20 点）は 740 点のうち書き出し 731、ここで断った
+13（第 2 段の未対応の種類）、続いた 718 はすべて一致。mruby-fiber・mruby-task・mruby-enumerator の
+試験（同じく、像なしで同じ出力になるもの）も合わせて、種 1〜3 の 2,400 点のうち書き出し 2,375、
+ここで断った 37（未対応の種類と鍵の hash の副作用）、ハッシュの値を書き出し側とここで別々に計算して
+比べる試験（`Array#hash`）1、続いた残りはすべて一致。
+
+この段で直したもの: 枠が動かす mrblib のメソッドの代わりの Proc（第 1 段）に、外側の Proc（クラスの
+本体の並び）を付けていなかったので、その枠から外側のクラスの定数が引けなかった
+（`Enumerator::Generator#each` の `Yielder`）。この VM の同じ名前のメソッドが Ruby なら、その外側を
+付ける。
 
 ## 残り（逆向き: SabiRuby → C mruby で要りそうなこと）
 

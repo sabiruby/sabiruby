@@ -769,6 +769,85 @@ pub(crate) fn task_run_once(vm: &mut Vm) -> VmResult<Value> {
     })
 }
 
+// ------------------------------------------------------------------ checkpoint (feature)
+
+/// A Task the checkpoint reader made (`src/checkpoint`): put in the queue its status names, after
+/// the ones already there, as the image lists them.
+#[cfg(feature = "checkpoint")]
+pub(crate) fn checkpoint_enqueue(vm: &mut Vm, o: ObjId) {
+    q_insert(vm, o);
+}
+
+/// The rest of a slice the image stopped in, going on from context `start` — the Task's own, or
+/// a Fiber it resumed, which this VM's `execute_task` cannot start from — then what
+/// `execute_task` does after it. `ended`: the writer's scheduler had asked for a switch at that
+/// point, so the slice is over already and only the tail runs.
+#[cfg(feature = "checkpoint")]
+pub(crate) fn checkpoint_slice(vm: &mut Vm, t: ObjId, start: usize, ended: bool) {
+    let ctx = td(vm, t).ctx;
+    let old = vm.cur;
+    if ended {
+        if vm.contexts[ctx].status == FiberState::Terminated || td(vm, t).status == DORMANT {
+            stop_task(vm, t);
+        } else if td(vm, t).status == RUNNING {
+            set_status(vm, t, READY);
+        }
+        return;
+    }
+    {
+        let d = td_mut(vm, t);
+        d.timeslice = TIMESLICE;
+        d.status = RUNNING;
+    }
+    vm.task.running = Some(t);
+    vm.task.switching = false;
+    vm.task.tick_left = vm.task.tick_every;
+    vm.task.forced = None;
+    vm.contexts[old].status = FiberState::Resumed;
+    vm.contexts[ctx].prev = Some(old);
+    vm.contexts[ctx].vmexec = true;
+    vm.switch_context(start, SwitchKind::Resume);
+    let before = vm.instructions;
+    let r = vm.run_loop_ctx(ctx, 0);
+    let spent = vm.instructions - before;
+    td_mut(vm, t).instructions += spent;
+    vm.loop_exit = None;
+    vm.task.running = None;
+    vm.task.switching = false;
+    vm.contexts[old].status = FiberState::Running;
+    if vm.cur != old { vm.switch_context(old, SwitchKind::Reset); }
+    let done = vm.contexts[ctx].status == FiberState::Terminated;
+    match r {
+        Ok(v) => { if done { td_mut(vm, t).result = Slot::from(v); } }
+        Err(crate::error::VmError::Raise(exc)) => {
+            td_mut(vm, t).result = Slot::from(exc);
+            vm.exc = None;
+            vm.contexts[ctx].status = FiberState::Terminated;
+            vm.contexts[ctx].ci.clear();
+            vm.contexts[ctx].stack.clear();
+            stop_task(vm, t);
+            return;
+        }
+        Err(_) => {
+            vm.contexts[ctx].status = FiberState::Terminated;
+            stop_task(vm, t);
+            return;
+        }
+    }
+    if done {
+        stop_task(vm, t);
+    } else if td(vm, t).status == RUNNING {
+        set_status(vm, t, READY);
+    }
+}
+
+/// The scheduler's loop for a host that ran it (`mrb_task_run` from C: the host made the program
+/// a Task and runs the scheduler): what `Task.run` does from the root.
+#[cfg(feature = "checkpoint")]
+pub(crate) fn checkpoint_run_loop(vm: &mut Vm) -> VmResult<Value> {
+    task_run(vm, Value::Nil, &[], Value::Nil)
+}
+
 // ------------------------------------------------------------------ Task class methods
 
 fn hash_entries(vm: &Vm, h: Value) -> Vec<(Value, Value)> {

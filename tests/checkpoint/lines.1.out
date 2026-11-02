@@ -1,0 +1,19 @@
+ArgumentError: deep 0
+  lines.rb:13:in deep
+  lines.rb:14:in deep
+  lines.rb:14:in deep
+  lines.rb:25
+ArgumentError: deep 0
+  lines.rb:13:in deep
+  lines.rb:14:in deep
+  lines.rb:33
+:fiber
+ArgumentError: deep 0
+  lines.rb:13:in deep
+  lines.rb:14:in deep
+  lines.rb:14:in deep
+  lines.rb:14:in deep
+  lines.rb:44
+  lines.rb:44
+:task
+52

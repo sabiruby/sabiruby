@@ -1,0 +1,9 @@
+ArgumentError: deep 0
+  lines.rb:13:in deep
+  lines.rb:14:in deep
+  lines.rb:14:in deep
+  lines.rb:14:in deep
+  lines.rb:44
+  lines.rb:44
+:task
+52

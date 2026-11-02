@@ -37,10 +37,17 @@ pub(crate) fn error(vm: &mut Vm, msg: &str) -> crate::error::VmError {
     vm.raise(c, msg)
 }
 
-/// What the writer refuses where the call is made, whatever happens next.
+/// What the writer refuses where the call is made, whatever happens next: a call inside a block
+/// a native called (a C function's frame there), in the running context or one it was resumed
+/// from. Fibers and Tasks are carried (format v1).
 fn request(vm: &mut Vm, what: &str, answer: &str) -> VmResult<Value> {
-    if vm.cur != ROOT {
-        return Err(error(vm, &format!("{what} from a Fiber or Task is not supported in format v0")));
+    let mut x = Some(vm.cur);
+    while let Some(c) = x {
+        if vm.fiber_check_native(c) {
+            return Err(error(vm, &format!("{what} inside a block called from C: the C frame cannot be carried")));
+        }
+        if c == ROOT { break; }
+        x = vm.contexts[c].prev;
     }
     let s = vm.intern(answer);
     Ok(Value::Sym(s))
@@ -128,11 +135,20 @@ pub(crate) fn restore_data(vm: &mut Vm, type_name: &str, blob: &[u8], class: Obj
             vm.heap.ivar_set(o, ku, Value::bool(utc));
             Ok(Value::Obj(o))
         }
+        // mruby-task's queue (the writer's checkpoint_task.c): whether it is closed. Its items
+        // are its ivar @items, as here; here the flag is an ivar too (builtins/ext_task.rs), and
+        // the Tasks waiting on it name it in the scheduler section.
+        "Task::Queue" => {
+            let o = vm.heap.alloc(class, crate::object::ObjKind::Object);
+            let k = vm.intern("@closed");
+            vm.heap.ivar_set(o, k, Value::bool(blob.first().is_some_and(|b| *b != 0)));
+            Ok(Value::Obj(o))
+        }
         _ => Err(format!("C data type '{type_name}' has no restore function here")),
     }
 }
 
 /// The C data type names an image may carry that this reader restores.
 pub fn data_types() -> Vec<&'static str> {
-    alloc::vec!["Checkpoint::Box", "Time"]
+    alloc::vec!["Checkpoint::Box", "Time", "Task::Queue"]
 }

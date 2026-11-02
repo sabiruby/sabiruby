@@ -1,8 +1,9 @@
 //! Resuming a checkpoint image written by C mruby (the feature `checkpoint`, off by default).
 //!
 //! An image is the state of a running program — its objects, its call frames and its register
-//! stack — written by an mruby that stopped at an instruction boundary (`Checkpoint.save` or
-//! `Checkpoint.suspend` in the program). It is a logical graph: objects are numbered and refer
+//! stacks (the root's, each Task's and each Fiber's), the scheduler's Tasks — written by an
+//! mruby that stopped at an instruction boundary (`Checkpoint.save` or `Checkpoint.suspend` in
+//! the program, or a request from outside). It is a logical graph: objects are numbered and refer
 //! to each other by number, symbols travel by name, code (ireps) by content, and what the
 //! writer's VM had before the program ran (its classes, the methods of its mrblib, its C
 //! functions) by a name that is looked up here (`names`). The program then goes on from the
@@ -47,10 +48,27 @@ impl Vm {
             Ok(i) => i,
             Err(e) => return Err(module::error(self, &alloc::format!("restore failed: {e}"))),
         };
-        if let Err(e) = build::build(self, &img) {
-            return Err(module::error(self, &alloc::format!("restore failed: {e}")));
-        }
+        let plan = match build::build(self, &img) {
+            Ok(p) => p,
+            Err(e) => return Err(module::error(self, &alloc::format!("restore failed: {e}"))),
+        };
         module::set_resumed(self);
+        // what was running goes on: the context it stood in, or the rest of a Task's slice and
+        // then whoever ran the scheduler (`build::Plan`)
+        if let build::Plan::Slice { task, start, ended, entry } = plan {
+            crate::builtins::ext_task::checkpoint_slice(self, task, start, ended);
+            match entry {
+                build::Entry::Host => {
+                    let r = crate::builtins::ext_task::checkpoint_run_loop(self);
+                    self.stack.clear();
+                    return r;
+                }
+                build::Entry::Run => {}
+                build::Entry::Pass(reg) => {
+                    if reg < self.stack.len() { self.stack[reg] = crate::value::Slot::NIL; }
+                }
+            }
+        }
         self.checkpoint_run()
     }
 
@@ -67,8 +85,9 @@ impl Vm {
     }
 }
 
-/// A summary of an image for tools: (irep records, object records, changes, frames).
+/// A summary of an image for tools: (irep records, object records, changes, frames of all the
+/// contexts).
 pub fn image_counts(image: &[u8]) -> Result<(usize, usize, usize, usize), String> {
     let i = image::parse(image)?;
-    Ok((i.ireps.len(), i.objs.len(), i.patches.len(), i.frames.len()))
+    Ok((i.ireps.len(), i.objs.len(), i.patches.len(), i.ctxs.iter().map(|c| c.frames.len()).sum()))
 }

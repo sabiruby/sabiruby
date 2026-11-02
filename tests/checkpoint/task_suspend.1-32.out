@@ -1,0 +1,6 @@
+boss resumes the worker
+worker 3
+worker 4
+boss resumes the sleeper
+sleeper woke
+[:boss_done, :worker_done, :sleeper_done]

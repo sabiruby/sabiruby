@@ -1,0 +1,5 @@
+b wakes 1
+a wakes 2
+d wakes with 7 wakes before
+[:a_done, :b_done, :c_done, :d_done]
+[:DORMANT, :DORMANT, :DORMANT, :DORMANT]
