@@ -14,6 +14,14 @@ def deep(n)
   deep(n - 1)
 end
 
+def each_of(a)      # a block called from Ruby code of the program (Array#each is
+  i = 0             # mrblib's: its lines are SabiRuby's own after a resume there,
+  while i < a.size  # and SabiRuby builds its mrblib without lines; lines_mrblib.rb
+    yield a[i]      # has the mrblib frame in the image)
+    i += 1
+  end
+end
+
 def show(e)
   puts "#{e.class}: #{e.message}"
   e.backtrace.each { |l| puts "  #{l}" }
@@ -41,7 +49,7 @@ p f.resume
 t = Task.new(name: "t", priority: 140) do
   Checkpoint.suspend("lines.ckpt")
   begin
-    [3].each { |n| deep(n) }
+    each_of([3]) { |n| deep(n) }
   rescue => e
     show(e)
   end

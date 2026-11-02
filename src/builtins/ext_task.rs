@@ -794,11 +794,9 @@ pub(crate) fn checkpoint_slice(vm: &mut Vm, t: ObjId, start: usize, ended: bool)
         }
         return;
     }
-    {
-        let d = td_mut(vm, t);
-        d.timeslice = TIMESLICE;
-        d.status = RUNNING;
-    }
+    // the timeslice is what was left of it on the writer (the image's ticks, set when the
+    // Task was built), 0 too: the tick does not end such a slice, as on the writer
+    td_mut(vm, t).status = RUNNING;
     vm.task.running = Some(t);
     vm.task.switching = false;
     vm.task.tick_left = vm.task.tick_every;

@@ -2,18 +2,19 @@ ArgumentError: deep 0
   lines.rb:13:in deep
   lines.rb:14:in deep
   lines.rb:14:in deep
-  lines.rb:25
+  lines.rb:33
 ArgumentError: deep 0
   lines.rb:13:in deep
   lines.rb:14:in deep
-  lines.rb:33
+  lines.rb:41
 :fiber
 ArgumentError: deep 0
   lines.rb:13:in deep
   lines.rb:14:in deep
   lines.rb:14:in deep
   lines.rb:14:in deep
-  lines.rb:44
-  lines.rb:44
+  lines.rb:52
+  lines.rb:20:in each_of
+  lines.rb:52
 :task
-52
+60
