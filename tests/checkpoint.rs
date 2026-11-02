@@ -32,6 +32,15 @@ fn resume(vm: &mut sabiruby::Vm, stem: &str) -> Result<String, String> {
     }
 }
 
+fn run_image(vm: &mut sabiruby::Vm, img: &[u8]) -> Result<String, String> {
+    let r = vm.checkpoint_resume(img);
+    let out = String::from_utf8_lossy(&vm.take_output()).into_owned();
+    match r {
+        Ok(_) => Ok(out),
+        Err(e) => Err(format!("{out}{}", vm.describe_error(&e))),
+    }
+}
+
 fn stems() -> Vec<String> {
     let mut v: Vec<String> = std::fs::read_dir(dir()).expect("tests/checkpoint").filter_map(|e| {
         let p = e.ok()?.path();
@@ -83,6 +92,31 @@ fn refused_leaves_vm_idle() {
     let a = resume(&mut vm, "task_fiber.1").expect("resumes after a refusal");
     let b = resume(&mut ok, "task_fiber.1").unwrap();
     assert_eq!(a, b);
+}
+
+/// A section this reader does not know is skipped by its length: the image resumes as it
+/// does without it. A section whose contents do not fill its length is refused.
+#[test]
+fn unknown_sections_are_skipped() {
+    let img = std::fs::read(dir().join("counter.1.ckpt")).unwrap();
+    let mut ok = fresh_vm();
+    let want = resume(&mut ok, "counter.1").unwrap();
+    let at = img.windows(4).position(|w| w == b"DBG0").unwrap_or(img.len() - 4);
+    let mut with = img[..at].to_vec();
+    with.extend_from_slice(b"ZZZ9");
+    with.extend_from_slice(&5u32.to_be_bytes());
+    with.extend_from_slice(b"hello");
+    with.extend_from_slice(&img[at..]);
+    let mut vm = fresh_vm();
+    let got = run_image(&mut vm, &with).expect("an unknown section is skipped");
+    assert_eq!(got, want);
+    if let Some(d) = img.windows(4).position(|w| w == b"DBG0") {
+        let mut bad = img.clone();
+        let n = u32::from_be_bytes([bad[d + 4], bad[d + 5], bad[d + 6], bad[d + 7]]) + 1;
+        bad[d + 4..d + 8].copy_from_slice(&n.to_be_bytes());
+        let mut vm = fresh_vm();
+        assert!(vm.checkpoint_resume(&bad).is_err(), "a section longer than its contents was accepted");
+    }
 }
 
 /// Every cut of an image is refused with an error, never a panic. (A cut image fails while it

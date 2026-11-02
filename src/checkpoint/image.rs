@@ -477,32 +477,44 @@ pub fn parse(bytes: &[u8]) -> R<Image> {
         switch_pending: fl & 1 != 0, loop_running: fl & 2 != 0, unit, tick,
         wakeup: (has_wakeup == 1).then_some(wakeup), tasks, running, host,
     };
-    // optional sections after the VM, each with a tag: line numbers (DBG0, put on the
-    // carried ireps) and the GC's settings (GCS0, which this VM's collector has no use for);
-    // then the end mark END0
+    // optional sections after the VM: a tag, the length of the contents, the contents.
+    // Line numbers (DBG0, put on the carried ireps) and the GC's settings (GCS0, which this
+    // VM's collector has no use for) are read; a section this reader does not know is
+    // skipped by its length. A known section must fill its length exactly. Then the end
+    // mark END0 (no length).
     let mut lines = Vec::new();
     let mut ended = false;
     while bytes.len() - c.p >= 4 {
-        match c.take(4)? {
-            b"END0" => { ended = true; break; }
+        let tag = c.take(4)?;
+        if tag == b"END0" { ended = true; break; }
+        let len = c.u32()? as usize;
+        if bytes.len() - c.p < len {
+            return Err(format!("section {}: {len} bytes of contents, only {} left",
+                               String::from_utf8_lossy(tag), bytes.len() - c.p));
+        }
+        let mut s = Cur { b: c.take(len)?, p: 0 };
+        match tag {
             b"DBG0" => {
-                let n = c.u32()?;
+                let n = s.u32()?;
                 for _ in 0..n {
-                    let id = c.u32()?;
-                    let nf = c.u16()?;
+                    let id = s.u32()?;
+                    let nf = s.u16()?;
                     let mut file = None;
                     let mut ents = Vec::new();
                     for _ in 0..nf {
-                        let f = c.bytes()?; c.u32()?; c.u32()?;
+                        let f = s.bytes()?; s.u32()?; s.u32()?;
                         if file.is_none() { file = Some(String::from_utf8_lossy(&f).into_owned()); }
-                        let ne = c.u32()?;
-                        for _ in 0..ne { let pc = c.u32()?; let line = c.u32()?; ents.push((pc, line)); }
+                        let ne = s.u32()?;
+                        for _ in 0..ne { let pc = s.u32()?; let line = s.u32()?; ents.push((pc, line)); }
                     }
                     lines.push((id, file.unwrap_or_default(), ents));
                 }
             }
-            b"GCS0" => { c.take(1 + 4 + 4 + 8 + 8 + 8)?; }
-            _ => { c.p -= 4; break; }
+            b"GCS0" => { s.take(1 + 4 + 4 + 8 + 8 + 8)?; }
+            _ => { s.p = len; }   // not ours: skipped
+        }
+        if s.p != len {
+            return Err(format!("section {}: {} bytes left inside its length", String::from_utf8_lossy(tag), len - s.p));
         }
     }
     // the end mark: an image cut between two sections is refused too
