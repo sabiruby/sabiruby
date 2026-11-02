@@ -70,6 +70,9 @@ pub struct MethRec {
 pub enum ProcBody {
     Irep(u32),
     Func(String),
+    /// alias_method of a Ruby method: the original's name (the Proc's upper is the original)
+    #[allow(dead_code)] // the name is not needed: the upper Proc is the method
+    Alias(u32),
 }
 
 pub enum EnvPlace {
@@ -87,6 +90,7 @@ pub enum ObjRec {
     PermBody(String, u32),
     Object(Head, Ivars),
     Str(Head, Vec<u8>),
+    BinStr(Head, Vec<u8>),
     Array(Head, Vec<Val>),
     Hash { head: Head, flags: u8, pairs: Vec<(Val, Val)>, ivars: Ivars },
     Range { head: Head, begin: Val, end: Val, excl: bool },
@@ -110,6 +114,9 @@ pub enum PatchRec {
     SuperSet(u32, u32),
     GvSet(u32, Val),
     GvRemove(u32),
+    /// change 10: the new contents of a permanent String (`Str`) or Array (`Ary`), e.g. `ARGV << x`
+    StrSet(u32, bool, Vec<u8>),
+    AryContents(u32, bool, Vec<Val>),
 }
 
 pub struct FrameRec {
@@ -138,7 +145,13 @@ pub struct Image {
     pub patches: Vec<PatchRec>,
     pub stack: Vec<Val>,
     pub frames: Vec<FrameRec>,
+    /// line numbers of carried ireps (section DBG0): irep number -> (file of its first part,
+    /// (pc, line) where the line changes)
+    pub lines: Vec<LinesRec>,
 }
+
+/// One irep's line numbers: (irep number, file name, (pc, line) where the line changes).
+pub type LinesRec = (u32, String, Vec<(u32, u32)>);
 
 /// The format versions this reader takes.
 pub const FORMAT_VERSION: u16 = 0;
@@ -238,6 +251,7 @@ impl<'a> Cur<'a> {
         Ok(match kind {
             2 => ObjRec::Object(head, self.ivars()?),
             3 => ObjRec::Str(head, self.bytes()?),
+            25 => ObjRec::BinStr(head, self.bytes()?),   // a String marked binary (String#b)
             4 => { let n = self.u32()?; ObjRec::Array(head, (0..n).map(|_| self.val()).collect::<R<_>>()?) }
             5 => {
                 let flags = self.u8()?;
@@ -262,6 +276,7 @@ impl<'a> Cur<'a> {
                 let body = match self.u8()? {
                     0 => ProcBody::Irep(self.u32()?),
                     1 => { let f = self.string()?; self.u32()?; ProcBody::Func(f) }
+                    2 => ProcBody::Alias(self.u32()?),
                     b => return Err(format!("bad proc body kind {b}")),
                 };
                 let upper = self.u32()?;
@@ -280,6 +295,10 @@ impl<'a> Cur<'a> {
                 ObjRec::Env { head, mid, len, bidx, vis, place }
             }
             14 => { let type_name = self.string()?; let blob = self.bytes()?; ObjRec::Data { head, type_name, blob, ivars: self.ivars()? } }
+            k @ 16..=24 => return Err(format!("object kind {k} ({}) is not carried to this VM yet", match k {
+                16 => "Integer beyond 64 bits", 17 => "Struct", 18 => "Set", 19 => "Rational", 20 => "Complex",
+                21 => "break through ensure", 23 => "Random", 24 => "origin of a prepended class", _ => "?",
+            })),
             k => return Err(format!("bad object kind {k}")),
         })
     }
@@ -292,6 +311,18 @@ impl<'a> Cur<'a> {
             5 => PatchRec::SuperSet(self.u32()?, self.u32()?),
             6 => { let s = self.u32()?; PatchRec::GvSet(s, self.val()?) }
             7 => PatchRec::GvRemove(self.u32()?),
+            8 => return Err(String::from("the state of the default Random (change kind 8) is not carried to this VM yet")),
+            9 => return Err(String::from("prepended modules on a built-in class (change kind 9) are not carried to this VM yet")),
+            10 => {
+                let o = self.u32()?;
+                let frozen = self.u8()? != 0;
+                match self.u8()? {
+                    3 => PatchRec::StrSet(o, frozen, self.bytes()?),
+                    4 => { let n = self.u32()?; PatchRec::AryContents(o, frozen, (0..n).map(|_| self.val()).collect::<R<_>>()?) }
+                    5 => return Err(String::from("new contents of a built-in Hash (change kind 10) are not carried to this VM yet")),
+                    t => return Err(format!("bad contents type {t}")),
+                }
+            }
             k => return Err(format!("bad change kind {k}")),
         })
     }
@@ -329,8 +360,38 @@ pub fn parse(bytes: &[u8]) -> R<Image> {
             blk: c.u32()?, env_kind: c.u8()?, env: c.u32()?,
         });
     }
+    // optional sections after the VM, each with a tag: line numbers (DBG0, put on the
+    // carried ireps) and the GC's settings (GCS0, which this VM's collector has no use for);
+    // then the end mark END0
+    let mut lines = Vec::new();
+    let mut ended = false;
+    while bytes.len() - c.p >= 4 {
+        match c.take(4)? {
+            b"END0" => { ended = true; break; }
+            b"DBG0" => {
+                let n = c.u32()?;
+                for _ in 0..n {
+                    let id = c.u32()?;
+                    let nf = c.u16()?;
+                    let mut file = None;
+                    let mut ents = Vec::new();
+                    for _ in 0..nf {
+                        let f = c.bytes()?; c.u32()?; c.u32()?;
+                        if file.is_none() { file = Some(String::from_utf8_lossy(&f).into_owned()); }
+                        let ne = c.u32()?;
+                        for _ in 0..ne { let pc = c.u32()?; let line = c.u32()?; ents.push((pc, line)); }
+                    }
+                    lines.push((id, file.unwrap_or_default(), ents));
+                }
+            }
+            b"GCS0" => { c.take(1 + 4 + 4 + 8 + 8 + 8)?; }
+            _ => { c.p -= 4; break; }
+        }
+    }
+    // the end mark: an image cut between two sections is refused too
+    if !ended { return Err(String::from("truncated image (no end mark)")); }
     if c.p != bytes.len() { return Err(format!("{} bytes left after the image", bytes.len() - c.p)); }
-    Ok(Image { version, writer, syms, ireps, objs, patches, stack, frames })
+    Ok(Image { version, writer, syms, ireps, objs, patches, stack, frames, lines })
 }
 
 const FNV_INIT: u64 = 0xcbf2_9ce4_8422_2325;

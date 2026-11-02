@@ -1,7 +1,8 @@
 # checkpoint-test: suspend-after "patched"
 # Changes to classes that mrb_open made: methods added to String and
 # Integer, an alias of a C method in Array, a top-level method (a private
-# method of Object), an ivar on main, globals, a new constant in Object.
+# method of Object), an ivar on main, globals, a new constant in Object, the
+# contents of ARGV (an Array mrb_open made).
 class String
   def shout = upcase + "!"
 end
@@ -20,9 +21,11 @@ def helper(x) = "helper(#{x})"
 $seen = ["g1"]
 $level = 3
 LIMIT = 42
+ARGV << "extra"
 puts "patched"
 Checkpoint.suspend("bp.ckpt")
 $seen << "g2"
 puts "abc".shout, 21.double, [1, 2, 3].count_of, helper(1)
 puts @main_ivar.inspect, $seen.inspect, $level, LIMIT
 puts String.instance_method(:shout).owner, 7.respond_to?(:double)
+puts ARGV.inspect

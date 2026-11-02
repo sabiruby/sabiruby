@@ -351,7 +351,8 @@ fn program(cli: Cli) -> ExitCode {
     #[cfg(feature = "checkpoint")]
     if let Some(path) = cli.resume.as_deref() {
         let img = match read_file(path) { Ok(b) => b, Err(code) => return code };
-        return run_start(Start::Image(&img), &cli.args, cli.stats, cli.debug, &[String::from(".")], &[]);
+        // `-r lib` loads libraries before the image is restored (a host's own setup)
+        return run_start(Start::Image(&img), &cli.args, cli.stats, cli.debug, &[String::from(".")], &cli.requires);
     }
     // where `require` looks: the program's own directory first, then the working directory
     let load_path = match cli.program.as_deref().filter(|_| cli.commands.is_empty()) {

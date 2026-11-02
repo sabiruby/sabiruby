@@ -114,11 +114,25 @@ pub(crate) fn restore_data(vm: &mut Vm, type_name: &str, blob: &[u8], class: Obj
             let tag = box_tag(vm);
             Ok(vm.data_new(class, tag, u))
         }
+        // mruby-time's entry (the writer's checkpoint_bundled.c): seconds and nanoseconds
+        // since the epoch (int64, big-endian) and the zone (1 UTC, 2 local). A Time here is a
+        // plain object with hidden ivars (builtins/ext_time.rs).
+        "Time" => {
+            if blob.len() < 17 { return Err(String::from("a Time image record is too short")); }
+            let rd = |b: &[u8]| { let mut u: u64 = 0; for x in b { u = (u << 8) | *x as u64; } u as i64 };
+            let (sec, nsec, utc) = (rd(&blob[0..8]), rd(&blob[8..16]), blob[16] == 1);
+            let o = vm.heap.alloc(class, crate::object::ObjKind::Object);
+            let (ks, kn, ku) = (vm.intern("__sec"), vm.intern("__nsec"), vm.intern("__utc"));
+            vm.heap.ivar_set(o, ks, Value::Int(sec));
+            vm.heap.ivar_set(o, kn, Value::Int(nsec));
+            vm.heap.ivar_set(o, ku, Value::bool(utc));
+            Ok(Value::Obj(o))
+        }
         _ => Err(format!("C data type '{type_name}' has no restore function here")),
     }
 }
 
 /// The C data type names an image may carry that this reader restores.
 pub fn data_types() -> Vec<&'static str> {
-    alloc::vec!["Checkpoint::Box"]
+    alloc::vec!["Checkpoint::Box", "Time"]
 }

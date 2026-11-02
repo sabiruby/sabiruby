@@ -112,8 +112,18 @@ fn build_ireps(vm: &mut Vm, b: &mut Builder) -> R<()> {
         b.ireps.push(first + i);
     }
     for (i, r) in img.ireps.iter().enumerate() {
+        // the writer's irep may count children and have no table of them (some of its
+        // mrblib's): every entry is 0 then, and there is nothing to link
+        if !r.reps.is_empty() && r.reps.iter().all(|c| *c == 0) { continue; }
         let reps = r.reps.iter().map(|c| b.irep(*c)).collect::<R<Vec<usize>>>()?;
         vm.ireps[first + i].reps = reps;
+    }
+    for (id, file, ents) in &img.lines {
+        let k = *id as usize;
+        if k == 0 || k > img.ireps.len() { return Err(format!("line numbers for irep @{id}, which is not in the image")); }
+        let ir = &mut vm.ireps[first + k - 1];
+        ir.lines = ents.clone();
+        ir.filename = Some(file.clone());
     }
     Ok(())
 }
@@ -197,12 +207,20 @@ fn make_objects(vm: &mut Vm, b: &mut Builder) -> R<()> {
             }
             ObjRec::Object(..) => Made::Obj(vm.heap.alloc(obj, ObjKind::Object)),
             ObjRec::Str(_, s) => Made::Obj(vm.heap.alloc(obj, ObjKind::String(s.clone()))),
+            ObjRec::BinStr(_, s) => {
+                let o = vm.heap.alloc(obj, ObjKind::String(s.clone()));
+                vm.heap.get_mut(o).binary = true;
+                Made::Obj(o)
+            }
             ObjRec::Array(..) => Made::Obj(vm.heap.alloc(obj, ObjKind::Array(Default::default()))),
             ObjRec::Hash { .. } => Made::Obj(vm.heap.alloc(obj, ObjKind::Hash(Default::default()))),
             ObjRec::Range { excl, .. } => Made::Obj(vm.heap.alloc(obj, ObjKind::Range { begin: Slot::NIL, end: Slot::NIL, excl: *excl })),
             ObjRec::Exception { .. } => Made::Obj(vm.heap.alloc(obj, ObjKind::Exception)),
             ObjRec::Class { .. } | ObjRec::IClass { .. } => Made::Obj(vm.heap.alloc(obj, ObjKind::Class(ClassData::default()))),
             ObjRec::Proc { body: ProcBody::Func(f), .. } => Made::Refused(format!("a Proc made from the C function {f} cannot be carried here")),
+            // the method table entry it is stands for its original (method_of); as a value it
+            // has no counterpart here
+            ObjRec::Proc { body: ProcBody::Alias(_), .. } => Made::Refused(String::from("a Proc made by alias_method, as a value")),
             ObjRec::Proc { .. } => Made::Obj(vm.heap.alloc(vm.core.proc_, ObjKind::Proc(ProcData {
                 irep: 0, upper: None, env: None, target_class: None, strict: false, scope: false, orphan: false, mid: None,
             }))),
@@ -291,6 +309,11 @@ fn method_of(vm: &mut Vm, b: &Builder, m: &MethRec) -> R<Method> {
                     _ => names::method(vm, f),
                 }
             }
+            // alias_method of a Ruby method: the original's method (its upper)
+            Some(ObjRec::Proc { body: ProcBody::Alias(_), upper, .. }) => {
+                let up = MethRec { name: m.name, vis: m.vis, body: MethBody::Proc(*upper) };
+                method_of(vm, b, &up)
+            }
             _ => Ok(Method::Ruby(b.obj(*p)?)),
         },
     }
@@ -315,7 +338,7 @@ fn fill_objects(vm: &mut Vm, b: &mut Builder) -> R<()> {
         let o = match &b.objs[i] { Made::Obj(o) => *o, Made::Refused(_) => continue };
         let head = match r {
             ObjRec::Perm(_) | ObjRec::PermBody(..) => continue,
-            ObjRec::Object(h, _) | ObjRec::Str(h, _) | ObjRec::Array(h, _) => *h,
+            ObjRec::Object(h, _) | ObjRec::Str(h, _) | ObjRec::BinStr(h, _) | ObjRec::Array(h, _) => *h,
             ObjRec::Hash { head, .. } | ObjRec::Range { head, .. } | ObjRec::Exception { head, .. } | ObjRec::Class { head, .. }
             | ObjRec::IClass { head, .. } | ObjRec::Proc { head, .. } | ObjRec::Env { head, .. } | ObjRec::Data { head, .. } => *head,
         };
@@ -334,7 +357,7 @@ fn fill_objects(vm: &mut Vm, b: &mut Builder) -> R<()> {
         vm.heap.get_mut(o).class = class;
         match r {
             ObjRec::Object(_, iv) | ObjRec::Data { ivars: iv, .. } => set_ivars(vm, b, o, iv)?,
-            ObjRec::Str(..) => {}
+            ObjRec::Str(..) | ObjRec::BinStr(..) => {}
             ObjRec::Array(_, items) => {
                 let v = items.iter().map(|x| b.val(*x).map(Slot::from)).collect::<R<Vec<Slot>>>()?;
                 if let ObjKind::Array(a) = &mut vm.heap.get_mut(o).kind { *a = v.into(); }
@@ -397,7 +420,7 @@ fn fill_objects(vm: &mut Vm, b: &mut Builder) -> R<()> {
                 cd.superclass = sup;
             }
             ObjRec::Proc { flags, body, upper, env_kind, env, .. } => {
-                let irep = match body { ProcBody::Irep(i) => b.irep(*i)?, ProcBody::Func(_) => unreachable!() };
+                let irep = match body { ProcBody::Irep(i) => b.irep(*i)?, ProcBody::Func(_) | ProcBody::Alias(_) => unreachable!() };
                 let upper = b.obj_opt(*upper)?;
                 let (env, tc) = match env_kind {
                     1 => {
@@ -465,6 +488,23 @@ fn apply_patches(vm: &mut Vm, b: &mut Builder) -> R<()> {
             }
             PatchRec::GvSet(s, v) => { let s = b.sym_req(*s)?; let v = b.val(*v)?; vm.globals.insert(s, Slot::from(v)); }
             PatchRec::GvRemove(s) => { let s = b.sym_req(*s)?; vm.globals.remove(&s); }
+            PatchRec::StrSet(o, frozen, bytes) => {
+                let o = b.obj(*o)?;
+                match &mut vm.heap.get_mut(o).kind {
+                    ObjKind::String(s) => { *s = bytes.clone(); }
+                    _ => return Err(String::from("string contents for an object that is not a String")),
+                }
+                vm.heap.get_mut(o).frozen = *frozen;
+            }
+            PatchRec::AryContents(o, frozen, vals) => {
+                let o = b.obj(*o)?;
+                let v = vals.iter().map(|x| b.val(*x).map(Slot::from)).collect::<R<Vec<Slot>>>()?;
+                match &mut vm.heap.get_mut(o).kind {
+                    ObjKind::Array(a) => { *a = v.into(); }
+                    _ => return Err(String::from("array contents for an object that is not an Array")),
+                }
+                vm.heap.get_mut(o).frozen = *frozen;
+            }
         }
     }
     Ok(())
