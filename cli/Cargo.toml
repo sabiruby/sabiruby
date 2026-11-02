@@ -19,6 +19,9 @@ utf8 = ["sabiruby/utf8"]
 # mruby-regexp. On by default; `--no-default-features --features utf8` builds the command
 # against a VM that has no `Regexp` (the VM's own feature of the same name).
 regexp = ["sabiruby/regexp"]
+# `--resume IMAGE`: go on with a program C mruby stopped and wrote out (the VM's feature of the
+# same name, `docs/plans/checkpoint-plan.md`). Off by default.
+checkpoint = ["sabiruby/checkpoint"]
 
 [[bin]]
 name = "sabiruby"

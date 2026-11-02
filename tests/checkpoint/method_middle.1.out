@@ -1,0 +1,4 @@
+depth 3 after local=300
+depth 2 x=301 rest=[:p, :q]
+depth 1 r=602
+result 602

@@ -2548,6 +2548,15 @@ impl Vm {
         r
     }
 
+    /// Runs the frames a checkpoint image was built into (`crate::checkpoint`) until the bottom
+    /// one returns, as [`Vm::run_irep`] runs the frame it pushes.
+    #[cfg(feature = "checkpoint")]
+    pub(crate) fn checkpoint_run(&mut self) -> VmResult<Value> {
+        let r = self.run_loop(0);
+        self.stack.clear();
+        r
+    }
+
     /// Prepares a top-level irep for stepped execution ([`Vm::step`]).
     ///
     /// # Panics
