@@ -13,6 +13,11 @@ jobs:
           targets: thumbv7em-none-eabi, wasm32-unknown-unknown
       # the VM, the CLI, and the compiler's golden tests against the reference mrbc output
       - run: cargo test --workspace
+      # the VM and the command without `checkpoint`: sabiruby-cli turns it on by default, so the
+      # workspace run above always builds the VM with it. The VM with its own defaults (std, utf8,
+      # regexp), and the command without the feature, whose `--resume` code is behind a cfg.
+      - run: cargo test -p sabiruby
+      - run: cargo test -p sabiruby-cli --no-default-features --features "utf8 regexp"
       # the VM with mruby-regexp left out (`docs/design/gems.md`, "Gems as Cargo features"):
       # the whole library, its tests and the mrbtest floor `baseline-noregexp.txt`. The full
       # `tools/mrbtest.sh --no-regexp` needs Docker for the reference `mrbc`, so CI runs the
