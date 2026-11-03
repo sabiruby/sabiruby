@@ -6,6 +6,8 @@
 
 著者の判断（2026-11-03）: ブランチ `feature/checkpoint` を丸ごと 0.9.0 に入れる（`release-0.9-plan.md`）。VM の crate では既定 off のまま、
 `sabiruby-cli` では既定で on（`cargo install sabiruby-cli` で `--resume` が使える）。
+ブランチは merge commit で main に入って 0.9.0（2026-11-03）で公開され、その後に消した（手元と origin）。
+この文書の「このブランチ」は今の main を指す。
 
 ## 目的
 
