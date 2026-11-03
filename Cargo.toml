@@ -1,6 +1,6 @@
 [package]
 name = "sabiruby"
-version = "0.8.0"
+version = "0.9.0"
 edition = "2024"
 # edition 2024 and core::ptr::fn_addr_eq need 1.85
 rust-version = "1.85"
@@ -55,6 +55,7 @@ macros = ["dep:sabiruby-macros"]
 # `checkpoint`: `Vm::checkpoint_resume`, which rebuilds the state of a program that C mruby
 # stopped and wrote out (objects, frames, registers) and runs it on from where it stopped.
 # Off by default: without it the crate has none of the code (`docs/plans/checkpoint-plan.md`).
+# The command (`sabiruby-cli`) turns it on by default for `--resume`.
 checkpoint = []
 
 [dependencies]

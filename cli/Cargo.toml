@@ -1,6 +1,6 @@
 [package]
 name = "sabiruby-cli"
-version = "0.8.0"
+version = "0.9.0"
 edition = "2024"
 rust-version = "1.85"
 description = "The `sabiruby` command: run Ruby source and mruby 4.1 bytecode on the SabiRuby VM, with the switches of the reference mruby, and compile like mrbc"
@@ -14,13 +14,15 @@ include = ["/src/**/*", "/README.md"]
 [features]
 # Strings as characters, as in a reference built with MRB_UTF8_STRING. On by default;
 # `--no-default-features` builds the byte-string mode the reference ships by default.
-default = ["utf8", "regexp"]
+default = ["utf8", "regexp", "checkpoint"]
 utf8 = ["sabiruby/utf8"]
 # mruby-regexp. On by default; `--no-default-features --features utf8` builds the command
 # against a VM that has no `Regexp` (the VM's own feature of the same name).
 regexp = ["sabiruby/regexp"]
 # `--resume IMAGE`: go on with a program C mruby stopped and wrote out (the VM's feature of the
-# same name, `docs/plans/checkpoint-plan.md`). Off by default.
+# same name, `docs/plans/checkpoint-plan.md`). On by default here, so that `cargo install
+# sabiruby-cli` has `--resume`; the VM crate keeps it off. Leave it out with
+# `--no-default-features --features "utf8 regexp"`.
 checkpoint = ["sabiruby/checkpoint"]
 
 [[bin]]
@@ -29,5 +31,5 @@ path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
-sabiruby = { version = "0.8.0", path = "..", default-features = false, features = ["std"] }
-sabiruby-compiler = { version = "0.5.0", path = "../compiler", features = ["host"] }
+sabiruby = { version = "0.9.0", path = "..", default-features = false, features = ["std"] }
+sabiruby-compiler = { version = "0.6.0", path = "../compiler", features = ["host"] }

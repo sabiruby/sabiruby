@@ -20,6 +20,7 @@ sabiruby -b foo.mrb                   # bytecode only (refuse source)
 sabiruby -d foo.rb                    # $DEBUG = true
 sabiruby -r lib foo.rb                # require the library first (-r may be repeated)
 sabiruby --stats foo.rb               # instructions, time and GC statistics to stderr
+sabiruby --resume foo.ckpt            # go on with a program C mruby stopped and wrote out
 sabiruby compile foo.rb -o foo.mrb    # like mrbc: -g, -c, --remove-lv, --no-ext-ops, --no-optimize
 sabiruby dump foo.rb                  # instruction listing (.rb or .mrb)
 sabiruby mrbtest assert.mrb hash.mrb  # run mruby's test suite and print a Markdown report
@@ -29,6 +30,15 @@ sabiruby --version / --copyright
 `sabiruby run foo.rb` still works. A subcommand name wins over a file of the same name: for a
 program called `compile`, run `./compile` or `sabiruby run compile`. `require`/`load` search
 the program's own directory and the working directory (`$LOAD_PATH`).
+
+The program's output goes out as it is written, as the reference `mruby` does: flushed at every
+write on a terminal, block buffered elsewhere.
+
+`--resume IMAGE` reads an image that C mruby wrote with the gem
+[mruby-checkpoint](https://github.com/family-mruby/mruby-checkpoint) (`Checkpoint.suspend(path)`
+in the program; format v1) and runs the program on from the instruction after where it stopped,
+with the switches `-r`, `-d` and `--stats` as for a program. It is the feature `checkpoint`, on
+by default; `--no-default-features --features "utf8 regexp"` builds the command without it.
 
 The bytecode is byte-identical to what the reference `mrbc` (mruby 4.1.0-rc2) writes; compile
 errors are printed as `FILE:LINE:COL: message`, as `mrbc` does. `SABIRUBY_GC_STRESS=1` makes

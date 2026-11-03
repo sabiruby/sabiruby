@@ -104,6 +104,13 @@ This page says what is here now; the versions and the dates live there.
   `highlight(src)` with one category byte per source byte — what an editor needs to colour Ruby
   without writing a tokeniser, and it answers for broken source too. See
   [`docs/design/compiler.md`](https://github.com/sabiruby/sabiruby/blob/main/docs/design/compiler.md).
+* Checkpoint (feature `checkpoint`, off in the library, on in the `sabiruby` command): a program
+  that C mruby stopped and wrote out with
+  [mruby-checkpoint](https://github.com/family-mruby/mruby-checkpoint) (its format v1: objects,
+  frames, registers, Tasks and Fibers) goes on here from the instruction after where it stopped —
+  `Vm::checkpoint_resume`, `sabiruby --resume IMAGE`. One way only (C mruby to SabiRuby); what an
+  image may not hold is refused with the reason
+  ([`docs/plans/checkpoint-plan.md`](https://github.com/sabiruby/sabiruby/blob/main/docs/plans/checkpoint-plan.md), in Japanese).
 
 Not yet: `$!` (nil even inside `rescue`; use
 `rescue => e`), the remaining mrbgems (`io`, …),
@@ -464,13 +471,13 @@ How to depend on it:
 ```toml
 [dependencies]
 # the VM. Pick one line:
-sabiruby = "0.8"                                          # std + utf8 + regexp (the defaults)
-# sabiruby = { version = "0.8", default-features = false } # no_std + alloc, byte strings, no Regexp
-# sabiruby = { version = "0.8", features = ["macros"] }    # + #[derive(RubyClass)] / #[ruby_methods]
+sabiruby = "0.9"                                          # std + utf8 + regexp (the defaults)
+# sabiruby = { version = "0.9", default-features = false } # no_std + alloc, byte strings, no Regexp
+# sabiruby = { version = "0.9", features = ["macros"] }    # + #[derive(RubyClass)] / #[ruby_methods]
 
 # optional companions
-sabiruby-compiler = { version = "0.5", features = ["host"] }  # compile Ruby source in the same program
-sabiruby-serde = "0.4"                                        # serde, and a JSON class
+sabiruby-compiler = { version = "0.6", features = ["host"] }  # compile Ruby source in the same program
+sabiruby-serde = "0.5"                                        # serde, and a JSON class
 ```
 
 The feature `macros` re-exports the two macros of `sabiruby-macros` at the crate root, so that
@@ -505,6 +512,7 @@ sabiruby -c foo.rb             # check syntax only ("Syntax OK")
 sabiruby -v foo.rb             # version, then the instruction listing, then run
 sabiruby -r lib foo.rb         # require the library first (-r may be repeated)
 sabiruby -b foo.mrb            # bytecode only; -d sets $DEBUG; --stats prints instructions/time/GC
+sabiruby --resume foo.ckpt     # go on with a program C mruby stopped and wrote out (mruby-checkpoint)
 sabiruby compile foo.rb -o foo.mrb   # like mrbc (-g, -c, --remove-lv, --no-ext-ops, --no-optimize)
 sabiruby dump foo.rb           # instruction listing (.rb or .mrb)
 sabiruby mrbtest tests/mrbtest/assert.mrb tests/mrbtest/hash.mrb   # test suite

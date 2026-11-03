@@ -4,6 +4,9 @@
 最初の段（C mruby → SabiRuby の片道）を実装した。この文書は計画と、その段の実装の記録を兼ねる。
 第 3 段（2026-11-03）で形式 v1（Task と Fiber）に合わせた。
 
+著者の判断（2026-11-03）: ブランチ `feature/checkpoint` を丸ごと 0.9.0 に入れる（`release-0.9-plan.md`）。VM の crate では既定 off のまま、
+`sabiruby-cli` では既定で on（`cargo install sabiruby-cli` で `--resume` が使える）。
+
 ## 目的
 
 C mruby（4.0 系）で動いているプログラムを途中で止め、状態（ヒープ・フレーム・
