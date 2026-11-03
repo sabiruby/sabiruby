@@ -783,6 +783,22 @@ SabiRuby's milliseconds are −9.7% against `96221fb` (46061 → 41613); the ref
 this window (17911 → 18275), so the ratio moves a little more than SabiRuby did. This is now the last
 baseline in this file, and README's figure.
 
+### 0.9.0 candidate (`v0.8.0` → `release-0.9`, 2026-11-03)
+
+Before is the tag `v0.8.0`; after is the `release-0.9` branch, the 0.9.0 candidate (plan
+[`release-0.9-plan.md`](../plans/release-0.9-plan.md), stage R4). 0.9.0 adds the `checkpoint` feature
+(code the VM runs only when it resumes an image) and one branch where the VM writes output
+(`Vm::output_sink`); neither is on the path these programs take.
+
+**Instruction counts** (`--stats`) and GC counts are **the same in all 27** of `bench/`.
+
+**Time.** One `tools/bench_ab.sh` round (5 runs, the side that goes first alternating), on a machine
+that was not idle (other builds ran at the same time), so it shows only that nothing moved beyond the
+noise: all 27 together +0.4% (42959 → 43138 ms), every benchmark within ±4.0% (the largest,
+`loop_times` +4.0%, runs exactly as many instructions in both: callgrind 22,193,397,919 against
+22,193,405,236 machine instructions). No A/A round was taken; the 0.8.0 rounds above put the line at a
+few percent.
+
 ## Earlier measurements (the five reference benchmarks, best of 3)
 
 

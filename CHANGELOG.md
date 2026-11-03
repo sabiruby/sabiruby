@@ -8,9 +8,9 @@ Every claim here is traceable to a commit or to a document under `docs/`, and th
 named. Measurements are the ones in [`docs/verification/bench.md`](docs/verification/bench.md);
 nothing is estimated.
 
-## 0.9.0 — (unreleased; the date is written when it is published)
+## 0.9.0 — 2026-11-03
 
-To publish: `sabiruby` 0.9.0, `sabiruby-compiler` 0.6.0, `sabiruby-serde` 0.5.0, `sabiruby-cli` 0.9.0. `sabiruby-macros` stays at 0.1.1 (no change since `v0.8.0`, and it does not depend on the VM). The compiler and serde have no change of their own since `v0.8.0` and move a minor only because `sabiruby` is a public dependency of both (the reasoning of 0.6.0, `docs/design/compiler.md` "Publishing"). The plan is `docs/plans/release-0.9-plan.md`.
+Published: `sabiruby` 0.9.0, `sabiruby-compiler` 0.6.0, `sabiruby-serde` 0.5.0, `sabiruby-cli` 0.9.0. `sabiruby-macros` stays at 0.1.1 (no change since `v0.8.0`, and it does not depend on the VM). The compiler and serde have no change of their own since `v0.8.0` and move a minor only because `sabiruby` is a public dependency of both (the reasoning of 0.6.0, `docs/design/compiler.md` "Publishing"). The plan is `docs/plans/release-0.9-plan.md`.
 
 In short:
 
