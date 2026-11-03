@@ -158,3 +158,20 @@ fn image_is_the_same_from_32_bit() {
         assert_eq!(diffs.len(), 1, "{s}");
     }
 }
+
+/// After a resume, `Checkpoint.save` and `suspend` take the writer's `source:` keyword (C mruby
+/// accepts it to put the program's text in the next image): a program that passes it goes on
+/// here, where they write nothing.
+#[test]
+fn save_takes_the_source_keyword() {
+    let mut vm = fresh_vm();
+    resume(&mut vm, "counter.1").expect("counter.1 resumes");
+    let src = b"p Checkpoint.save('x.ckpt', source: true)\np Checkpoint.save('x.ckpt')\np Checkpoint.suspend('x.ckpt', source: false)\n";
+    let bin = sabiruby_compiler::compile(src, &sabiruby_compiler::Options {
+        filename: "(test)".into(), debug_info: true, ..Default::default()
+    }).expect("compile");
+    let r = vm.load_and_run(&bin);
+    let out = String::from_utf8_lossy(&vm.take_output()).into_owned();
+    if let Err(e) = r { panic!("{out}{}", vm.describe_error(&e)); }
+    assert_eq!(out, ":saved\n:saved\n:resumed\n");
+}

@@ -74,8 +74,8 @@ pub fn install(vm: &mut Vm) {
     let se = vm.core.standard_error;
     let o = vm.core.object;
     vm.define_class_under(m, "Error", se);
-    let _ = vm.define_module_function_args(m, "save", Aspec::opt(1), |vm, _s, _a, _b| request(vm, "Checkpoint.save", "saved"));
-    let _ = vm.define_module_function_args(m, "suspend", Aspec::opt(1), |vm, _s, _a, _b| request(vm, "Checkpoint.suspend", "resumed"));
+    let _ = vm.define_module_function_args(m, "save", Aspec::opt(1).or(Aspec::key(1, false)), |vm, _s, _a, _b| request(vm, "Checkpoint.save", "saved"));
+    let _ = vm.define_module_function_args(m, "suspend", Aspec::opt(1).or(Aspec::key(1, false)), |vm, _s, _a, _b| request(vm, "Checkpoint.suspend", "resumed"));
     let _ = vm.define_module_function_args(m, "resumed?", Aspec::none(), |vm, _s, _a, _b| {
         let m = module(vm).expect("Checkpoint");
         let k = vm.intern("__resumed");
