@@ -15,6 +15,7 @@
 set -eu
 cd "$(dirname "$0")/.."
 IMG=kishima/mruby:4.1.0-rc2
+# the reference tree: MRUBY_SRC, or ref/mruby two levels above this repository
 MRUBY=${MRUBY_SRC:-../../ref/mruby}
 DIR=tests/mrbtest
 FEATURES=""
@@ -62,6 +63,25 @@ fi
 # Gem tests (mrbgems/<gem>/test/*.rb) are copied as gem_<file>.rb; the gem's
 # mrblib is compiled into src/mrblib/<gem>.mrb and loaded by Vm::with_mrblib.
 GEMS="mruby-sprintf mruby-metaprog mruby-proc-ext mruby-method mruby-fiber mruby-enumerator mruby-array-ext mruby-enum-ext mruby-hash-ext mruby-range-ext mruby-string-ext mruby-compar-ext mruby-toplevel-ext mruby-enum-chain mruby-enum-lazy mruby-object-ext mruby-symbol-ext mruby-kernel-ext mruby-class-ext mruby-numeric-ext mruby-catch mruby-objectspace mruby-math mruby-random mruby-struct mruby-data mruby-set mruby-time mruby-bigint mruby-rational mruby-complex mruby-cmath mruby-pack mruby-eval mruby-binding mruby-proc-binding mruby-regexp mruby-task mruby-sleep mruby-strftime"
+# Everything the copy below reads has to be there before anything is removed: the gem_* files
+# are tracked, and a missing reference tree used to delete them and only then fail on the cp.
+missing=""
+if [ ! -f "$MRUBY/test/assert.rb" ]; then
+  missing=" $MRUBY/test/assert.rb"
+else
+  ls "$MRUBY"/test/t/*.rb >/dev/null 2>&1 || missing="$missing $MRUBY/test/t/*.rb"
+  for g in $GEMS; do
+    ls "$MRUBY"/mrbgems/$g/test/*.rb >/dev/null 2>&1 || missing="$missing $MRUBY/mrbgems/$g/test/*.rb"
+  done
+  [ -f "$MRUBY/mrbgems/mruby-regexp/test/backtracking_stack.rb" ] \
+    || missing="$missing $MRUBY/mrbgems/mruby-regexp/test/backtracking_stack.rb"
+fi
+if [ -n "$missing" ]; then
+  echo "tools/mrbtest.sh: no reference mruby tree at $MRUBY (set MRUBY_SRC to a checkout of mruby 4.1.0-rc2)" >&2
+  echo "  missing:$missing" >&2
+  echo "  nothing was removed or copied" >&2
+  exit 1
+fi
 # the gem test files are copied afresh (the collision rule below looks at what this run copied)
 rm -f $DIR/src/gem_*.rb $DIR/gem_*.mrb
 cp "$MRUBY/test/assert.rb" $DIR/src/
