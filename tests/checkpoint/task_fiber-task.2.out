@@ -1,0 +1,3 @@
+task a: fiber 5
+task b woke
+[15, :b]

@@ -23,6 +23,38 @@ fn wall_clock() -> (i64, i64) {
     }
 }
 
+/// Where the program's output goes as it is written (`Vm::output_sink`). Like the reference
+/// `mruby` (`src/print.c`): on a terminal each write is flushed at once, so a program that
+/// draws and then waits is seen drawing; anywhere else it is block buffered, flushed when the
+/// buffer fills and by [`flush_output`] before the command reports an error or ends.
+fn write_output(bytes: &[u8]) {
+    static TERMINAL: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    if *TERMINAL.get_or_init(|| std::io::IsTerminal::is_terminal(&std::io::stdout())) {
+        let mut out = std::io::stdout().lock();
+        out.write_all(bytes).ok();
+        out.flush().ok();
+        return;
+    }
+    OUTPUT.with(|b| {
+        let mut b = b.borrow_mut();
+        b.extend_from_slice(bytes);
+        if b.len() >= OUTPUT_BLOCK { std::io::stdout().lock().write_all(&b).ok(); b.clear(); }
+    });
+}
+
+const OUTPUT_BLOCK: usize = 64 * 1024;
+thread_local! {
+    static OUTPUT: std::cell::RefCell<Vec<u8>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// Writes out what [`write_output`] holds and anything left in the VM's own buffer.
+fn flush_output(vm: &mut sabiruby::Vm) {
+    let mut out = std::io::stdout().lock();
+    OUTPUT.with(|b| { let mut b = b.borrow_mut(); out.write_all(&b).ok(); b.clear(); });
+    out.write_all(vm.take_output().as_slice()).ok();
+    out.flush().ok();
+}
+
 fn clock_ns() -> u64 {
     static T0: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
     T0.get_or_init(std::time::Instant::now).elapsed().as_nanos() as u64
@@ -74,6 +106,15 @@ struct Cli {
     /// print instructions, time and GC statistics to stderr
     #[arg(long)]
     stats: bool,
+    /// go on with a checkpoint image written by C mruby (feature `checkpoint`)
+    #[cfg(feature = "checkpoint")]
+    #[arg(long, value_name = "image")]
+    resume: Option<String>,
+    /// read the writer's permanent names (its `checkpoint names`, one per line) and print
+    /// what each one is here, or why it has nothing here (feature `checkpoint`)
+    #[cfg(feature = "checkpoint")]
+    #[arg(long, value_name = "file")]
+    checkpoint_names: Option<String>,
     #[arg(value_name = "programfile")]
     program: Option<String>,
     /// arguments for the program (ARGV)
@@ -247,9 +288,21 @@ fn uncaught_report(vm: &mut sabiruby::Vm, e: &sabiruby::VmError) -> Vec<u8> {
     out
 }
 
+/// What runs: a program from its start, or (feature `checkpoint`) an image from where it stopped.
+enum Start<'a> {
+    Program(&'a [u8]),
+    #[cfg(feature = "checkpoint")]
+    Image(&'a [u8]),
+}
+
 /// Runs a RITE binary with `ARGV` = `argv` and `$DEBUG` = `debug`. `load_path` becomes
 /// `$LOAD_PATH` (where `require` looks) and `requires` are the `-r` libraries, loaded first.
 fn run(bin: &[u8], argv: &[String], stats: bool, debug: bool, load_path: &[String], requires: &[String]) -> ExitCode {
+    run_start(Start::Program(bin), argv, stats, debug, load_path, requires)
+}
+
+/// A VM as `run` makes it, before the program: mrblib, ARGV, `$DEBUG`, the load path.
+fn new_vm(argv: &[String], stats: bool, debug: bool, load_path: &[String]) -> Result<sabiruby::Vm, ExitCode> {
     let mut vm = sabiruby::Vm::new();
     vm.set_gc_stress(gc_stress());
     // `eval` (and later `require`) compiles through the reference compiler of this build
@@ -257,7 +310,8 @@ fn run(bin: &[u8], argv: &[String], stats: bool, debug: bool, load_path: &[Strin
     if stats { vm.gc_clock = Some(clock_ns); }
     vm.wall_clock = Some(wall_clock);
     vm.sleep_hook = Some(|micros| std::thread::sleep(std::time::Duration::from_micros(micros)));
-    if let Err(e) = vm.load_mrblib() { eprintln!("failed to initialize VM (mrblib): {}", vm.describe_error(&e)); return ExitCode::from(1); }
+    vm.output_sink = Some(write_output);
+    if let Err(e) = vm.load_mrblib() { eprintln!("failed to initialize VM (mrblib): {}", vm.describe_error(&e)); return Err(ExitCode::from(1)); }
     // like the `mruby` command: ARGV holds the arguments after the program file
     let argv: Vec<sabiruby::Value> = argv.iter().map(|a| vm.str_new(a.as_bytes())).collect();
     let argv = vm.ary_new(argv);
@@ -268,14 +322,18 @@ fn run(bin: &[u8], argv: &[String], stats: bool, debug: bool, load_path: &[Strin
     // where `require` looks: the directory of the program and the working directory
     let paths: Vec<&str> = load_path.iter().map(|p| p.as_str()).collect();
     vm.set_load_path(&paths);
+    Ok(vm)
+}
+
+fn run_start(start: Start, argv: &[String], stats: bool, debug: bool, load_path: &[String], requires: &[String]) -> ExitCode {
+    let mut vm = match new_vm(argv, stats, debug, load_path) { Ok(vm) => vm, Err(code) => return code };
     // `-r lib`: the reference `mruby` loads each library file before the program
     for lib in requires {
         let path = vm.str_new(lib.as_bytes());
         let m = vm.intern("load");
         let recv = sabiruby::Value::Obj(vm.top_self);
         if let Err(e) = vm.funcall(recv, m, &[path], sabiruby::Value::Nil) {
-            let out = std::io::stdout();
-            out.lock().write_all(vm.take_output().as_slice()).ok();
+            flush_output(&mut vm);
             let report = uncaught_report(&mut vm, &e);
             std::io::stderr().write_all(&report).ok();
             return ExitCode::from(1);
@@ -283,17 +341,18 @@ fn run(bin: &[u8], argv: &[String], stats: bool, debug: bool, load_path: &[Strin
     }
     let (gc0, gct0) = (vm.gc_count, vm.gc_time_ns);
     let started = std::time::Instant::now();
-    let result = vm.load_and_run(bin);
+    let result = match start {
+        Start::Program(bin) => vm.load_and_run(bin),
+        #[cfg(feature = "checkpoint")]
+        Start::Image(img) => vm.checkpoint_resume(img),
+    };
     if stats {
         let e = started.elapsed();
         // before the instructions line: tools/bench.sh reads the last line
         eprintln!("gc: {} collections, {:.3} ms, live: {}, heap slots: {}", vm.gc_count - gc0, (vm.gc_time_ns - gct0) as f64 / 1e6, vm.heap.live_count(), vm.heap.len());
         eprintln!("instructions: {} elapsed_ms: {:.3} ns_per_instruction: {:.1}", vm.instructions, e.as_secs_f64() * 1000.0, e.as_nanos() as f64 / vm.instructions.max(1) as f64);
     }
-    let out = std::io::stdout();
-    let mut lock = out.lock();
-    lock.write_all(vm.take_output().as_slice()).ok();
-    lock.flush().ok();
+    flush_output(&mut vm);
     match result {
         Ok(_) => ExitCode::SUCCESS,
         Err(e) => {
@@ -313,6 +372,16 @@ fn program(cli: Cli) -> ExitCode {
     if cli.version || cli.version_verbose {
         println!("{}", version_line());
         if cli.version { return ExitCode::SUCCESS; }
+    }
+    #[cfg(feature = "checkpoint")]
+    if let Some(path) = cli.checkpoint_names.as_deref() {
+        return checkpoint_names(path);
+    }
+    #[cfg(feature = "checkpoint")]
+    if let Some(path) = cli.resume.as_deref() {
+        let img = match read_file(path) { Ok(b) => b, Err(code) => return code };
+        // `-r lib` loads libraries before the image is restored (a host's own setup)
+        return run_start(Start::Image(&img), &cli.args, cli.stats, cli.debug, &[String::from(".")], &cli.requires);
     }
     // where `require` looks: the program's own directory first, then the working directory
     let load_path = match cli.program.as_deref().filter(|_| cli.commands.is_empty()) {
@@ -345,6 +414,25 @@ fn program(cli: Cli) -> ExitCode {
         if code != ExitCode::SUCCESS { return code; }
     }
     run(&bin, &argv, cli.stats, cli.debug, &load_path, &cli.requires)
+}
+
+/// `--checkpoint-names FILE`: one line per name: `ok <name> <what>` or `missing <name> <why>`,
+/// then a count per prefix (`M:`, `F:`, classes, ...).
+#[cfg(feature = "checkpoint")]
+fn checkpoint_names(path: &str) -> ExitCode {
+    let text = match std::fs::read_to_string(path) { Ok(t) => t, Err(e) => { eprintln!("sabiruby: {path}: {e}"); return ExitCode::from(2); } };
+    let mut vm = match new_vm(&[], false, false, &[String::from(".")]) { Ok(vm) => vm, Err(code) => return code };
+    let mut counts: std::collections::BTreeMap<String, (usize, usize)> = std::collections::BTreeMap::new();
+    for name in text.lines().filter(|l| !l.is_empty()) {
+        let prefix = match name.find(':') { Some(i) if i <= 1 => name[..=i].to_string(), _ => String::from("class") };
+        let e = counts.entry(prefix).or_default();
+        match vm.checkpoint_name(name) {
+            Ok(what) => { e.0 += 1; println!("ok {name} {what}"); }
+            Err(why) => { e.1 += 1; println!("missing {name} {why}"); }
+        }
+    }
+    for (p, (ok, missing)) in &counts { println!("total {p} {ok} found {missing} missing"); }
+    ExitCode::SUCCESS
 }
 
 /// `sabiruby mrbtest [-v] assert.mrb t/*.mrb`: one fresh VM per file, a

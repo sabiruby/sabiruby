@@ -52,6 +52,10 @@ regexp = ["dep:regex-automata"]
 # The macros can still be depended on directly; what they generate names `::sabiruby::…` either
 # way, so the generated code is the same through the re-export and through `sabiruby-macros`.
 macros = ["dep:sabiruby-macros"]
+# `checkpoint`: `Vm::checkpoint_resume`, which rebuilds the state of a program that C mruby
+# stopped and wrote out (objects, frames, registers) and runs it on from where it stopped.
+# Off by default: without it the crate has none of the code (`docs/plans/checkpoint-plan.md`).
+checkpoint = []
 
 [dependencies]
 # Only with the feature `macros`. A proc-macro crate is compiled for the host and runs at

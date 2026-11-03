@@ -592,6 +592,11 @@ pub struct Vm {
     /// has nothing to wait on, so a host that can block lends it one. Without it a `sleep`
     /// outside a task returns at once.
     pub sleep_hook: Option<fn(micros: u64)>,
+    /// Where `puts`/`p`/`print` write, when the host gives a place: the bytes go there as the
+    /// program writes them, in the same order and the same pieces, instead of collecting in
+    /// the buffer [`Vm::take_output`] hands over (which then stays empty). The library is
+    /// `no_std` and has no output of its own, so `None` (the default) keeps them for the host.
+    pub output_sink: Option<fn(bytes: &[u8])>,
     /// What the VM asks the host for: compiling an `eval` string, reading a file
     /// (`Vm::set_host`, `src/host.rs`). `None` means `eval` is not available.
     #[doc(hidden)]
@@ -799,7 +804,7 @@ impl Vm {
         // `Fiber.current.inspect` shows (rc2-sweep-fixes Y6b, `fiber-root-status`)
         let mut vm = Vm {
             heap, syms, ireps: vec![call_irep, ret_irep, loop_irep], ret_proc, loop_proc, no_target, stack: Vec::new(), ci: Vec::new(), globals: HashMap::new(),
-            exc: None, out: Vec::new(), core, s, top_self, step_left: None, instructions: 0, op_counts: [0; crate::opcode::OP_COUNT], count_ops: false, method_cache: alloc::boxed::Box::new([MethodCacheLine::default(); METHOD_CACHE_LEN]), idx_builtin: [None; IDX_SLOTS], idx_class: [None; IDX_SLOTS], idx_serial: 0, eq_builtin: [None; 6], eq_plain: 0, eq_serial: u64::MAX, eql_basic: None, native_depth: 0, inspect_guard: Vec::new(), pending_kw: None, eq_guard: Vec::new(), cmp_guard: Vec::new(), gc_disabled: false, pending_vis_break: false, notimpl_fns: Vec::new(), gc_step_limit: 0, gc_interval_ratio: 200, gc_stress: false, native_active: 0, gc_registered: Vec::new(), native_mid: None, live_after_gc: 0, gc_count: 0, gc_time_ns: 0, gc_clock: None, wall_clock: None, sleep_hook: None, host: None, trace: None, call_proc,
+            exc: None, out: Vec::new(), core, s, top_self, step_left: None, instructions: 0, op_counts: [0; crate::opcode::OP_COUNT], count_ops: false, method_cache: alloc::boxed::Box::new([MethodCacheLine::default(); METHOD_CACHE_LEN]), idx_builtin: [None; IDX_SLOTS], idx_class: [None; IDX_SLOTS], idx_serial: 0, eq_builtin: [None; 6], eq_plain: 0, eq_serial: u64::MAX, eql_basic: None, native_depth: 0, inspect_guard: Vec::new(), pending_kw: None, eq_guard: Vec::new(), cmp_guard: Vec::new(), gc_disabled: false, pending_vis_break: false, notimpl_fns: Vec::new(), gc_step_limit: 0, gc_interval_ratio: 200, gc_stress: false, native_active: 0, gc_registered: Vec::new(), native_mid: None, live_after_gc: 0, gc_count: 0, gc_time_ns: 0, gc_clock: None, wall_clock: None, sleep_hook: None, output_sink: None, host: None, trace: None, call_proc,
             contexts: vec![Context::new(FiberState::Created)], cur: ROOT, direct_send: false, native_ret_reg: 0, native_raise: None, loop_exit: None,
             task: TaskState { index_from: TASK_INDEX_FROM, wakeup_tick: u32::MAX, tick_every: TASK_TICK_INSTRUCTIONS, tick_left: TASK_TICK_INSTRUCTIONS, clock_from_instructions: true, native_every: TASK_NATIVE_SAMPLE, native_left: TASK_NATIVE_SAMPLE, ..Default::default() },
             host_state: None, on_free: None, host_stores: Vec::new(), next_tag: 1, irep_loads: alloc::collections::BTreeMap::new(),
@@ -1266,12 +1271,16 @@ impl Vm {
 
     // ------------------------------------------------------------------ output
 
-    /// Bytes written by `puts`/`p`/`print` since the last [`Vm::take_output`].
+    /// Bytes written by `puts`/`p`/`print` since the last [`Vm::take_output`] (none when an
+    /// [`Vm::output_sink`] took them).
     pub fn take_output(&mut self) -> Vec<u8> {
         core::mem::take(&mut self.out)
     }
     pub fn write_out(&mut self, bytes: &[u8]) {
-        self.out.extend_from_slice(bytes);
+        match self.output_sink {
+            Some(sink) => sink(bytes),
+            None => self.out.extend_from_slice(bytes),
+        }
     }
 
     // ------------------------------------------------------------------ symbols
@@ -2545,6 +2554,17 @@ impl Vm {
         self.ci.push(CallInfo { base, pc: 0, irep, proc_, n: 0, kw: false, mid: None, target_class: self.core.object, env: None, cci: Cci::Skip, vis: self.top_vis(), modfunc: false, vis_break: false, method_block: false });
         let r = self.run_loop(depth);
         self.stack.truncate(base);
+        r
+    }
+
+    /// Runs the frames a checkpoint image was built into (`crate::checkpoint`) until the bottom
+    /// one returns, as [`Vm::run_irep`] runs the frame it pushes.
+    #[cfg(feature = "checkpoint")]
+    pub(crate) fn checkpoint_run(&mut self) -> VmResult<Value> {
+        // the loop the host started is the root's, whichever context goes on first (a Fiber the
+        // root resumed returns to it; the root's bottom frame ends the run)
+        let r = self.run_loop_ctx(ROOT, 0);
+        self.stack.clear();
         r
     }
 

@@ -108,6 +108,9 @@ pub mod builtins;
 /// Runner for mruby's own test suite (used by `sabiruby mrbtest` and the crate's tests).
 #[doc(hidden)]
 pub mod mrbtest;
+/// Resuming a checkpoint image written by C mruby (`docs/plans/checkpoint-plan.md`).
+#[cfg(feature = "checkpoint")]
+pub mod checkpoint;
 
 pub use convert::{FromRuby, IntoRuby};
 pub use host_store::{HostStore, RubyClass};

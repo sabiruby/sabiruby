@@ -1,0 +1,6 @@
+class AppError true
+second ArgumentError
+ok after 3
+ensure 3
+risky ensure
+caught late

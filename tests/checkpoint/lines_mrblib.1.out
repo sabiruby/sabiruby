@@ -1,0 +1,8 @@
+ArgumentError: deep 0
+  lines_mrblib.rb:9:in deep
+  lines_mrblib.rb:10:in deep
+  lines_mrblib.rb:10:in deep
+  lines_mrblib.rb:17
+  mrblib/array.rb:20:in each
+  lines_mrblib.rb:14
+23

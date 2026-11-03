@@ -510,6 +510,9 @@ sabiruby dump foo.rb           # instruction listing (.rb or .mrb)
 sabiruby mrbtest tests/mrbtest/assert.mrb tests/mrbtest/hash.mrb   # test suite
 ```
 
+The program's output goes out as it is written, like the reference `mruby`: flushed at every
+write on a terminal, block buffered elsewhere.
+
 A subcommand name wins over a file of the same name: run `./compile` (or `sabiruby run compile`)
 for a program file called `compile`. In this repository, use `cargo run -p sabiruby-cli -- …`.
 
@@ -517,6 +520,7 @@ for a program file called `compile`. In this repository, use `cargo run -p sabir
 let mut vm = sabiruby::Vm::with_mrblib()?;   // core library loaded
 vm.load_and_run(&bytes)?;                   // run a RITE binary to completion
 let out = vm.take_output();                 // what puts/p printed
+// or have it as it is printed: vm.output_sink = Some(|bytes| { /* write them */ });
 
 // or stepped, e.g. once per frame:
 let irep = vm.load(&bytes)?;

@@ -1,0 +1,9 @@
+Animal(snake, 0) Bird(crow, 2) Bird(owl, 2) Animal(cat, 4)
+crow flies
+hello from cat
+only me
+count=5 kingdom=animalia max=Animal(cat, 4)
+[Bird, Animal, Greeting, Comparable, Object] true
+5
+Animal
+[:special]

@@ -1,0 +1,8 @@
+15
+outer got 7
+inner got 7
+inner ended with inner_end
+:outer_end
+[false, false]
+transferred 41
+42
