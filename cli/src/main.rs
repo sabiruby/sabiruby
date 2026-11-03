@@ -23,6 +23,38 @@ fn wall_clock() -> (i64, i64) {
     }
 }
 
+/// Where the program's output goes as it is written (`Vm::output_sink`). Like the reference
+/// `mruby` (`src/print.c`): on a terminal each write is flushed at once, so a program that
+/// draws and then waits is seen drawing; anywhere else it is block buffered, flushed when the
+/// buffer fills and by [`flush_output`] before the command reports an error or ends.
+fn write_output(bytes: &[u8]) {
+    static TERMINAL: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    if *TERMINAL.get_or_init(|| std::io::IsTerminal::is_terminal(&std::io::stdout())) {
+        let mut out = std::io::stdout().lock();
+        out.write_all(bytes).ok();
+        out.flush().ok();
+        return;
+    }
+    OUTPUT.with(|b| {
+        let mut b = b.borrow_mut();
+        b.extend_from_slice(bytes);
+        if b.len() >= OUTPUT_BLOCK { std::io::stdout().lock().write_all(&b).ok(); b.clear(); }
+    });
+}
+
+const OUTPUT_BLOCK: usize = 64 * 1024;
+thread_local! {
+    static OUTPUT: std::cell::RefCell<Vec<u8>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// Writes out what [`write_output`] holds and anything left in the VM's own buffer.
+fn flush_output(vm: &mut sabiruby::Vm) {
+    let mut out = std::io::stdout().lock();
+    OUTPUT.with(|b| { let mut b = b.borrow_mut(); out.write_all(&b).ok(); b.clear(); });
+    out.write_all(vm.take_output().as_slice()).ok();
+    out.flush().ok();
+}
+
 fn clock_ns() -> u64 {
     static T0: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
     T0.get_or_init(std::time::Instant::now).elapsed().as_nanos() as u64
@@ -278,6 +310,7 @@ fn new_vm(argv: &[String], stats: bool, debug: bool, load_path: &[String]) -> Re
     if stats { vm.gc_clock = Some(clock_ns); }
     vm.wall_clock = Some(wall_clock);
     vm.sleep_hook = Some(|micros| std::thread::sleep(std::time::Duration::from_micros(micros)));
+    vm.output_sink = Some(write_output);
     if let Err(e) = vm.load_mrblib() { eprintln!("failed to initialize VM (mrblib): {}", vm.describe_error(&e)); return Err(ExitCode::from(1)); }
     // like the `mruby` command: ARGV holds the arguments after the program file
     let argv: Vec<sabiruby::Value> = argv.iter().map(|a| vm.str_new(a.as_bytes())).collect();
@@ -300,8 +333,7 @@ fn run_start(start: Start, argv: &[String], stats: bool, debug: bool, load_path:
         let m = vm.intern("load");
         let recv = sabiruby::Value::Obj(vm.top_self);
         if let Err(e) = vm.funcall(recv, m, &[path], sabiruby::Value::Nil) {
-            let out = std::io::stdout();
-            out.lock().write_all(vm.take_output().as_slice()).ok();
+            flush_output(&mut vm);
             let report = uncaught_report(&mut vm, &e);
             std::io::stderr().write_all(&report).ok();
             return ExitCode::from(1);
@@ -320,10 +352,7 @@ fn run_start(start: Start, argv: &[String], stats: bool, debug: bool, load_path:
         eprintln!("gc: {} collections, {:.3} ms, live: {}, heap slots: {}", vm.gc_count - gc0, (vm.gc_time_ns - gct0) as f64 / 1e6, vm.heap.live_count(), vm.heap.len());
         eprintln!("instructions: {} elapsed_ms: {:.3} ns_per_instruction: {:.1}", vm.instructions, e.as_secs_f64() * 1000.0, e.as_nanos() as f64 / vm.instructions.max(1) as f64);
     }
-    let out = std::io::stdout();
-    let mut lock = out.lock();
-    lock.write_all(vm.take_output().as_slice()).ok();
-    lock.flush().ok();
+    flush_output(&mut vm);
     match result {
         Ok(_) => ExitCode::SUCCESS,
         Err(e) => {
