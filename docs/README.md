@@ -407,6 +407,13 @@ numbers of 2026-09-13 do not come back); the speed ratio written as a number onl
 2026-10-19); the two VMs timed on 12 of the 27 benchmarks, kept here only and not on the page (the
 author: the runner for mruby/edge was ours).
 
+[2026-11-03-release-0.9](worklog/2026-11-03-release-0.9.md) is stages R1-R3 of `release-0.9-plan.md`
+(Japanese): `feature/checkpoint` merged (one conflict in this index), the versions (sabiruby 0.9.0,
+compiler 0.6.0 and serde 0.5.0 with no change of their own, cli 0.9.0, macros stays), `checkpoint` on
+by default in the CLI and what that does to the workspace's test count (282 on, 276 off), the checks
+(custom, GC stress, no_std, wasm, CI's doc steps, mrbtest), rubevy and the playground built against 0.9
+on copies, the dry runs in dependency order, and the commands for publishing.
+
 ## Where things were (before 2026-09-15)
 
 Every document above sat directly under `docs/`; references in older commits, in the book's notes
