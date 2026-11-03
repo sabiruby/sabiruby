@@ -59,5 +59,5 @@
 | R2 | **済み（2026-11-03）** |
 | R3 | **済み（2026-11-03）**。数は worklog `2026-11-03-release-0.9.md` |
 | R4 | **済み（2026-11-03）**。`bench/` の 27 本で命令の数と GC の回数が `v0.8.0` と全部同じ。時間は 1 回り（PC は空いていなかった）で全体 +0.4%、どれも ±4.0% の内（`docs/verification/bench.md` の 0.9.0 の節）。作業中に、`Checkpoint.save` / `suspend` が C の側の `source:` を受けずに ArgumentError になるのを見つけて直した（`9542961`、試験 `save_takes_the_source_keyword`） |
-| R5 | 著者の確認を待つ。打つコマンドは worklog の「R5 で著者が打つコマンド」 |
+| R5 | **済み（2026-11-03）**。`a3a798d` を main に push、CI 緑（ubuntu・macOS・msrv）。crates.io に `sabiruby` 0.9.0、`sabiruby-compiler` 0.6.0、`sabiruby-serde` 0.5.0、`sabiruby-cli` 0.9.0、tag `v0.9.0`（`a3a798d`） |
 | R6 | 著者の判断を待つ |
